@@ -1,0 +1,65 @@
+action: train # train or validate
+name: training # name of the experiment needed for the logs
+modality: ['EMG'] #["RGB"] #["EMG"] #["RGB","EMG"] #!!!
+total_batch: 32 #32 total batch size if training is done with gradient accumulation
+batch_size: 32 # batch size for the forward
+gpus: null # gpus adopted
+wandb_name: null # needed for wandb logging
+resume_from: null # checkpoint directory
+logname: null # name of the logs
+models_dir: null # directory containing all the models
+feat_avg: False
+
+train:
+  num_iter: 200 #10000?? number of training iterations with BATCH_SIZE (32) NOT on TOTAL_BATCH (128)
+  lr_steps: 190 #8500 steps before reducing learning rate
+  eval_freq: 10 # evaluation frequency
+  num_clips: 5 # clips adopted in training
+  dense_sampling: # sampling version adopted in training for each modality
+    RGB: True
+  num_frames_per_clip: # number of frames adopted in training for each modality
+    RGB: 16
+    EMG: 16
+
+test:
+  num_clips: 5 # number of clips in testing
+  dense_sampling: # sampling version adopted in test for each modality
+    RGB: True
+  num_frames_per_clip: # number of frames adopted in test for each modality
+    RGB: 16
+
+dataset:
+  annotations_path: Action-Net/data/  #train_val  #Action-Net/data/ #!!!!
+  shift: SXY-SXY #D1-D1 #SXY-SXY #!!!
+  workers: 4 # number of workers for the dataloader
+  stride: 2 # stride in case of dense sampling
+  resolution: 224 # input resolution to the model
+  RGB:
+    data_path: Action-Net/data/RGB_features/ #!!RGB unzipped only for S04
+    tmpl: "img_{:010d}.jpg" # format of RGB filenames
+    features_name: Action-Net/data/RGB_features/ActionNet_saved_feat_I3D_10clips_25frames_Dense_05dropout_NormalizeFalse   #****D1_test.pkl added later
+  EMG:
+    data_path: Action-Net/data/  #! SAME AS ANNOTATIONS FOR EMG
+    tmpl: "array_{:010d}.txt" #JUST placeholder (not used for emg)
+    features_name: Action-Net/data/  
+
+# these are the action recognition models for each modality
+models:
+  RGB:
+    model: MLP
+    normalize: False
+    dropout: 0.4
+    kwargs: {}
+    lr_steps: 3000
+    lr: 0.01
+    sgd_momentum: 0.9
+    weight_decay: 1e-7
+  EMG:
+    model: CNN_EMG
+    normalize: False
+    dropout: 0.5
+    kwargs: {}
+    lr_steps: 3000
+    lr: 0.01
+    sgd_momentum: 0.9
+    weight_decay: 1e-7

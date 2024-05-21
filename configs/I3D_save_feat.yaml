@@ -1,0 +1,48 @@
+action: save # train or test
+name: saved_feat_I3D
+split: test
+resume_from: ./saved_models/I3D_SourceOnlyD1
+#from default.yaml
+gpus: null # gpus adopted
+wandb_name: null # needed for wandb logging
+logname: null # name of the logs
+models_dir: null # directory containing all the models
+modality: ["RGB"] 
+total_batch: 128 # total batch size if training is done with gradient accumulation
+batch_size: 32 # batch size for the forward
+
+save:
+  num_clips: 5 #10 #25
+  dense_sampling:
+    RGB: False
+  num_frames_per_clip:
+    RGB: 16
+
+dataset:
+  annotations_path: Action-Net/data #train_val #Action-Net/data
+  shift: S04-S04 #D1-D1 #S04-S04
+  workers: 4
+  stride: 2
+  resolution: 224
+  RGB:
+    data_path: "C:/Users/39351/Downloads/s04_RGB_flow/frames"
+    tmpl: "frame_{:010d}.jpg" #"img_{:010d}.jpg" #"frame_{:010f}.jpg"
+    features_name: saved_feat_I3D_5    #****D1_test.pkl added later
+  Event:
+    rgb4e: 6
+
+# these are the action recognition models for each modality
+models:
+  RGB:
+    model: I3D
+    dropout: 0.5
+    normalize: False
+    resolution: 224
+    kwargs: {}
+    lr_steps: 3000
+    lr: 0.01
+    sgd_momentum: 0.9
+    weight_decay: 1e-7
+    weight_i3d_rgb: './pretrained_i3d/rgb_imagenet.pt'
+
+
