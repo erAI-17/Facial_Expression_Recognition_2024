@@ -3,55 +3,65 @@ import cv2
 import open3d as o3d
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
+import re
+import os
 
 '''
 depth_maps: 224x224
 images: 
 
 '''
-gender = 'F' 
-subjectid = '001_1120'
-emotion = 'anger'
 
-image_path = '../Datasets/CalD3r/Emotions/Anger/Color/'
-depth_map_path = '../Datasets/CalD3r/Emotions/Anger/Depth/'
+gender = 'M' 
+subjectid = '018'
+emotion = 'disgust'
+
+path_2d = '../Datasets/CalD3r/Emotions/Disgust/Color/'
+path_3d = '../Datasets/CalD3r/Emotions/Disgust/Depth/'
     
 
-def load_image_and_depth_map(gender, subjectid, emotion):
-    #load 2d image
-    image = cv2.imread(image_path + gender + '_' + subjectid  + '_'+ emotion + '_Color.png')
-    # Convert the image from BGR to RGB
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+def load_2d_and_3d(path_2d, gender, subjectid, emotion):
+    files_2d = []
+    files_3d = []
+    for path in [path_2d, path_3d]: 
+        for filename in os.listdir(path):
+            parts = filename.split("_")
+            if  (parts[0] == gender and parts[1] == subjectid and parts[3] == emotion):
+                
+                if (parts[4] == "Color.png"): 
+                    #load 2d image
+                    file_2d = cv2.imread(path_2d + filename)
+                    # Convert the image from BGR to RGB
+                    file_2d = cv2.cvtColor(file_2d, cv2.COLOR_BGR2RGB)
+                    
+                    files_2d.append(file_2d)
+                    
+                if (parts[4] == "Depth.png"): 
+                    #load 3d image    
+                    file_3d = cv2.imread(path_3d + filename, cv2.IMREAD_GRAYSCALE)
+                    
+                    files_3d.append(file_3d)
+                
+    return  files_2d, files_3d               
     
-    #load depth_map
-    depth_map = cv2.imread(depth_map_path + gender + '_' +subjectid + '_'+ emotion + '_Depth.png'  , cv2.IMREAD_GRAYSCALE)
-    print(depth_map)
-    
-    return image, depth_map
-    
-        
-def show_depth_map(depth_map):
-    # Convert the depth map to a grayscale image
-    depth_map_gray = cv2.cvtColor(depth_map, cv2.COLOR_GRAY2BGR) 
+def show_depth_map(file_3d):
+    # Create an Open3D image from the depth map
+    o3d_depth_map = o3d.geometry.Image(file_3d)
 
-    # Display the grayscale depth map
-    cv2.imshow('Grayscale Depth Map', depth_map_gray)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    # Visualize the depth map
+    o3d.visualization.draw_geometries([o3d_depth_map])
     
     
 def normalize(depth_map):
-    #depth_map = depth_map.astype(np.float32) * 0.001 
     # Normalize the depth map values to 0-255 range
-    depth_map = cv2.normalize(depth_map, None, 0, 600, cv2.NORM_MINMAX)
-    
+    depth_map = cv2.normalize(depth_map, None, 0, 255, cv2.NORM_MINMAX)
     return depth_map
     
     
-def naive_point_cloud_2d_3d(image, depth_map):
+def single_depthmap_to_point_cloud(image, depth_map):
     # Camera intrinsics (focal length and principal point)
-    fx = 463.8888854980469  # focal length in x direction
-    fy = 463.8888854980469  # focal length in y direction
+    fx = 200  # focal length in x direction
+    fy = 200  # focal length in y direction
     cx = image.shape[1] / 2  # principal point in x direction
     cy = image.shape[0] / 2  # principal point in y direction
 
@@ -61,21 +71,68 @@ def naive_point_cloud_2d_3d(image, depth_map):
     for y in range(image.shape[0]):
         for x in range(image.shape[1]):
             Z = depth_map[y, x]
-            if Z!=0:
-                print("diff")
             X = (x - cx) * Z / fx
             Y = (y - cy) * Z / fy
             points.append([X, Y, Z])
             colors.append(image[y, x])
-        
-    point_cloud = o3d.geometry.PointCloud()
+    
+    point_cloud  = o3d.geometry.PointCloud()
     point_cloud.points = o3d.utility.Vector3dVector(points)
-    point_cloud.colors = o3d.utility.Vector3dVector(np.asarray(colors, dtype=np.float64) / 255.0)
-
+    point_cloud.colors = o3d.utility.Vector3dVector(np.asarray(colors, dtype=np.float64) / 255.0)    
+    
+    #visualize depth map 
+    show_depth_map(depth_map) 
+    
     # Visualize the point cloud
     o3d.visualization.draw_geometries([point_cloud])
     
     return point_cloud
+
+def compute_mean_depth_map(files_3d):
+    mean_depth_map = np.zeros_like(files_3d[0], dtype=np.float64)
+    num_maps = len(files_3d)
+
+    # Sum up all depth maps
+    for file_3d in files_3d:
+        mean_depth_map += file_3d.astype(np.float64)
+
+    # Compute mean depth map
+    mean_depth_map /= num_maps
+
+    return mean_depth_map
+
+def register_point_clouds(source, target, threshold=0.02):
+    reg_p2p = o3d.pipelines.registration.registration_icp(
+        source, target, threshold, np.identity(4),
+        o3d.pipelines.registration.TransformationEstimationPointToPoint()
+    )
+    return reg_p2p.transformation
+
+def apply_transformation(point_cloud, transformation):
+    return point_cloud.transform(transformation)
+
+def multiple_depth_maps_to_point_cloud(files_2d, files_3d):
+    point_clouds = []
+
+    for file_2d, file_3d in zip(files_2d, files_3d):
+        file_3d = normalize(file_3d)
+        point_cloud = single_depthmap_to_point_cloud(file_2d, file_3d)
+        
+        point_clouds.append(point_cloud)
+    
+    # Assume the first point cloud as the reference
+    reference_pc = point_clouds[0]  
+    merged_cloud = reference_pc
+    for point_cloud in point_clouds:
+        #transformation = register_point_clouds(point_cloud, reference_pc)
+        #aligned_pc = apply_transformation(point_cloud, transformation)
+        merged_cloud += point_cloud #aligned_pc
+
+    cl, ind = point_cloud.remove_statistical_outlier(nb_neighbors=20, std_ratio=2.0)
+    point_cloud = point_cloud.select_by_index(ind)
+
+    # Visualize the point cloud
+    o3d.visualization.draw_geometries([merged_cloud])
 
 
 def naive_triangle_mesh(point_cloud):
@@ -87,21 +144,18 @@ def naive_triangle_mesh(point_cloud):
 
 if __name__ == '__main__':
     #load
-    image, depth_map = load_image_and_depth_map(gender, subjectid, emotion)
-    
-    #normalize depth_map
-    #depth_map = normalize(depth_map)
-    
+    image, depth_map = load_2d_and_3d(path_2d, gender, subjectid, emotion)
+      
     # #!!show
     # plt.imshow(image)
     # plt.axis('off')  # Hide axes
     # plt.show()
     
-    show_depth_map(depth_map)
+    #show_depth_map(depth_map)
     # #!!
     
     #convert to point cloud
-    #point_cloud = naive_point_cloud_2d_3d(image, depth_map)
+    point_cloud = multiple_depth_maps_to_point_cloud(image, depth_map)
     
     #point cloud to mesh
     #naive_triangle_mesh(point_cloud)
