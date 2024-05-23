@@ -11,7 +11,8 @@ from typing import Dict, Optional
 class Task(torch.nn.Module, metaclass=ABCMeta):
     """
     Task is the abstract class which needs to be implemented for every different task present in the model
-    (i.e. classification, self-supervision). #**It saves all models for every modality.
+    (i.e. classification, self-supervision). 
+    #*It saves all models for every modality.
 
     """
 

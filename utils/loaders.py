@@ -10,8 +10,13 @@ from utils.logger import logger
 from utils.CalD3R_MenD3s_sample import CalD3R_MenD3s_sample
 
 class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
-    def __init__(self, modalities, mode, dataset,
-                 transform=None, load_feat=False, additional_info=False, **kwargs):
+    def __init__(self, 
+                 modalities, 
+                 mode, 
+                 dataset,
+                 transform=None, 
+                 additional_info=False, 
+                 **kwargs):
         """
         modalities: list(str, str, ...) #? ["RGB"] OR ["D"] OR ["RGB", "D"] OR ["MESH"]
         mode: str #? train OR test
@@ -23,7 +28,6 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
                 - tmpl: str #?template of single data name (for example, for an image: "img_{:010d}.jpg")
         
         transform: bool #? image normalization, online augmentation (crop, ...)
-        load_feat: bool #? if mode="save" then load_feat="False". If mode="train" OR mode="test" then load_feat="True"
         additional_info: bool, set to True if you want to receive also the uid and the video name from the get function
             notice, this may be useful to do some proper visualizations!
         """
@@ -31,7 +35,6 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
         self.mode = mode 
         self.dataset = dataset
         self.transform = transform
-        self.load_feat = load_feat
         self.additional_info = additional_info
         
 
@@ -47,54 +50,20 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
         logger.info(f"Dataloader for {self.mode} with {len(self.list_file)} samples generated")
         
         self.ann_sample_list = [CalD3R_MenD3s_sample(row_name, self.dataset) for row_name in self.ann_list_file.iterrows()]
-        
-        #*Load Features for each modality (if mode="train" OR mode="test" )
-        if self.load_feat:
-            self.mod_features = None
-            for m in self.modalities:
-                if m == 'RGB':
-                    mod_features = pd.DataFrame(pd.read_pickle(os.path.join(self.dataset[m].features_name + "_" +
-                                                                          pickle_name))['features'])[["uid", "features_" + m]] #pickle_name
-                elif m=='D':    
-                    mod_features = pd.DataFrame(pd.read_pickle(os.path.join(self.dataset[m].features_name + 
-                                                                            pickle_name)))[["uid", "features_" + m]]
-                elif m=='MESH':    
-                    mod_features = pd.DataFrame(pd.read_pickle(os.path.join(self.dataset[m].features_name + 
-                                                                            pickle_name)))[["uid", "features_" + m]]    
-                
-                if self.mod_features is None:
-                    self.mod_features = mod_features
-                else:
-                    self.mod_features = pd.merge(self.mod_features, mod_features, how="inner", on="uid")
             
             
     def __getitem__(self, index):
-        '''
-        if training OR testing (self.mode= "train" AND load.feat="True"), it loads the previously extracted features FOR each modality, and the class
-        else if saving features (self.mode= "save" AND load.feat="False"), it loads the image FOR each modality, and the class
-        '''
         ann_sample = self.ann_sample_list[index] #annotation sample
       
-        if self.load_feat: #*training or testing : load the features for each modality
-            sample = {}
-            sample_mod_features = self.mod_features[self.mod_features["uid"] == int(ann_sample.uid)]
-            assert len(sample_mod_features) == 1
-            for m in self.modalities:
-                sample[m] = sample_mod_features["features_" + m].values[0]
-            if self.additional_info:
-                return sample, ann_sample.label, ann_sample.uid
-            else:
-                return sample, ann_sample.label
-
-        else: #*saving: load the images for each modality
-            sample = {}
-            for m in self.modalities:
-                img, label = self.get(m, ann_sample)
-                sample[m] = {img}
-            if self.additional_info:
-                return sample, ann_sample.label, ann_sample.uid
-            else:
-                return sample, ann_sample.label
+        #*load the sample's images for each modality
+        sample = {}
+        for m in self.modalities:
+            img, label = self.get(m, ann_sample)
+            sample[m] = {img}
+        if self.additional_info:
+            return sample, ann_sample.label, ann_sample.uid
+        else:
+            return sample, ann_sample.label
 
 
     def get(self, modality, ann_sample):

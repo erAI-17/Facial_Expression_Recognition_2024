@@ -73,61 +73,59 @@ def main():
         if args.resume_from is not None:
             emotion_classifier.load_last_model(args.resume_from)
         
-        #*WE USE GRADIENT ACCUMULATION (the batches are devided into smaller batches with gradient accumulation)
+        #* USE GRADIENT ACCUMULATION (the batches are devided into smaller batches with gradient accumulation)
         #* TOTAL_BATCH (128) -> 4* BATCH_SIZE (32)
         #* Every TOTAL_BATCH has to be iterated (forward pass + backward pass) "args.train.num_iter" times (5000)
         #* So, each BATCH_SIZE (32) needs to be passed  train.num_iter 
         training_iterations = args.train.num_iter * (args.total_batch // args.batch_size)
         
+        
         #*All dataloaders are generated here
-        train_loader = torch.utils.data.DataLoader(CalD3R_MenD3s_Dataset(args.dataset.shift.split("-")[0],
-                                                                         modalities,
+        train_loader = torch.utils.data.DataLoader(CalD3R_MenD3s_Dataset(modalities,
                                                                          'train', 
                                                                          args.dataset, 
-                                                                         args.train.num_frames_per_clip,
-                                                                         args.train.num_clips, 
-                                                                         args.train.dense_sampling,
-                                                                         None, 
-                                                                         load_feat=True),
-                                                   batch_size=args.batch_size, shuffle=True,
-                                                   num_workers=args.dataset.workers, pin_memory=True, drop_last=True)
+                                                                         None),
+                                                   batch_size=args.batch_size, 
+                                                   shuffle=True,
+                                                   num_workers=args.dataset.workers, 
+                                                   pin_memory=True, 
+                                                   drop_last=True)
 
-        val_loader = torch.utils.data.DataLoader(CalD3R_MenD3s_Dataset(args.dataset.shift.split("-")[-1], 
-                                                                       modalities,
+
+        val_loader = torch.utils.data.DataLoader(CalD3R_MenD3s_Dataset(modalities,
                                                                        'val', 
                                                                         args.dataset,
-                                                                        args.train.num_frames_per_clip,
-                                                                        args.train.num_clips, 
-                                                                        args.train.dense_sampling,
-                                                                        None, 
-                                                                        load_feat=True),
-                                                 batch_size=args.batch_size, shuffle=False,
-                                                 num_workers=args.dataset.workers, pin_memory=True, drop_last=False)
+                                                                        None),
+                                                 batch_size=args.batch_size, 
+                                                 shuffle=False,
+                                                 num_workers=args.dataset.workers, 
+                                                 pin_memory=True, 
+                                                 drop_last=False)
         
         train(emotion_classifier, train_loader, val_loader, device, num_classes)
 
     #*test/validate
-    elif args.action == "validate":
+    elif args.action == "test":
         if args.resume_from is not None:
             emotion_classifier.load_last_model(args.resume_from)
-        val_loader = torch.utils.data.DataLoader(CalD3R_MenD3s_Dataset(args.dataset.shift.split("-")[-1], 
-                                                                       modalities,
+            
+        test_loader = torch.utils.data.DataLoader(CalD3R_MenD3s_Dataset(modalities,
                                                                        'val', 
-                                                                        args.dataset,  
-                                                                        args.train.num_frames_per_clip,
-                                                                        args.train.num_clips, 
-                                                                        args.train.dense_sampling,
-                                                                        None, 
-                                                                        load_feat=True),
-                                                 batch_size=args.batch_size, shuffle=False,
-                                                 num_workers=args.dataset.workers, pin_memory=True, drop_last=False)
+                                                                        args.dataset,
+                                                                        None),
+                                                 batch_size=args.batch_size, 
+                                                 shuffle=False,
+                                                 num_workers=args.dataset.workers, 
+                                                 pin_memory=True, 
+                                                 drop_last=False)
 
-        validate(emotion_classifier, val_loader, device, emotion_classifier.current_iter, num_classes)
+        validate(emotion_classifier, test_loader, device, emotion_classifier.current_iter, num_classes)
 
 
 def train(emotion_classifier, train_loader, val_loader, device, num_classes):
     """
     function to train 1 model for modality on the training set
+    
     emotion_classifier: Task containing the model to be trained for each modality
     train_loader: dataloader containing the training data
     val_loader: dataloader containing the validation data
@@ -144,7 +142,7 @@ def train(emotion_classifier, train_loader, val_loader, device, num_classes):
     iteration = emotion_classifier.current_iter * (args.total_batch // args.batch_size)
 
     #* real_iter is the number of iterations on TOTAL_BATCH
-    #* this is needed because the lr schedule is defined on the real_iter not on
+    #* this is needed because the lr schedule is defined on the real_iter
     for i in range(iteration, training_iterations):
         #* iteration in BATCH_SIZE < TOTAL_BATCH
         real_iter = (i + 1) / (args.total_batch // args.batch_size)

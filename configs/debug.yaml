@@ -1,5 +1,0 @@
-action: train #save # train or validate
-name:  training on SXY-SXY  #saved_features_stats_5 #train_MLP_D1_train_5
-
-dataset:
-  shift: SXY-SXY  #S04-S04 #D1-D1 #SXY-SXY
