@@ -177,13 +177,12 @@ def train(emotion_classifier, train_loader, val_loader, device, num_classes):
         data = {}
         for m in modalities:
             data[m] = source_data[m].to(device)
-            print("shape from the modalities for loop is:",data[m].shape)
+            #print("shape from the modalities for loop is:",data[m].shape)
         logits, _ = emotion_classifier.forward(data)
         emotion_classifier.compute_loss(logits, source_label, loss_weight=1)
         emotion_classifier.backward(retain_graph=False)
         emotion_classifier.compute_accuracy(logits, source_label)
                 
-
         # update weights and zero gradients if total_batch samples are passed
         if gradient_accumulation_step:
             logger.info("[%d/%d]\tlast Verb loss: %.4f\tMean verb loss: %.4f\tAcc@1: %.2f%%\tAccMean@1: %.2f%%" %
@@ -194,8 +193,7 @@ def train(emotion_classifier, train_loader, val_loader, device, num_classes):
             emotion_classifier.step()
             emotion_classifier.zero_grad()
 
-        # every eval_freq "real iteration" (iterations on total_batch) the validation is done, notice we validate and
-        # save the last 9 models
+        # every eval_freq "real iteration" (iterations on total_batch) the validation is done
         if gradient_accumulation_step and real_iter % args.train.eval_freq == 0:
             val_metrics = validate(emotion_classifier, val_loader, device, int(real_iter), num_classes)
 
@@ -214,6 +212,7 @@ def train(emotion_classifier, train_loader, val_loader, device, num_classes):
 def validate(model, val_loader, device, it, num_classes):
     """
     function to validate the model on the test set
+    
     model: Task containing the model to be tested
     val_loader: dataloader containing the validation data
     device: device on which you want to test
@@ -245,8 +244,8 @@ def validate(model, val_loader, device, it, num_classes):
                 logits[m] = output[m]
             
             #!already performing mean inside mlp 
-            #for m in modalities:
-            #    logits[m] = torch.mean(logits[m], dim=0)
+            for m in modalities:
+                logits[m] = torch.mean(logits[m], dim=0)
 
             model.compute_accuracy(logits, label)
 
