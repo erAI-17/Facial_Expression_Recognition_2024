@@ -103,7 +103,7 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
         '''    
         img = self._load_data(modality, ann_sample)
             
-        if self.transform is not None: #*ONLINE AUGMENTATION
+        if self.transform is not None: #*ONLINE AUGMENTATION, NORMALIZATION
             transformed_img = self.transform[modality](img)
         else: 
             transformed_img = img

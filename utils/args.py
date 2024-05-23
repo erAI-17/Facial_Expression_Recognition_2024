@@ -18,7 +18,6 @@ def add_paths():
     if platform.node() == "hyperion":
         path_conf.wandb_dir = "/data/mirco/wandb_gole"
         path_conf.dataset.RGB.data_path = "/data/EpicKitchen/EpicKitchenDA/rgb_flow"
-        # path_conf.models_dir = "/data/mirco/RAL_EdgeEgoModels/"
         path_conf.models_dir = "/data/mirco/CVPR_AffordanceDA/"
     return path_conf
 
@@ -27,7 +26,7 @@ def add_paths():
 conf_path = os.path.join(os.path.dirname(__file__), '../configs')
 
 # Retrieve the default config
-args = OmegaConf.load(os.path.join(conf_path, "default.yaml")) #I3D_save_feat.yaml  or #default.yaml
+args = OmegaConf.load(os.path.join(conf_path, "default.yaml")) 
 
 # Read the cli args
 cli_args = OmegaConf.from_cli()
