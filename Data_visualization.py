@@ -9,12 +9,12 @@ import math
 
 '''
 This file allows for data visualization in different flavours. 
-Once sample has been selected by specifying 'gender', 'subjectid' and 'emotion', it will show sample as:
+Once sample has been selected by specifying 'dataset' 'gender', 'subjectid' and 'emotion', it will show sample as:
 - 2d image, 
 - depth map, 
-- point cloud (from 2d+depth_map), 
-- triangular mesh (from point cloud),
-- triangular mesh (from depth map) 
+- generate point cloud (from 2d+depth_map), 
+- generate triangular mesh (from point cloud),
+- generate triangular mesh (from depth map) 
 
 As explained in paper point cloud is not continuous leading to a poor mesh.
 So, the most promising and used representation will be 2d+depth_map and the mesh obtained from 2d+depth_map.
@@ -26,7 +26,7 @@ subjectid = '003'
 emotion = 'anger'
 
 path_images = '../Datasets/'+ dataset +'/Emotions/' + emotion.capitalize() + '/Color/'
-path_d_map = '../Datasets/'+ dataset +'/Emotions/' + emotion.capitalize() + '/Depth/'
+path_d_maps = '../Datasets/'+ dataset +'/Emotions/' + emotion.capitalize() + '/Depth/'
     
 def sensor():
     # Convert FoV from degrees to radians
@@ -129,7 +129,7 @@ def depthmap_to_mesh(color_image, d_map):
 def load_2d_and_3d(gender, subjectid, emotion):
     images = []
     d_maps = []
-    for path in [path_images, path_d_map]: 
+    for path in [path_images, path_d_maps]: 
         for filename in os.listdir(path):
             parts = filename.split("_")
             if  (parts[0] == gender and parts[1] == subjectid and parts[3] == emotion):
@@ -144,7 +144,7 @@ def load_2d_and_3d(gender, subjectid, emotion):
                     
                 if (parts[4] == "Depth.png"): 
                     #load 3d image    
-                    d_map = cv2.imread(path_d_map + filename, cv2.IMREAD_UNCHANGED)
+                    d_map = cv2.imread(path_d_maps + filename, cv2.IMREAD_UNCHANGED)
                     d_maps.append(d_map)
                 
     return  images, d_maps               

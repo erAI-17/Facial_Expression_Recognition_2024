@@ -80,8 +80,6 @@ def plot_actions(X, Y):
     plt.show()  
 
 
-
-
 # videos ->                 record              -> clips (num_clips) -> num_frames_per_clip
 # P08_01 -> P08_01 start_frame end_frame action -> 
 def main(): #**USING EPICKITCHENDATASET
