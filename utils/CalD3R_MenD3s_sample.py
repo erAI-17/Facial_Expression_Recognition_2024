@@ -1,5 +1,4 @@
-from .video_record import VideoRecord
-class ActionSenseRecord(VideoRecord):
+class CalD3R_MenD3s_sample(object):
     '''
     tup: a line from one of pkl files in annotations (train_val/...)
     dataset_conf: whole JSON "dataset" from .yaml
@@ -27,3 +26,4 @@ class ActionSenseRecord(VideoRecord):
             raise NotImplementedError
         return self._series['class']
     
+
