@@ -2,33 +2,20 @@ from collections.abc import Mapping
 import torch
 
 
-def get_domains_and_labels(args):
-    if args.action == 'save':
-        num_class = 8
-        domains = {'SXY': 8, 'S04':8, 'D1': 8, 'D2': 1, 'D3': 22}
-        source_domain = domains[args.dataset.shift.split("-")[0]]
-        target_domain = domains[args.dataset.shift.split("-")[1]]
+def get_domains_and_labels(args):    
+    if args.dataset.shift == 'CalD3r&MenD3s':
+        num_class = 7
+        #source_domain = domains[args.dataset.shift.split("-")[0]]
+        #target_domain = domains[args.dataset.shift.split("-")[1]]
         valid_labels = [i for i in range(num_class)]
-        return num_class, valid_labels, source_domain, target_domain
-    
-    elif args.dataset.shift == 'D1-D1':
-        
-        num_verbs = 8
-        domains = {'D1': 8, 'D2': 1, 'D3': 22}
-        source_domain = domains[args.dataset.shift.split("-")[0]]
-        target_domain = domains[args.dataset.shift.split("-")[1]]
-        valid_labels = [i for i in range(num_verbs)]
-        num_class = num_verbs
-        return num_class, valid_labels, source_domain, target_domain
-    
-    elif args.dataset.shift == 'SXY-SXY' or args.dataset.shift == 'S04-S04':
-        
-        num_class = 20
-        domains = {'SXY': 20, 'S04':20}
-        source_domain = domains[args.dataset.shift.split("-")[0]]
-        target_domain = domains[args.dataset.shift.split("-")[1]]
+
+    if args.dataset.shift == 'Bosphorus':
+        num_class = 7
+        #source_domain = domains[args.dataset.shift.split("-")[0]]
+        #target_domain = domains[args.dataset.shift.split("-")[1]]
         valid_labels = [i for i in range(num_class)]
-        return num_class, valid_labels, source_domain, target_domain
+        
+    return num_class, valid_labels #, source_domain, target_domain
 
 
 class Accuracy(object):

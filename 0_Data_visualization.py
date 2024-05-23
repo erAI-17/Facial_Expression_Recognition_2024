@@ -20,12 +20,13 @@ As explained in paper point cloud is not continuous leading to a poor mesh.
 So, the most promising and used representation will be 2d+depth_map and the mesh obtained from 2d+depth_map.
 '''
 
+dataset = 'CalD3r' #'CalD3r' #'MenD3s'
 gender = 'M'
 subjectid = '003' 
 emotion = 'anger'
 
-path_images = '../Datasets/CalD3r/Emotions/' + emotion.capitalize() + '/Color/'
-path_d_map = '../Datasets/CalD3r/Emotions/' + emotion.capitalize() + '/Depth/'
+path_images = '../Datasets/'+ dataset +'/Emotions/' + emotion.capitalize() + '/Color/'
+path_d_map = '../Datasets/'+ dataset +'/Emotions/' + emotion.capitalize() + '/Depth/'
     
 def sensor():
     # Convert FoV from degrees to radians
