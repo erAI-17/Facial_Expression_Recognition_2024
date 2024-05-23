@@ -13,9 +13,13 @@ class CalD3R_MenD3s_sample(object):
         return int(self._series['uid'])
     
     @property
+    def gender(self):
+        return self._series['gender'] 
+    
+    @property
     def subj_id(self):
-        return self._series['subj_id'] 
-
+        return self._series['subj_id']
+    
     @property
     def code(self):
         return self._series['code']
@@ -24,6 +28,7 @@ class CalD3R_MenD3s_sample(object):
     def label(self):
         if 'class' not in self._series.keys().tolist():
             raise NotImplementedError
-        return self._series['class']
+        return self._series['label']
+
     
 

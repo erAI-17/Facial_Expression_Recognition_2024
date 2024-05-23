@@ -30,7 +30,7 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
         self.modalities = modalities
         self.mode = mode 
         self.dataset = dataset
-        self.transform = transform  # pipeline of transforms
+        self.transform = transform
         self.load_feat = load_feat
         self.additional_info = additional_info
         
@@ -96,20 +96,22 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
             else:
                 return sample, ann_sample.label
 
-    def get(self, modality, sample):
+
+    def get(self, modality, ann_sample):
         '''
         Loads single image, applies transformations if required (online augmentation, normalization,...)
         '''    
-        img = self._load_data(modality, sample)
+        img = self._load_data(modality, ann_sample)
             
         if self.transform is not None: #*ONLINE AUGMENTATION
             transformed_img = self.transform[modality](img)
         else: 
             transformed_img = img
             
-        return transformed_img, sample.label
+        return transformed_img, ann_sample.label
 
-    def _load_data(self, modality, sample, idx):
+
+    def _load_data(self, modality, ann_sample):
         '''
         Loads single image
         '''
@@ -118,12 +120,12 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
 
         if modality == 'RGB' or modality=="D":
             try:
-                img = Image.open(os.path.join(data_path, tmpl.format())).convert('RGB')
+                img = Image.open(os.path.join(data_path, tmpl.format(ann_sample.gender, ann_sample.subj_id, ann_sample.code, ann_sample.label, modality))).convert('RGB')
             except FileNotFoundError:
                 print("Img not found")
                 raise FileNotFoundError
             
-            return [img]
+            return img
         
         else:
             raise NotImplementedError("Modality not implemented")
