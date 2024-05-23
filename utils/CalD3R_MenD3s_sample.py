@@ -1,11 +1,11 @@
 class CalD3R_MenD3s_sample(object):
-    '''
-    tup: a line from one of pkl files in annotations (train_val/...)
-    dataset_conf: whole JSON "dataset" from .yaml
-    '''
-    def __init__(self, tup, dataset_conf):
-        self._index = str(tup[0])
-        self._series = tup[1]
+    def __init__(self, row, dataset_conf): 
+        '''
+        row: single row from pkl annotation file, representing single sample
+        dataset: dataset from .yaml
+        '''
+        self._index = str(row[0])
+        self._series = row[1]
         self.dataset_conf = dataset_conf
     
     @property
