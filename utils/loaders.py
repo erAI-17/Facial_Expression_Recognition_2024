@@ -126,7 +126,7 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
                 raise FileNotFoundError
             
             return img
-        
+
         else:
             raise NotImplementedError("Modality not implemented")
 

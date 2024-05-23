@@ -4,7 +4,7 @@ from utils.logger import logger
 import torch.nn.parallel
 import torch.optim
 import torch
-from utils.loaders import EpicKitchensDataset
+from utils.loaders import CalD3R_MenD3s_Dataset
 from utils.args import args
 from utils.utils import pformat_dict
 import utils
@@ -35,7 +35,7 @@ def init_operations():
     # wanbd logging configuration
     if args.wandb_name is not None:
         wandb.init(group=args.wandb_name, dir=args.wandb_dir)
-        wandb.run.name = args.name + "_" + args.shift.split("-")[0] + "_" + args.shift.split("-")[-1]
+        wandb.run.name = args.name
 
 
 def main():
@@ -43,31 +43,35 @@ def main():
     init_operations()
     modalities = args.modality
 
-    # recover valid paths, domains, classes
-    # this will output the domain conversion (D1 -> 8, et cetera) and the label list
+    # recover num_classes, valid paths, domains, 
     num_classes, valid_labels, source_domain, target_domain = utils.utils.get_domains_and_labels(args)
-    # device where everything is run
+    
+    # device where training is run
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # these dictionaries are for more multi-modal training/testing, each key is a modality used
     models = {}
     logger.info("Instantiating models per modality")
     for m in modalities:
         logger.info('{} Net\tModality: {}'.format(args.models[m].model, m))
-        # notice that here, the first parameter passed is the input dimension
-        # In our case it represents the feature dimensionality which is equivalent to 1024 for I3D
+
         models[m] = getattr(model_list, args.models[m].model)()
 
-    # the models are wrapped into the ActionRecognition task which manages all the training steps
-    action_classifier = tasks.ActionRecognition("action-classifier", models, args.batch_size,
-                                                args.total_batch, args.models_dir, num_classes,
-                                                args.train.num_clips, args.models, args=args)
-    action_classifier.load_on_gpu(device)
+    # The models (for each modality) are wrapped into the EmotionRecognition task which manages all the training-testing
+    emotion_classifier = tasks.EmotionRecognition("emotion-classifier", 
+                                                 models, 
+                                                 args.batch_size,
+                                                 args.total_batch, 
+                                                 args.models_dir, 
+                                                 num_classes,
+                                                 args.train.num_clips, 
+                                                 args.models, 
+                                                 args=args)
+    emotion_classifier.load_on_gpu(device)
 
     if args.action == "train":
         # resume_from argument is adopted in case of restoring from a checkpoint
         if args.resume_from is not None:
-            action_classifier.load_last_model(args.resume_from)
+            emotion_classifier.load_last_model(args.resume_from)
         
         #*WE USE GRADIENT ACCUMULATION (the batches are devided into smaller batches with gradient accumulation)
         #* TOTAL_BATCH (128) -> 4* BATCH_SIZE (32)
@@ -76,52 +80,55 @@ def main():
         training_iterations = args.train.num_iter * (args.total_batch // args.batch_size)
         
         #*All dataloaders are generated here
-        train_loader = torch.utils.data.DataLoader(EpicKitchensDataset(args.dataset.shift.split("-")[0],
-                                                                       modalities,
-                                                                       'train', 
-                                                                       args.dataset, 
-                                                                       args.train.num_frames_per_clip,
-                                                                       args.train.num_clips, 
-                                                                       args.train.dense_sampling,
-                                                                       None, load_feat=True),
+        train_loader = torch.utils.data.DataLoader(CalD3R_MenD3s_Dataset(args.dataset.shift.split("-")[0],
+                                                                         modalities,
+                                                                         'train', 
+                                                                         args.dataset, 
+                                                                         args.train.num_frames_per_clip,
+                                                                         args.train.num_clips, 
+                                                                         args.train.dense_sampling,
+                                                                         None, 
+                                                                         load_feat=True),
                                                    batch_size=args.batch_size, shuffle=True,
                                                    num_workers=args.dataset.workers, pin_memory=True, drop_last=True)
 
-        val_loader = torch.utils.data.DataLoader(EpicKitchensDataset(args.dataset.shift.split("-")[-1], 
-                                                                     modalities,
-                                                                     'val', 
-                                                                     args.dataset,
-                                                                     args.train.num_frames_per_clip,
-                                                                     args.train.num_clips, 
-                                                                     args.train.dense_sampling,
-                                                                     None, load_feat=True),
+        val_loader = torch.utils.data.DataLoader(CalD3R_MenD3s_Dataset(args.dataset.shift.split("-")[-1], 
+                                                                       modalities,
+                                                                       'val', 
+                                                                        args.dataset,
+                                                                        args.train.num_frames_per_clip,
+                                                                        args.train.num_clips, 
+                                                                        args.train.dense_sampling,
+                                                                        None, 
+                                                                        load_feat=True),
                                                  batch_size=args.batch_size, shuffle=False,
                                                  num_workers=args.dataset.workers, pin_memory=True, drop_last=False)
         
-        train(action_classifier, train_loader, val_loader, device, num_classes)
+        train(emotion_classifier, train_loader, val_loader, device, num_classes)
 
     #*test/validate
     elif args.action == "validate":
         if args.resume_from is not None:
-            action_classifier.load_last_model(args.resume_from)
-        val_loader = torch.utils.data.DataLoader(EpicKitchensDataset(args.dataset.shift.split("-")[-1], 
-                                                                     modalities,
-                                                                     'val', 
-                                                                     args.dataset, 
-                                                                     args.train.num_frames_per_clip,
-                                                                     args.train.num_clips, 
-                                                                     args.train.dense_sampling,
-                                                                     None, load_feat=True),
+            emotion_classifier.load_last_model(args.resume_from)
+        val_loader = torch.utils.data.DataLoader(CalD3R_MenD3s_Dataset(args.dataset.shift.split("-")[-1], 
+                                                                       modalities,
+                                                                       'val', 
+                                                                        args.dataset,  
+                                                                        args.train.num_frames_per_clip,
+                                                                        args.train.num_clips, 
+                                                                        args.train.dense_sampling,
+                                                                        None, 
+                                                                        load_feat=True),
                                                  batch_size=args.batch_size, shuffle=False,
                                                  num_workers=args.dataset.workers, pin_memory=True, drop_last=False)
 
-        validate(action_classifier, val_loader, device, action_classifier.current_iter, num_classes)
+        validate(emotion_classifier, val_loader, device, emotion_classifier.current_iter, num_classes)
 
 
-def train(action_classifier, train_loader, val_loader, device, num_classes):
+def train(emotion_classifier, train_loader, val_loader, device, num_classes):
     """
     function to train 1 model for modality on the training set
-    action_classifier: Task containing the model to be trained for each modality
+    emotion_classifier: Task containing the model to be trained for each modality
     train_loader: dataloader containing the training data
     val_loader: dataloader containing the validation data
     device: device on which you want to test
@@ -130,11 +137,11 @@ def train(action_classifier, train_loader, val_loader, device, num_classes):
     global training_iterations, modalities
 
     data_loader_source = iter(train_loader)
-    action_classifier.train(True)
-    action_classifier.zero_grad()
+    emotion_classifier.train(True)
+    emotion_classifier.zero_grad()
     
     #*current_iter is just for restoring from a saved run. Otherwise iteration is set to 0.
-    iteration = action_classifier.current_iter * (args.total_batch // args.batch_size)
+    iteration = emotion_classifier.current_iter * (args.total_batch // args.batch_size)
 
     #* real_iter is the number of iterations on TOTAL_BATCH
     #* this is needed because the lr schedule is defined on the real_iter not on
@@ -143,7 +150,7 @@ def train(action_classifier, train_loader, val_loader, device, num_classes):
         real_iter = (i + 1) / (args.total_batch // args.batch_size)
         if real_iter == args.train.lr_steps:
             # learning rate decay at iteration = lr_steps
-            action_classifier.reduce_learning_rate()
+            emotion_classifier.reduce_learning_rate()
         # gradient_accumulation_step is a bool used to understand if we accumulated at least total_batch samples' gradient
         gradient_accumulation_step = real_iter.is_integer()
 
@@ -167,43 +174,43 @@ def train(action_classifier, train_loader, val_loader, device, num_classes):
                     f"{(end_t - start_t).total_seconds() // 60} m {(end_t - start_t).total_seconds() % 60} s")
 
 
-        #* Action recognition
+        #* emotion recognition
         source_label = source_label.to(device)
         data = {}
         for m in modalities:
             data[m] = source_data[m].to(device)
             print("shape from the modalities for loop is:",data[m].shape)
-        logits, _ = action_classifier.forward(data)
-        action_classifier.compute_loss(logits, source_label, loss_weight=1)
-        action_classifier.backward(retain_graph=False)
-        action_classifier.compute_accuracy(logits, source_label)
+        logits, _ = emotion_classifier.forward(data)
+        emotion_classifier.compute_loss(logits, source_label, loss_weight=1)
+        emotion_classifier.backward(retain_graph=False)
+        emotion_classifier.compute_accuracy(logits, source_label)
                 
 
         # update weights and zero gradients if total_batch samples are passed
         if gradient_accumulation_step:
             logger.info("[%d/%d]\tlast Verb loss: %.4f\tMean verb loss: %.4f\tAcc@1: %.2f%%\tAccMean@1: %.2f%%" %
-                        (real_iter, args.train.num_iter, action_classifier.loss.val, action_classifier.loss.avg,
-                         action_classifier.accuracy.val[1], action_classifier.accuracy.avg[1]))
+                        (real_iter, args.train.num_iter, emotion_classifier.loss.val, emotion_classifier.loss.avg,
+                         emotion_classifier.accuracy.val[1], emotion_classifier.accuracy.avg[1]))
 
-            action_classifier.check_grad()
-            action_classifier.step()
-            action_classifier.zero_grad()
+            emotion_classifier.check_grad()
+            emotion_classifier.step()
+            emotion_classifier.zero_grad()
 
         # every eval_freq "real iteration" (iterations on total_batch) the validation is done, notice we validate and
         # save the last 9 models
         if gradient_accumulation_step and real_iter % args.train.eval_freq == 0:
-            val_metrics = validate(action_classifier, val_loader, device, int(real_iter), num_classes)
+            val_metrics = validate(emotion_classifier, val_loader, device, int(real_iter), num_classes)
 
-            if val_metrics['top1'] <= action_classifier.best_iter_score:
+            if val_metrics['top1'] <= emotion_classifier.best_iter_score:
                 logger.info("New best accuracy {:.2f}%"
-                            .format(action_classifier.best_iter_score))
+                            .format(emotion_classifier.best_iter_score))
             else:
                 logger.info("New best accuracy {:.2f}%".format(val_metrics['top1']))
-                action_classifier.best_iter = real_iter
-                action_classifier.best_iter_score = val_metrics['top1']
+                emotion_classifier.best_iter = real_iter
+                emotion_classifier.best_iter_score = val_metrics['top1']
 
-            action_classifier.save_model(real_iter, val_metrics['top1'], prefix=None)
-            action_classifier.train(True)
+            emotion_classifier.save_model(real_iter, val_metrics['top1'], prefix=None)
+            emotion_classifier.train(True)
 
 
 def validate(model, val_loader, device, it, num_classes):

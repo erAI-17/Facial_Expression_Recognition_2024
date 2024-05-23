@@ -9,18 +9,22 @@ from utils.logger import logger
 from typing import Dict, Tuple
 
 
-class ActionRecognition(tasks.Task, ABC):
-    """Action recognition model."""
-    
-    def __init__(self, name: str, task_models: Dict[str, torch.nn.Module], batch_size: int, 
-                 total_batch: int, models_dir: str, num_classes: int,
-                 num_clips: int, model_args: Dict[str, float], args, **kwargs) -> None:
-        """Create an instance of the action recognition model.
-
+class EmotionRecognition(tasks.Task, ABC):
+    def __init__(self, 
+                 name: str, 
+                 task_models: Dict[str, torch.nn.Module], 
+                 batch_size: int, 
+                 total_batch: int, 
+                 models_dir: str, 
+                 num_classes: int, 
+                 model_args: Dict[str, float], 
+                 args, **kwargs) -> None:
+        
+        """
         Parameters
         ----------
         name : str
-            name of the task e.g. action_classifier, domain_classifier...
+            name of the task e.g. emotion_classifier, domain_classifier...
         task_models : Dict[str, torch.nn.Module]
             torch models, one for each different modality adopted by the task
         batch_size : int
@@ -31,19 +35,16 @@ class ActionRecognition(tasks.Task, ABC):
             directory where the models are stored when saved
         num_classes : int
             number of labels in the classification task
-        num_clips : int
-            number of clips
         model_args : Dict[str, float]
             model-specific arguments
         """
+        
         super().__init__(name, task_models, batch_size, total_batch, models_dir, args, **kwargs)
         self.model_args = model_args
 
         # self.accuracy and self.loss track the evolution of the accuracy and the training loss
         self.accuracy = utils.Accuracy(topk=(1, 5), classes=num_classes)
         self.loss = utils.AverageMeter()
-        
-        self.num_clips = num_clips
 
         # Use the cross entropy loss as the default criterion for the classification task
         counts = torch.tensor([112,754,333,266,74,66,169,75,131,199,127,73,299,65,77,298,209,72,192,230])
@@ -89,6 +90,7 @@ class ActionRecognition(tasks.Task, ABC):
 
         return logits, features
 
+
     def compute_loss(self, logits: Dict[str, torch.Tensor], label: torch.Tensor, loss_weight: float=1.0):
         """Fuse the logits from different modalities and compute the classification loss.
 
@@ -102,10 +104,11 @@ class ActionRecognition(tasks.Task, ABC):
             weight of the classification loss, by default 1.0
         """
         fused_logits = reduce(lambda x, y: x + y, logits.values()) #!!!!!fuse logits from different modalities!
-        loss = self.criterion(fused_logits, label) / self.num_clips
+        loss = self.criterion(fused_logits, label) #/ self.num_clips
         # Update the loss value, weighting it by the ratio of the batch size to the total 
         # batch size (for gradient accumulation)
         self.loss.update(torch.mean(loss_weight * loss) / (self.total_batch / self.batch_size), self.batch_size)
+
 
     def compute_accuracy(self, logits: Dict[str, torch.Tensor], label: torch.Tensor):
         """Fuse the logits from different modalities and compute the classification accuracy.
@@ -120,6 +123,7 @@ class ActionRecognition(tasks.Task, ABC):
         fused_logits = reduce(lambda x, y: x + y, logits.values())
         self.accuracy.update(fused_logits, label)
 
+
     def wandb_log(self):
         """Log the current loss and top1/top5 accuracies to wandb."""
         logs = {
@@ -132,6 +136,7 @@ class ActionRecognition(tasks.Task, ABC):
         for m in self.modalities:
             logs[f'lr_{m}'] = self.optimizer[m].param_groups[-1]['lr']
         wandb.log(logs)
+
 
     def reduce_learning_rate(self):
         """Perform a learning rate step."""

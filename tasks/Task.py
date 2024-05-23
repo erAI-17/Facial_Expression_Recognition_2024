@@ -13,8 +13,6 @@ class Task(torch.nn.Module, metaclass=ABCMeta):
     Task is the abstract class which needs to be implemented for every different task present in the model
     (i.e. classification, self-supervision). #**It saves all models for every modality.
 
-    NOTE: there is no need to modify this class. If you need to add a new task, extend this
-    class as in action_recognition_task.py.
     """
 
     def __init__(

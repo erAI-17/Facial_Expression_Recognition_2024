@@ -17,10 +17,8 @@ train:
   
 test:
   
-
 dataset:
   annotations_path: Action-Net/data/  #train_val  #Action-Net/data/ #!!!!
-  shift: SXY-SXY #D1-D1 #SXY-SXY #!!!
   workers: 4 # number of workers for the dataloader
   resolution: 224 # input resolution to the model
   RGB:
