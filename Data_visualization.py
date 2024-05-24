@@ -245,10 +245,9 @@ def gen_ann():
 #!MAIN
 #!##
 if __name__ == '__main__':
+    path = '../Datasets/' + 'CalD3r'
     
     #!#example load of images and depth map for 1 sample
-    path = '../Datasets/' + 'CalD3r'
-    #load
     images, d_maps = load_2d_and_3d(path, gender='F', subjectid='005', emotion='surprise') #choose example gender, subj_id and emotion
     #show
     show(images[0], d_maps[0])
@@ -257,8 +256,7 @@ if __name__ == '__main__':
     #gen_ann()
         
     #!check annotation files 
-    # path = '../Datasets/'+ 'CalD3r' #'CalD3r' #'MenD3s'
-    # df = pd.read_pickle(path+'/annotations.pkl') #S04_train.pkl #S04_test.pkl
+    # df = pd.read_pickle(path + '/annotations.pkl') #S04_train.pkl #S04_test.pkl
     # print(df)
     # print(df.shape)
     # print(df.columns)  
