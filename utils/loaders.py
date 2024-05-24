@@ -16,20 +16,27 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
                  dataset,
                  transform=None, 
                  additional_info=False, 
-                 **kwargs):
+                 **kwargs):    
         """
-        modalities: list(str, str, ...) #? ["RGB"] OR ["D"] OR ["RGB", "D"] OR ["MESH"]
-        mode: str #? train OR test
-        
+        Parameters
+        ----------
+        modalities: list(str)
+            ["RGB"] OR ["D"] OR ["RGB", "D"] OR ["MESH"]
+        mode: str
+            train OR test
+            
         dataset:  
-            - annotations_path: str #? general annotation for multi modal data
-            - dataset[modality]: #?for each modality
+            - annotations_path: str 
+                general annotation for multi modal data
+            - dataset[modality]: 
                 - data_path: str 
-                - tmpl: str #?template of single data name (for example, for an image: "img_{:010d}.jpg")
+                - tmpl: str 
+                    template of single data name (for example, for an image: "img_{:010d}.jpg")
         
-        transform: bool #? image normalization, online augmentation (crop, ...)
-        additional_info: bool, set to True if you want to receive also the uid and the video name from the get function
-            notice, this may be useful to do some proper visualizations!
+        transform: bool 
+            image normalization, online augmentation (crop, ...)
+        additional_info: bool
+            set to True if you want to receive also the uid and the video name from the get furthre notice
         """
         self.modalities = modalities
         self.mode = mode 

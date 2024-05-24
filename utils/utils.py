@@ -3,19 +3,11 @@ import torch
 
 
 def get_domains_and_labels(args):    
-    if args.dataset.shift == 'CalD3r&MenD3s':
+    if args.dataset.name == 'CalD3r&MenD3s':
         num_class = 7
-        #source_domain = domains[args.dataset.shift.split("-")[0]]
-        #target_domain = domains[args.dataset.shift.split("-")[1]]
-        valid_labels = [i for i in range(num_class)]
-
-    if args.dataset.shift == 'Bosphorus':
-        num_class = 7
-        #source_domain = domains[args.dataset.shift.split("-")[0]]
-        #target_domain = domains[args.dataset.shift.split("-")[1]]
         valid_labels = [i for i in range(num_class)]
         
-    return num_class, valid_labels #, source_domain, target_domain
+    return num_class, valid_labels
 
 
 class Accuracy(object):
@@ -94,6 +86,7 @@ class Accuracy(object):
             class_correct[class_label] += correct[i].item()
             class_total[class_label] += 1
         return class_correct, class_total
+
 
 
 class AverageMeter(object):

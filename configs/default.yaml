@@ -17,6 +17,7 @@ train:
 test:
   
 dataset:
+  name: CalD3r&MenD3s #Bosphorus 
   annotations_path: Action-Net/data/  #train_val  #Action-Net/data/ #!!!!
   workers: 4 # number of workers for the dataloader
   resolution: 224 # input resolution to the model

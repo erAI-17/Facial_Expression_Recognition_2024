@@ -1,8 +1,10 @@
 class CalD3R_MenD3s_sample(object):
     def __init__(self, row, dataset_conf): 
         '''
-        row: single row from pkl annotation file, representing single sample
-        dataset: dataset from .yaml
+        row: list(str)
+            single row from pkl annotation file, representing single sample
+        dataset: str
+            dataset object .yaml
         '''
         self._index = str(row[0])
         self._series = row[1]

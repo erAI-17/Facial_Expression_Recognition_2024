@@ -8,14 +8,30 @@ from utils.logger import logger
 from typing import Dict, Optional
 
 
-class Task(torch.nn.Module, metaclass=ABCMeta):
+class Task(torch.nn.Module, metaclass=ABCMeta): 
+    #? By specifying Abstract Base Classes as the metaclass, you are making Task an abstract base class. 
+    #? So, you can define abstract methods within Task that must be implemented by any subclass of Task.
+    #?For example, by writing :
+    # @abstractmethod
+    #def compute_loss(self) -> None:
+    #? it means that all subclasses of Task class are FORCED to implement method "compute_loss"
     """
     Task is the abstract class which needs to be implemented for every different task present in the model
     (i.e. classification, self-supervision). 
-    #*It saves all models for every modality.
+    #*It saves a models for every modality.
 
     """
 
+    #?methods with double underscores at the beginning and end of their names, such as  __getitem__ , are known as **dunder methods** (short for "double underscore methods"). 
+    #? These methods are special methods that are predefined by Python to provide certain functionality and to enable the use of built-in operations with custom objects.
+    #?For example,  __getitem__  method is a special method that allows instances of a class to use the indexing syntax ( obj[index] )
+    #?     Other Common Dunder Methods 
+    
+    #? -  __init__ : Constructor method, called when an instance is created. 
+    #? -  __str__ : Called by the  str()  function and by the  print  statement to get a string representation of the object. 
+    #? -  __len__ : Called by the  len()  function to get the length of the object. 
+    #? -  __iter__ : Returns an iterator object, enabling iteration over the object. 
+    
     def __init__(
         self,
         name: str,
@@ -26,8 +42,8 @@ class Task(torch.nn.Module, metaclass=ABCMeta):
         args,
         **kwargs,
     ) -> None:
-        """Create an instance of the Task class.
-
+        
+        """
         Parameters
         ----------
         name : str
@@ -41,14 +57,15 @@ class Task(torch.nn.Module, metaclass=ABCMeta):
         models_dir : str
             directory where the models are stored when saved
         """
-        super().__init__()
+        
+        super().__init__() #? the  super().__init__()  call is used to invoke the constructor of its parent class
+                           #? in this case the constructor of the parent class doesn't take any parameter. 
         self.name = name
         self.task_models = task_models
         self.modalities = list(self.task_models.keys())
         self.batch_size = batch_size
         self.total_batch = total_batch
         self.models_dir = models_dir
-
         # Number of training iterations
         self.current_iter = 0
         # Index of the best validation accuracy
@@ -57,9 +74,7 @@ class Task(torch.nn.Module, metaclass=ABCMeta):
         self.best_iter_score = 0
         # Validation accuracy of the last iteration
         self.last_iter_acc = 0
-
         self.model_count = 1
-
         # Other arguments
         self.args = args
         self.kwargs = kwargs
@@ -81,7 +96,7 @@ class Task(torch.nn.Module, metaclass=ABCMeta):
             self.task_models[modality] = torch.nn.DataParallel(model).to(device)
 
     def __restore_checkpoint(self, m: str, path: str):
-        """Restore a checkpoint from path.
+        """Restore a checkpoint from a saved model path.
 
         Parameters
         ----------
@@ -254,10 +269,15 @@ class Task(torch.nn.Module, metaclass=ABCMeta):
             self.optimizer[m].step()
 
     def check_grad(self):
-        """Check that the gradients of the model are not over a certain threshold."""
+        """Check that the gradients of the model are not over a certain threshold.
+        Imagine you are training a neural network, and you notice that the training process is unstable, with the loss fluctuating wildly or the model failing to converge. 
+        One possible reason could be large gradients causing large updates to the model parameters.  
+        By using the  check_grad  method, you can identify which parameters have large gradients and take appropriate actions,
+        such as gradient clipping or adjusting the learning rate. """
         for m in self.modalities:
-            for name, param in self.task_models[m].named_parameters():
-                if param.requires_grad and param.grad is not None:
+            for name, param in self.task_models[m].named_parameters(): #?named_parameters()  returns an iterator over the model's parameters, yielding both the name and the parameter itself
+                if param.requires_grad and param.grad is not None: #?For each parameter, it checks if the parameter requires gradients ( param.requires_grad ) and if the gradient is not  None. 
+                                                                   #? This ensures that only parameters that are involved in the gradient computation are checked.
                     if param.grad.norm(2).item() > 25:
                         logger.info(f"Param {name} has a gradient whose L2 norm is over 25")
 

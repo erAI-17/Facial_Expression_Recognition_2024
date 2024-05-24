@@ -41,15 +41,10 @@ class EmotionRecognition(tasks.Task, ABC):
         
         super().__init__(name, task_models, batch_size, total_batch, models_dir, args, **kwargs)
         self.model_args = model_args
-
-        # self.accuracy and self.loss track the evolution of the accuracy and the training loss
+        
+        #!self.accuracy and self.loss track the evolution of the accuracy and the training loss
         self.accuracy = utils.Accuracy(topk=(1, 5), classes=num_classes)
         self.loss = utils.AverageMeter()
-
-        # Use the cross entropy loss as the default criterion for the classification task
-        counts = torch.tensor([112,754,333,266,74,66,169,75,131,199,127,73,299,65,77,298,209,72,192,230])
-        weights = 1 / counts
-        weights = weights/ weights.min()
         
         self.criterion = torch.nn.CrossEntropyLoss(weight=None, size_average=None, ignore_index=-100,
                                                    reduce=None, reduction='none')
@@ -81,11 +76,11 @@ class EmotionRecognition(tasks.Task, ABC):
         for i_m, m in enumerate(self.modalities):
             logits[m], feat = self.task_models[m](x=data[m], **kwargs) #*pass data to the selected model for that modality
             
-            if i_m == 0: #in the first modality, set up a dictionary of features
+            if i_m == 0: #initially set up an empty dictionary for each modality to store corresponding features
                 for k in feat.keys():
                     features[k] = {} #dictionary of dictionaries
             
-            for k in feat.keys(): #to be able to return features at different layers. Layer k, modality m
+            for k in feat.keys(): #save features for each modality inside dictionary features
                 features[k][m] = feat[k]
 
         return logits, features
@@ -103,10 +98,11 @@ class EmotionRecognition(tasks.Task, ABC):
         loss_weight : float, optional
             weight of the classification loss, by default 1.0
         """
-        fused_logits = reduce(lambda x, y: x + y, logits.values()) #!!!!!fuse logits from different modalities!
-        loss = self.criterion(fused_logits, label) #/ self.num_clips
-        # Update the loss value, weighting it by the ratio of the batch size to the total 
-        # batch size (for gradient accumulation)
+        #!modality logits fusion for loss 
+        fused_logits = reduce(lambda x, y: x + y, logits.values()) #?reduces an iterable to a single value following given function
+        loss = self.criterion(fused_logits, label) 
+        
+        #? Update the loss value, weighting it by the ratio of the batch size to the total batch size (for gradient accumulation)
         self.loss.update(torch.mean(loss_weight * loss) / (self.total_batch / self.batch_size), self.batch_size)
 
 
@@ -120,22 +116,9 @@ class EmotionRecognition(tasks.Task, ABC):
         label : torch.Tensor
             ground truth
         """
+        #!modality logits fusion for accuracy
         fused_logits = reduce(lambda x, y: x + y, logits.values())
         self.accuracy.update(fused_logits, label)
-
-
-    def wandb_log(self):
-        """Log the current loss and top1/top5 accuracies to wandb."""
-        logs = {
-            'loss verb': self.loss.val, 
-            'top1-accuracy': self.accuracy.avg[1],
-            'top5-accuracy': self.accuracy.avg[5]
-        }
-
-        # Log the learning rate, separately for each modality.
-        for m in self.modalities:
-            logs[f'lr_{m}'] = self.optimizer[m].param_groups[-1]['lr']
-        wandb.log(logs)
 
 
     def reduce_learning_rate(self):
@@ -164,7 +147,7 @@ class EmotionRecognition(tasks.Task, ABC):
         This method performs an optimization step and resets both the loss
         and the accuracy.
         """
-        super().step()
+        super().step() #?calls step method of the parents class, which refers to the step method of the optimizer for that modality network
         self.reset_loss()
         self.reset_acc()
 
@@ -180,3 +163,16 @@ class EmotionRecognition(tasks.Task, ABC):
             whether the computational graph should be retained, by default False
         """
         self.loss.val.backward(retain_graph=retain_graph)
+
+    def wandb_log(self):
+            """Log the current loss and top1/top5 accuracies to wandb."""
+            logs = {
+                'loss verb': self.loss.val, 
+                'top1-accuracy': self.accuracy.avg[1],
+                'top5-accuracy': self.accuracy.avg[5]
+            }
+
+            # Log the learning rate, separately for each modality.
+            for m in self.modalities:
+                logs[f'lr_{m}'] = self.optimizer[m].param_groups[-1]['lr']
+            wandb.log(logs)

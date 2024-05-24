@@ -63,7 +63,6 @@ def main():
                                                  args.total_batch, 
                                                  args.models_dir, 
                                                  num_classes,
-                                                 args.train.num_clips, 
                                                  args.models, 
                                                  args=args)
     emotion_classifier.load_on_gpu(device)
@@ -160,8 +159,6 @@ def train(emotion_classifier, train_loader, val_loader, device, num_classes):
         #* the following code is necessary as we do not reason in terms of epochs so,
         #* as soon as the dataloader is finished we need to redefine the iterator
         try:
-            #source data is a dictionary: {"RGB": [[[batch_size (32)*num_clips (5)*1024]]], }
-            #source_label is batchsize (32)
             source_data, source_label = next(data_loader_source) #*get the next batch of data with next()!
         except StopIteration:
             data_loader_source = iter(train_loader)
@@ -232,7 +229,7 @@ def validate(model, val_loader, device, it, num_classes):
 
             for m in modalities:
                 batch = data[m].shape[0]
-                logits[m] = torch.zeros((args.test.num_clips, batch, num_classes)).to(device)
+                logits[m] = torch.zeros((batch, num_classes)).to(device)
             
             for m in modalities:
                 data[m] = data[m].to(device)
