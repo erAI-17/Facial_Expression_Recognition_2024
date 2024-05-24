@@ -12,26 +12,32 @@ def get_domains_and_labels(args):
 
 class Accuracy(object):
     """Computes and stores the average and current value of different top-k accuracies from the outputs and labels"""
+    #?Top-K Accuracy is a generalization of top-1 accuracy. It considers the prediction correct if the true label is among the top K predicted classes. 
+    #? For example, top-5 accuracy means that the true label is considered correctly predicted if it is among the model's top 5 predicted classes. 
 
-    def __init__(self, topk=(1,), classes=8):
+    def __init__(self, topk=(1,)):
+        num_classes, valid_labels= utils.utils.get_domains_and_labels(args)
+        
         assert len(topk) > 0
         self.topk = topk
-        self.classes = classes
+        num_classes = classes
         self.avg, self.val, self.sum, self.count, self.correct, self.total = None, None, None, None, None, None
         self.reset()
 
     def reset(self):
+        ''' store the current value, average, sum, and count of accuracies for each top-k value. '''
         self.val = {tk: 0 for tk in self.topk}
         self.avg = {tk: 0 for tk in self.topk}
         self.sum = {tk: 0 for tk in self.topk}
         self.count = {tk: 0 for tk in self.topk}
-        self.correct = list(0 for _ in range(self.classes))
-        self.total = list(0 for _ in range(self.classes))
+        self.correct = list(0 for _ in range(num_classes)) #?  list to store number of correct predictions per class
+        self.total = list(0 for _ in range(num_classes)) #? list to store number of samples per class
 
     def update(self, outputs, labels):
+        '''updates the accuracy metrics with new batch outputs and labels. '''
         batch = labels.size(0)
-        # compute separately all the top-k accuracies and the per-class accuracy
-        for i_tk, top_k in enumerate(self.topk):
+
+        for i_tk, top_k in enumerate(self.topk): #? for each top-k value , update the current value, sum, count, average, per-class correct and total counts. 
             if i_tk == 0:
                 res = self.accuracy(outputs, labels, perclass_acc=True, topk=[top_k])
                 class_correct = res[1]
@@ -44,13 +50,13 @@ class Accuracy(object):
             self.count[top_k] += batch
             self.avg[top_k] = self.sum[top_k] / self.count[top_k]
 
-        for i in range(0, self.classes):
+        for i in range(0, num_classes):
             self.correct[i] += class_correct[i]
             self.total[i] += class_total[i]
 
     def accuracy(self, output, target, perclass_acc=False, topk=(1,)):
         """
-        Computes the precision@k for the specified values of k
+        Computes the top-k accuracy for the given outputs and targets
         output: torch.Tensor -> the predictions
         target: torch.Tensor -> ground truth labels
         perclass_acc -> bool, True if you want to compute also the top-1 accuracy per class
@@ -79,8 +85,8 @@ class Accuracy(object):
                                   the element in a specific poisition was correctly classified or not
         target -> (batch, label): vector containing the ground truth for each element
         """
-        class_correct = list(0. for _ in range(0, self.classes))
-        class_total = list(0. for _ in range(0, self.classes))
+        class_correct = list(0. for _ in range(0, num_classes))
+        class_total = list(0. for _ in range(0, num_classes))
         for i in range(0, target.size(0)):
             class_label = target[i].item()
             class_correct[class_label] += correct[i].item()

@@ -10,7 +10,7 @@ hidden_size = 512
 
 class MLP(nn.Module):
     def __init__(self):
-        num_classes, valid_labels, source_domain, target_domain = utils.utils.get_domains_and_labels(args)
+        num_classes, valid_labels= utils.utils.get_domains_and_labels(args)
         super(MLP, self).__init__()
         self.fc1 = nn.Linear(input_size, hidden_size)
         self.fc2 = nn.Linear(hidden_size, hidden_size)
