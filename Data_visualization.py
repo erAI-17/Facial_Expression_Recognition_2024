@@ -2,10 +2,10 @@ import numpy as np
 import cv2
 import open3d as o3d
 import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
-import re
 import os
 import math
+import pickle
+import pandas as pd
 
 '''
 This file allows for data visualization in different flavours. 
@@ -13,26 +13,83 @@ Once sample has been selected by specifying 'dataset' 'gender', 'subjectid' and 
 - 2d image, 
 - depth map, 
 - generate point cloud (from 2d+depth_map), 
-- generate triangular mesh (from point cloud),
-- generate triangular mesh (from depth map) 
+- generate triangular mesh (from 2d+depth map) 
 
 As explained in paper point cloud is not continuous leading to a poor mesh.
 So, the most promising and used representation will be 2d+depth_map and the mesh obtained from 2d+depth_map.
 '''
 
-dataset = 'CalD3r' #'CalD3r' #'MenD3s'
-gender = 'M'
-subjectid = '003' 
-emotion = 'anger'
 
-path_images = '../Datasets/'+ dataset +'/Emotions/' + emotion.capitalize() + '/Color/'
-path_d_maps = '../Datasets/'+ dataset +'/Emotions/' + emotion.capitalize() + '/Depth/'
+#!##
+#!GENERAL
+#!##
+def load_2d_and_3d(path, gender, subjectid, emotion):
+    """Loads ALL 2d and corresponding depth map representations for subject, emotion
+
+    Args:
+        gender (str): F, M
+        subj_id (str):
+        emotion (str): anger, surprise,...
+
+    Returns:
+        _type_: arrays of 2d images and array of depth maps, ALL for 1 subject
+    """
     
+    path_images = path + '/' + emotion.capitalize() + '/Color/'
+    path_d_maps = path + '/' + emotion.capitalize() + '/Depth/'
+    
+    images = []
+    d_maps = []
+    for path in [path_images, path_d_maps]: 
+        for filename in os.listdir(path):
+            parts = filename.split("_")
+            if  (parts[0] == gender and parts[1] == subjectid and parts[3] == emotion):
+                
+                if (parts[4] == "Color.png"): 
+                    #load 2d image
+                    image = cv2.imread(path_images + filename)
+                    # Convert the image from BGR to RGB
+                    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                    
+                    images.append(image)
+                    
+                if (parts[4] == "Depth.png"): 
+                    #load 3d image    
+                    d_map = cv2.imread(path_d_maps + filename, cv2.IMREAD_UNCHANGED)
+                    d_maps.append(d_map)
+                
+    return  images, d_maps   
+  
+def show(image, d_map):
+    """Shows a single data sample
+    """
+    #show image
+    plt.imshow(image)
+    plt.axis('off')  # Hide axes
+    plt.show()
+    
+    #show d_map
+    plt.imshow(d_map, cmap='gray')
+    plt.colorbar()
+    plt.show()
+    
+    #show pointcloud generated from 2d + depth_map 
+    point_cloud = depthmap_to_point_cloud(image, d_map)
+      
+    ##show mesh generated from 2d + depth_map 
+    depthmap_to_mesh(image, d_map)
+
+#!##
+#!POINT CLOUD
+#!##
+
 def sensor():
+    '''
+    Computes focal lengths for Intel RealSense3000 used to acquire dataset's images
+    '''
     # Convert FoV from degrees to radians
     HFoV_degrees = 73
     VFoV_degrees = 59
-
     HFoV_radians = HFoV_degrees * (math.pi / 180)
     VFoV_radians = VFoV_degrees * (math.pi / 180)
 
@@ -45,19 +102,6 @@ def sensor():
     fy = image_height_px / (2 * math.tan(VFoV_radians / 2))
 
     return fx, fy
-
-
-def show_depth_map(d_map):
-    plt.imshow(d_map, cmap='gray')
-    plt.colorbar()
-    plt.show()
-
-
-def normalize_depth_map(depth_map):
-    # Normalize the depth map values to 0-255 range
-    depth_map = cv2.normalize(depth_map, None, 0, 255, cv2.NORM_MINMAX)
-    return depth_map
-
 
 def depthmap_to_point_cloud(image, depth_map):
     # Camera intrinsics (focal length and principal point)
@@ -85,35 +129,71 @@ def depthmap_to_point_cloud(image, depth_map):
         
     return point_cloud
 
+#!##
+#!MESH
+#!##
 
-def point_cloud_to_mesh(point_cloud):
-    point_cloud.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
-    mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(point_cloud, depth=9)
-    mesh.compute_vertex_normals()
-    
-    #*visualize
-    o3d.visualization.draw_geometries([mesh])
+def OLD_depthmap_to_mesh(color_image, d_map):  #?OLD version with also frame pixels with depth=0
+    rows, cols = d_map.shape 
+    vertices = [] 
+    triangles = [] 
+    # Normalize the depth map values to 0-255 range 
+    d_map = cv2.normalize(d_map, None, 0, 255, cv2.NORM_MINMAX) 
+    # Create vertices 
+    for i in range(rows): 
+        for j in range(cols): 
+            z = d_map[i, j] 
+            if z!=0: 
+                color = color_image[i, j] / 255.0 
+                vertices.append([i, j, z, color[0], color[1], color[2]]) 
+    # Create triangles 
+    for i in range(rows - 1): 
+        for j in range(cols - 1): 
+            idx = i * cols + j 
+            triangles.append([idx, idx + 1, idx + cols]) 
+            triangles.append([idx + 1, idx + cols + 1, idx + cols]) 
+    # Create mesh 
+    mesh = o3d.geometry.TriangleMesh() 
+    mesh.vertices = o3d.utility.Vector3dVector(np.array(vertices)[:, :3])  # XYZ coordinates 
+    mesh.vertex_colors = o3d.utility.Vector3dVector(np.array(vertices)[:, 3:])  # RGB colors 
+    mesh.triangles = o3d.utility.Vector3iVector(np.array(triangles)) 
+    #*visualize 
+    o3d.visualization.draw_geometries([mesh]) 
+    return mesh 
 
 
 def depthmap_to_mesh(color_image, d_map):
     rows, cols = d_map.shape
     vertices = []
     triangles = []
+    vertex_index_map = {}
+    current_index = 0
 
-    d_map = normalize_depth_map(d_map)
+    # Normalize the depth map values to 0-255 range
+    d_map = cv2.normalize(d_map, None, 0, 255, cv2.NORM_MINMAX)
     # Create vertices
     for i in range(rows):
         for j in range(cols):
             z = d_map[i, j]
-            color = color_image[i, j] / 255.0
-            vertices.append([i, j, z, color[0], color[1], color[2]])
+            if z>0:
+                color = color_image[i, j] / 255.0
+                vertices.append([i, j, z, color[0], color[1], color[2]])
+                vertex_index_map[(i, j)] = current_index
+                current_index += 1
 
     # Create triangles
     for i in range(rows - 1):
         for j in range(cols - 1):
-            idx = i * cols + j
-            triangles.append([idx, idx + 1, idx + cols])
-            triangles.append([idx + 1, idx + cols + 1, idx + cols])
+            if (i, j) in vertex_index_map and (i, j + 1) in vertex_index_map and (i + 1, j) in vertex_index_map:
+                idx1 = vertex_index_map[(i, j)]
+                idx2 = vertex_index_map[(i, j + 1)]
+                idx3 = vertex_index_map[(i + 1, j)]
+                triangles.append([idx1, idx2, idx3])
+            if (i, j + 1) in vertex_index_map and (i + 1, j + 1) in vertex_index_map and (i + 1, j) in vertex_index_map:
+                idx1 = vertex_index_map[(i, j + 1)]
+                idx2 = vertex_index_map[(i + 1, j + 1)]
+                idx3 = vertex_index_map[(i + 1, j)]
+                triangles.append([idx1, idx2, idx3])
 
     # Create mesh
     mesh = o3d.geometry.TriangleMesh()
@@ -121,55 +201,72 @@ def depthmap_to_mesh(color_image, d_map):
     mesh.vertex_colors = o3d.utility.Vector3dVector(np.array(vertices)[:, 3:])  # RGB colors
     mesh.triangles = o3d.utility.Vector3iVector(np.array(triangles))
     
-    #*visualize
+    #visualize
     o3d.visualization.draw_geometries([mesh])
     return mesh
 
 
-def load_2d_and_3d(gender, subjectid, emotion):
-    images = []
-    d_maps = []
-    for path in [path_images, path_d_maps]: 
-        for filename in os.listdir(path):
-            parts = filename.split("_")
-            if  (parts[0] == gender and parts[1] == subjectid and parts[3] == emotion):
+#!##
+#!GENERATE ANNOTATION FILES
+#!##
+def gen_ann():
+    """Generates annotation .pkl file where a row represents a sample with this schema:
+    subj_id (str): unique code
+    code (str): same subj_id for same label, may have multiple samples
+    label (str): anger, surprise,...
+    add (list(str, str)): list storing additional info ( gender, pose,...) 
+    """
+    
+    datasets = ['CalD3r', 'MenD3s']
+    emotions = ['anger', 'disgust', 'fear', 'happiness', 'neutral', 'sadness', 'surprise']
+    for dataset in datasets:
+        data = []
+        path = '../Datasets/'+ dataset 
+        for emotion in emotions: 
+            files_path = path + '/' + emotion.capitalize() + '/Color' #?analyze only RGB modality because it's enough
+            for filename in os.listdir(files_path):  
+                subj_id = filename.split("_")[1]   
+                code = filename.split("_")[2]
+                label = filename.split("_")[3]
+                add = [filename.split("_")[0]]
                 
-                if (parts[4] == "Color.png"): 
-                    #load 2d image
-                    image = cv2.imread(path_images + filename)
-                    # Convert the image from BGR to RGB
-                    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-                    
-                    images.append(image)
-                    
-                if (parts[4] == "Depth.png"): 
-                    #load 3d image    
-                    d_map = cv2.imread(path_d_maps + filename, cv2.IMREAD_UNCHANGED)
-                    d_maps.append(d_map)
-                
-    return  images, d_maps               
+                new_row = [subj_id, code, label, add]
+                data.append(new_row)
+    
+        #create dataframe
+        df = pd.DataFrame(data, columns=['subj_id', 'code', 'label', 'add'])
+        #save annotation file
+        annotation_file = os.path.join(path, 'annotations.pkl')
+        with open(annotation_file, 'wb') as file:
+            pickle.dump(df, file)
+    
+ 
+#!##
+#!MAIN
+#!##
+if __name__ == '__main__':
+    
+    #!#example load of images and depth map for 1 sample
+    path = '../Datasets/' + 'CalD3r'
+    #load
+    images, d_maps = load_2d_and_3d(path, gender='F', subjectid='005', emotion='surprise') #choose example gender, subj_id and emotion
+    #show
+    show(images[0], d_maps[0])
+    
+    #!generate annotation files for each dataset
+    #gen_ann()
+        
+    #!check annotation files 
+    # path = '../Datasets/'+ 'CalD3r' #'CalD3r' #'MenD3s'
+    # df = pd.read_pickle(path+'/annotations.pkl') #S04_train.pkl #S04_test.pkl
+    # print(df)
+    # print(df.shape)
+    # print(df.columns)  
     
 
-if __name__ == '__main__':
- 
-    #load
-    images, d_maps = load_2d_and_3d(gender, subjectid, emotion)
-      
-    #!show
-    plt.imshow(images[0])
-    plt.axis('off')  # Hide axes
-    plt.show()
     
-    show_depth_map(d_maps[0])
+        
     
-    #2d+3d to pointcloud
-    point_cloud = depthmap_to_point_cloud(images[0], d_maps[0])
-    
-    #point cloud to mesh
-    point_cloud_to_mesh(point_cloud)
-    
-    #2d+3d to mesh
-    depthmap_to_mesh(images[0], d_maps[0])
     
     
     
