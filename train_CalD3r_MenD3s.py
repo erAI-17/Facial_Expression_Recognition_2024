@@ -44,7 +44,7 @@ def main():
     modalities = args.modality
 
     # recover num_classes, valid paths, domains, 
-    num_classes, valid_labels, source_domain, target_domain = utils.utils.get_domains_and_labels(args)
+    num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
     
     # device where training is run
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

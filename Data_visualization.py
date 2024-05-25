@@ -202,6 +202,9 @@ def depthmap_to_mesh(color_image, d_map):
     mesh.vertex_colors = o3d.utility.Vector3dVector(np.array(vertices)[:, 3:])  # RGB colors
     mesh.triangles = o3d.utility.Vector3iVector(np.array(triangles))
     
+    # Optionally compute vertex normals for better visualization
+    #mesh.compute_vertex_normals()
+ 
     #visualize
     o3d.visualization.draw_geometries([mesh])
     return mesh
