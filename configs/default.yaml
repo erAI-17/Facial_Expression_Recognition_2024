@@ -1,4 +1,4 @@
-action: train # train or validate
+action: train # train or test
 name: training # name of the experiment needed for the logs
 modality: ['EMG'] #["RGB"] #["EMG"] #["RGB","EMG"] #!!!
 total_batch: 32 #32 total batch size if training is done with gradient accumulation
@@ -17,8 +17,8 @@ train:
 test:
   
 dataset:
-  name: CalD3r&MenD3s #Bosphorus 
-  annotations_path: Action-Net/data/  #train_val  #Action-Net/data/ #!!!!
+  name: CalD3r_MenD3s #Bosphorus 
+  annotations_path: ../Datasets/  #train_val  #Action-Net/data/ #!!!!
   workers: 4 # number of workers for the dataloader
   resolution: 224 # input resolution to the model
   RGB:

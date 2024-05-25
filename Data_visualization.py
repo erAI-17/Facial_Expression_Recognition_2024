@@ -6,6 +6,7 @@ import os
 import math
 import pickle
 import pandas as pd
+from sklearn.model_selection import train_test_split
 
 '''
 This file allows for data visualization in different flavours. 
@@ -209,14 +210,15 @@ def depthmap_to_mesh(color_image, d_map):
 #!##
 #!GENERATE ANNOTATION FILES
 #!##
-def gen_ann():
-    """Generates annotation .pkl file where a row represents a sample with this schema:
+def train_test_annotations(test_size):
+    """Splits dataset into TrAIN and TEST splits and generate annotation .pkl files where a row represents a sample with this schema:
     subj_id (str): unique code
     code (str): same subj_id for same label, may have multiple samples
     label (str): anger, surprise,...
     add (list(str, str)): list storing additional info ( gender, pose,...) 
-    """
     
+    """
+    #!read all datasets and create unique annotation file where each row has schema [subj_id, code, label, add]
     datasets = ['CalD3r', 'MenD3s']
     emotions = ['anger', 'disgust', 'fear', 'happiness', 'neutral', 'sadness', 'surprise']
     for dataset in datasets:
@@ -232,13 +234,43 @@ def gen_ann():
                 
                 new_row = [subj_id, code, label, add]
                 data.append(new_row)
-    
-        #create dataframe
-        df = pd.DataFrame(data, columns=['subj_id', 'code', 'label', 'add'])
-        #save annotation file
-        annotation_file = os.path.join(path, 'annotations.pkl')
+        
+        #!split data into train and test dataframes (making sure that all the samples with same subj_id, label and add fall inside the same split)
+        grouped = {}
+        for sample in data:
+            key = (sample[0], sample[2], tuple(sample[3]))  # (subj_id, code, label, add)
+            grouped.setdefault(key, []).append(sample) #? if key doesn't exist yet in the dictionary, it is set as empty by setdefault()
+            
+        #?#grouped: {'group1': [[sample1], [sample2],...], 'group2': [[]], ... }    
+            
+        # Convert grouped dictionary to a list of groups
+        groups = list(grouped.values())  
+        
+        # Shuffle the groups
+        np.random.seed(42)
+        np.random.shuffle(groups)  
+        
+        # Split the groups into train and test sets
+        train_groups, test_groups = train_test_split(groups, test_size=test_size, random_state=42)  #? train_test_split from sklearn, automatically splits the list
+
+        # Flatten the list of groups back into arrays
+        train_set = ([sample for group in train_groups for sample in group])
+        test_set = ([sample for group in test_groups for sample in group])
+
+        #convert to dataframes
+        train_df = pd.DataFrame(train_set, columns=['subj_id', 'code', 'label', 'add'])
+        test_df  = pd.DataFrame(test_set, columns=['subj_id', 'code', 'label', 'add'])
+        
+        #save annotation train file
+        annotation_file = os.path.join(path, 'annotations_train.pkl')
         with open(annotation_file, 'wb') as file:
-            pickle.dump(df, file)
+            pickle.dump(train_df, file)
+            
+        #save annotation test file
+        annotation_file = os.path.join(path, 'annotations_test.pkl')
+        with open(annotation_file, 'wb') as file:
+            pickle.dump(test_df, file)
+             
     
  
 #!##
@@ -247,19 +279,19 @@ def gen_ann():
 if __name__ == '__main__':
     path = '../Datasets/' + 'CalD3r'
     
-    #!#example load of images and depth map for 1 sample
-    images, d_maps = load_2d_and_3d(path, gender='F', subjectid='005', emotion='surprise') #choose example gender, subj_id and emotion
-    #show
-    show(images[0], d_maps[0])
+    ##!#example load of images and depth map for 1 sample
+    #images, d_maps = load_2d_and_3d(path, gender='F', subjectid='005', emotion='surprise') #choose example gender, subj_id and emotion
+    ##show
+    #show(images[0], d_maps[0])
     
-    #!generate annotation files for each dataset
-    #gen_ann()
+    #!generate annotation files for each dataset, TEST and TRAIN
+    #train_test_annotations(test_size=0.2) #20% test, 80% train
         
     #!check annotation files 
-    # df = pd.read_pickle(path + '/annotations.pkl') #S04_train.pkl #S04_test.pkl
-    # print(df)
-    # print(df.shape)
-    # print(df.columns)  
+    df = pd.read_pickle(path + '/annotations_test.pkl') 
+    print(df)
+    print(df.shape)
+    print(df.columns)  
     
 
     
