@@ -42,7 +42,7 @@ class feature_level_concat_FUSION_net(nn.Module):
         self.rgb_model = RGB_CNN()  # Define the RGB network
         self.depth_model = DEPTH_CNN()  # Define the Depth network
         self.fc1 = nn.Linear(128 * 28 * 28 * 2, 128)  # Adjust based on the feature map size
-        self.fc2 = nn.Linear(128, 10)  # Assuming 10 classes for classification
+        self.fc2 = nn.Linear(128, num_classes)  # Assuming 10 classes for classification
 
     def forward(self, image, d_map):
         rgb_output, rgb_feat  = self.rgb_model(image) 
@@ -68,18 +68,19 @@ class Attention(nn.Module):
     
 class Attention_Fusion_CNN(nn.Module):
     def __init__(self):
+        num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
         super(Attention_Fusion_CNN, self).__init__()
-        self.rgb_model = RGB_CNN()
-        self.depth_model = DEPTH_CNN()
+        self.RGB_CNN = RGB_CNN()
+        self.DEPTH_CNN = DEPTH_CNN()
         self.attention = Attention(128 * 28 * 28)  # Adjust based on the feature map size
         self.fc1 = nn.Linear(128 * 28 * 28, 128)
-        self.fc2 = nn.Linear(128, 10)  # Assuming 10 classes for classification
+        self.fc2 = nn.Linear(128, num_classes)  # Assuming 10 classes for classification
 
     def forward(self, image, d_map):
-        rgb_features = self.rgb_model(image)
-        depth_features = self.depth_model(d_map)
-        rgb_features_flat = rgb_features.view(-1, 128 * 28 * 28)
-        depth_features_flat = depth_features.view(-1, 128 * 28 * 28)
+        rgb_output, rgb_feat = self.RGB_CNN(image)
+        depth_output, depth_feat = self.DEPTH_CNN(d_map)
+        rgb_features_flat = rgb_feat.view(-1, 128 * 28 * 28)
+        depth_features_flat = depth_feat.view(-1, 128 * 28 * 28)
         attended_features = self.attention(rgb_features_flat, depth_features_flat)
         x = F.relu(self.fc1(attended_features))
         x = self.fc2(x)
