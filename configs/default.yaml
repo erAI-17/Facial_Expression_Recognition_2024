@@ -22,16 +22,19 @@ dataset:
   workers: 4 # number of workers for the dataloader
   resolution: 224 # input resolution to the model
   RGB:
-    data_path: Action-Net/data/RGB_features/
+    data_path:  ../Datasets/
     tmpl: "img_{}_{:010d}_{}_{}_{}.png" # format of RGB filenames. CAld3r&Mend3s example: "F_001_1120_anger_Color"
   D:
-    data_path: Action-Net/data/ 
-    tmpl: "array_{:010d}.txt" 
+    data_path: ../Datasets/
+    tmpl: "img_{}_{:010d}_{}_{}_{}.png"
+  MESH:
+  data_path: ../Datasets/
+  tmpl: "img_{}_{:010d}_{}_{}_{}.png"
 
 # these are the action recognition models for each modality
 models:
   RGB:
-    model: MLP
+    model: CNN_RGB
     normalize: False
     dropout: 0.4
     kwargs: {}
@@ -39,8 +42,17 @@ models:
     lr: 0.01
     sgd_momentum: 0.9
     weight_decay: 1e-7
-  EMG:
-    model: CNN_EMG
+  D:
+    model: CNN_D
+    normalize: False
+    dropout: 0.5
+    kwargs: {}
+    lr_steps: 3000
+    lr: 0.01
+    sgd_momentum: 0.9
+    weight_decay: 1e-7
+  MESH:
+    model: CNN_MESH
     normalize: False
     dropout: 0.5
     kwargs: {}
