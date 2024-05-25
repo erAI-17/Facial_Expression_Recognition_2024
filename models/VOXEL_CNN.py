@@ -5,10 +5,10 @@ import utils
 from utils.args import args
 import torchaudio.transforms as T
 
-class VoxelCNN(nn.Module):
+class VOXEL_CNN(nn.Module):
     def __init__(self):
         num_classes, valid_labels= utils.utils.get_domains_and_labels(args)
-        super(VoxelCNN, self).__init__()
+        super(VOXEL_CNN, self).__init__()
         self.conv1 = nn.Conv3d(1, 32, kernel_size=3, padding=1)
         self.pool = nn.MaxPool3d(kernel_size=2, stride=2)
         self.conv2 = nn.Conv3d(32, 64, kernel_size=3, padding=1)

@@ -7,31 +7,31 @@ from omegaconf import OmegaConf
 def add_paths():
     path_conf = OmegaConf.create()
     path_conf.dataset = {}
-    path_conf.dataset.RGB = {}
-    if platform.node() == 'desktop1':
+    # Retrieve the configs path
+    conf_path = os.path.join(os.path.dirname(__file__), '../configs')
+
+    if platform.node() == 'desktop1': #? IF LOCAL RUN
         path_conf.wandb_dir = ""
         path_conf.dataset.RGB.data_path = ""
-    #if platform.node() == "desktop2":
-        #path_conf.wandb_dir = ""
-        #path_conf.dataset.RGB.data_path = ""
+        args = OmegaConf.load(os.path.join(conf_path, "local_default.yaml")) 
+    else: #? else it is colab run
+        path_conf.wandb_dir = ""
+        path_conf.dataset.RGB.data_path = ""
+        args = OmegaConf.load(os.path.join(conf_path, "colab_default.yaml")) 
+        
     return path_conf
 
-
-# Retrieve the configs path
-conf_path = os.path.join(os.path.dirname(__file__), '../configs')
-
-# Retrieve the default config
-args = OmegaConf.load(os.path.join(conf_path, "default.yaml")) 
 
 # Read the cli args
 cli_args = OmegaConf.from_cli()
 
+path_args = add_paths()
 # read a specific config file
 if 'config' in cli_args and cli_args.config:
     conf_args = OmegaConf.load(cli_args.config)
-    args = OmegaConf.merge(args, conf_args)
+    args = OmegaConf.merge(path_args.args, conf_args)
 
-path_args = add_paths()
+
 args = OmegaConf.merge(args, path_args)
 # Merge cli args into config ones
 args = OmegaConf.merge(args, cli_args)

@@ -24,7 +24,7 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
         name: (str)
             datasets names to be merged (underscore separated). For example: 'CalD3r_MenD3s'
         modalities: list(str)
-            ["RGB"] OR ["D"] OR ["RGB", "D"] OR ["MESH"]
+            ["RGB"] OR ["DEPTH"] OR ["RGB", "DEPTH"] OR ["MESH"]
         mode: str
             train OR test
             
@@ -98,7 +98,7 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
         data_path = os.path.join(self.dataset_conf[modality].data_path, ann_sample.dataset_name, ann_sample.label.capitalize(), modality)
         tmpl = self.dataset_conf[modality].tmpl
 
-        if modality == 'RGB' or modality=="D" or modality=='MESH': #? if modality=='MESH', load anyway the RGB and depth_map and create the mesh later before forward pass
+        if modality == 'RGB' or modality=="DEPTH" or modality=='MESH': #? if modality=='MESH', load anyway the RGB and depth_map and create the mesh later before forward pass
             try:
                 img = Image.open(os.path.join(data_path, tmpl.format(ann_sample.gender, ann_sample.subj_id, ann_sample.code, ann_sample.label, modality))).convert('RGB')
             except FileNotFoundError:

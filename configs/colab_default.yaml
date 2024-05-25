@@ -1,30 +1,30 @@
-action: train # train or test
-name: training # name of the experiment needed for the logs
-modality: ['EMG'] #["RGB"] #["EMG"] #["RGB","EMG"] #!!!
-total_batch: 32 #32 total batch size if training is done with gradient accumulation
-batch_size: 32 # batch size for the forward
-gpus: null # gpus adopted
-wandb_name: null # needed for wandb logging
-resume_from: null # checkpoint directory
-logname: null # name of the logs
-models_dir: null # directory containing all the models
+action: ???
+name: ???
+modality: ???
+total_batch: 32 
+batch_size: 32 
+gpus: null 
+wandb_name: null 
+resume_from: null 
+logname: null 
+models_dir: null 
 
 train:
-  num_iter: 200 #10000?? number of training iterations with BATCH_SIZE (32) NOT on TOTAL_BATCH (128)
-  lr_steps: 190 #8500 steps before reducing learning rate
-  eval_freq: 10 # evaluation frequency
+  num_iter: 200 
+  lr_steps: 190 
+  eval_freq: 10 
   
 test:
   
 dataset:
-  name: CalD3r_MenD3s #Bosphorus 
-  annotations_path: ../Datasets/  #train_val  #Action-Net/data/ #!!!!
+  name: ???
+  annotations_path: ???
   workers: 4 # number of workers for the dataloader
   resolution: 224 # input resolution to the model
   RGB:
     data_path:  ../Datasets/
     tmpl: "img_{}_{:010d}_{}_{}_{}.png" # format of RGB filenames. CAld3r&Mend3s example: "F_001_1120_anger_Color"
-  D:
+  DEPTH:
     data_path: ../Datasets/
     tmpl: "img_{}_{:010d}_{}_{}_{}.png"
   MESH:
@@ -34,7 +34,7 @@ dataset:
 # these are the action recognition models for each modality
 models:
   RGB:
-    model: CNN_RGB
+    model: ???
     normalize: False
     dropout: 0.4
     kwargs: {}
@@ -42,8 +42,8 @@ models:
     lr: 0.01
     sgd_momentum: 0.9
     weight_decay: 1e-7
-  D:
-    model: CNN_D
+  DEPTH:
+    model: ???
     normalize: False
     dropout: 0.5
     kwargs: {}
@@ -52,7 +52,7 @@ models:
     sgd_momentum: 0.9
     weight_decay: 1e-7
   MESH:
-    model: CNN_MESH
+    model: ???
     normalize: False
     dropout: 0.5
     kwargs: {}
@@ -60,3 +60,12 @@ models:
     lr: 0.01
     sgd_momentum: 0.9
     weight_decay: 1e-7
+  VOXEL: 
+  model: ???
+  normalize: False
+  dropout: 0.5
+  kwargs: {}
+  lr_steps: 3000
+  lr: 0.01
+  sgd_momentum: 0.9
+  weight_decay: 1e-7

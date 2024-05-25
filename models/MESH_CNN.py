@@ -14,10 +14,10 @@ class EdgeConv(nn.Module):
         # x is the edge features tensor
         return self.conv(x)
 
-class MeshCNN(nn.Module):
+class MESH_CNN(nn.Module):
     def __init__(self):
         num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
-        super(MeshCNN, self).__init__()
+        super(MESH_CNN, self).__init__()
         self.edge_conv1 = EdgeConv(3, 64)
         self.edge_conv2 = EdgeConv(64, 128)
         self.edge_conv3 = EdgeConv(128, 256)
