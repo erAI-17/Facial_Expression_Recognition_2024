@@ -80,7 +80,8 @@ def main():
         
         
         #*All dataloaders are generated here
-        train_loader = torch.utils.data.DataLoader(CalD3R_MenD3s_Dataset(modalities,
+        train_loader = torch.utils.data.DataLoader(CalD3R_MenD3s_Dataset(args.dataset.name,
+                                                                         modalities,
                                                                          'train', 
                                                                          args.dataset, 
                                                                          None),
@@ -91,10 +92,11 @@ def main():
                                                    drop_last=True)
 
 
-        val_loader = torch.utils.data.DataLoader(CalD3R_MenD3s_Dataset(modalities,
+        val_loader = torch.utils.data.DataLoader(CalD3R_MenD3s_Dataset(args.dataset.name,
+                                                                       modalities,
                                                                        'val', 
-                                                                        args.dataset,
-                                                                        None),
+                                                                       args.dataset,
+                                                                       None),
                                                  batch_size=args.batch_size, 
                                                  shuffle=False,
                                                  num_workers=args.dataset.workers, 
@@ -108,8 +110,9 @@ def main():
         if args.resume_from is not None:
             emotion_classifier.load_last_model(args.resume_from)
             
-        test_loader = torch.utils.data.DataLoader(CalD3R_MenD3s_Dataset(modalities,
-                                                                       'val', 
+        test_loader = torch.utils.data.DataLoader(CalD3R_MenD3s_Dataset(args.dataset.name,
+                                                                        modalities,
+                                                                        'val', 
                                                                         args.dataset,
                                                                         None),
                                                  batch_size=args.batch_size, 

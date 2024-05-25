@@ -11,24 +11,27 @@ from utils.CalD3R_MenD3s_sample import CalD3R_MenD3s_sample
 
 class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
     def __init__(self, 
+                 name,
                  modalities, 
                  mode, 
-                 dataset,
+                 dataset_conf,
                  transform=None, 
                  additional_info=False, 
                  **kwargs):    
         """
         Parameters
         ----------
+        name: (str)
+            datasets names to be merged (underscore separated). For example: 'CalD3r_MenD3s'
         modalities: list(str)
             ["RGB"] OR ["D"] OR ["RGB", "D"] OR ["MESH"]
         mode: str
             train OR test
             
-        dataset:  
+        dataset_conf:  
             - annotations_path: str 
                 general annotation for multi modal data
-            - dataset[modality]: 
+            - dataset_conf[modality]: 
                 - data_path: str 
                 - tmpl: str 
                     template of single data name (for example, for an image: "img_{:010d}.jpg")
@@ -40,27 +43,28 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
         """
         self.modalities = modalities
         self.mode = mode 
-        self.dataset = dataset
+        self.dataset_conf = dataset_conf
         self.transform = transform
         self.additional_info = additional_info
         
 
         if self.mode == "train":
-            pickle_name = "_train.pkl"
-        elif kwargs.get('save', None) is not None:
-            pickle_name = "_" + kwargs["save"] + ".pkl"
+            pickle_name = 'annotation' + '_train.pkl'
         else:
-            pickle_name = "_test.pkl"
+            pickle_name = 'annotation' + '_test.pkl'
 
-        #*Read annotations
-        self.ann_list_file = pd.read_pickle(os.path.join(self.dataset.annotations_path, pickle_name))
-        logger.info(f"Dataloader for {self.mode} with {len(self.list_file)} samples generated")
+        #!Read annotations for each dataset selected in args.name,  and create unique ann_list
+        datasets_names = name.split('_')
+        self.ann_list = []
+        for dataset_name in datasets_names:
+            self.ann_list_file = pd.read_pickle(os.path.join(self.dataset.annotations_path, dataset_name, pickle_name))
+            logger.info(f"Dataloader for {self.mode} with {len(self.list_file)} samples generated")
         
-        self.ann_sample_list = [CalD3R_MenD3s_sample(row_name, self.dataset) for row_name in self.ann_list_file.iterrows()]
+            self.ann_list.extend([CalD3R_MenD3s_sample(dataset_name, row, self.dataset_conf) for row in self.ann_list_file.iterrows()])
             
             
     def __getitem__(self, index):
-        ann_sample = self.ann_sample_list[index] #annotation sample
+        ann_sample = self.ann_list[index] #annotation sample
       
         #*load the sample's images for each modality
         sample = {}
@@ -91,16 +95,15 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
         '''
         Loads single image
         '''
-        data_path = self.dataset[modality].data_path
-        tmpl = self.dataset[modality].tmpl
+        data_path = os.path.join(self.dataset_conf[modality].data_path, ann_sample.dataset_name, ann_sample.label.capitalize(), modality)
+        tmpl = self.dataset_conf[modality].tmpl
 
-        if modality == 'RGB' or modality=="D":
+        if modality == 'RGB' or modality=="D" or modality=='MESH': #? if modality=='MESH', load anyway the RGB and depth_map and create the mesh later before forward pass
             try:
                 img = Image.open(os.path.join(data_path, tmpl.format(ann_sample.gender, ann_sample.subj_id, ann_sample.code, ann_sample.label, modality))).convert('RGB')
             except FileNotFoundError:
                 print("Img not found")
                 raise FileNotFoundError
-            
             return img
 
         else:

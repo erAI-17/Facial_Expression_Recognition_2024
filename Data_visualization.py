@@ -36,8 +36,8 @@ def load_2d_and_3d(path, gender, subjectid, emotion):
         _type_: arrays of 2d images and array of depth maps, ALL for 1 subject
     """
     
-    path_images = path + '/' + emotion.capitalize() + '/Color/'
-    path_d_maps = path + '/' + emotion.capitalize() + '/Depth/'
+    path_images = path + '/' + emotion.capitalize() + '/RGB/'
+    path_d_maps = path + '/' + emotion.capitalize() + '/D/'
     
     images = []
     d_maps = []
@@ -225,7 +225,7 @@ def train_test_annotations(test_size):
         data = []
         path = '../Datasets/'+ dataset 
         for emotion in emotions: 
-            files_path = path + '/' + emotion.capitalize() + '/Color' #?analyze only RGB modality because it's enough
+            files_path = path + '/' + emotion.capitalize() + '/RGB' #?analyze only RGB modality because it's enough
             for filename in os.listdir(files_path):  
                 subj_id = filename.split("_")[1]   
                 code = filename.split("_")[2]
@@ -280,12 +280,12 @@ if __name__ == '__main__':
     path = '../Datasets/' + 'CalD3r'
     
     ##!#example load of images and depth map for 1 sample
-    #images, d_maps = load_2d_and_3d(path, gender='F', subjectid='005', emotion='surprise') #choose example gender, subj_id and emotion
-    ##show
-    #show(images[0], d_maps[0])
+    images, d_maps = load_2d_and_3d(path, gender='M', subjectid='007', emotion='sadness') #choose example gender, subj_id and emotion
+    #show
+    show(images[0], d_maps[0])
     
     #!generate annotation files for each dataset, TEST and TRAIN
-    #train_test_annotations(test_size=0.2) #20% test, 80% train
+    train_test_annotations(test_size=0.2) #20% test, 80% train
         
     #!check annotation files 
     df = pd.read_pickle(path + '/annotations_test.pkl') 
