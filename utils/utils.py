@@ -2,8 +2,8 @@ from collections.abc import Mapping
 import torch
 from utils.args import args
 
-def get_domains_and_labels(args):    
-    if args.dataset.name == 'CalD3r_MenD3s':
+def get_domains_and_labels(arguments):    
+    if arguments.dataset.name == 'CalD3r_MenD3s':
         num_class = 7
         valid_labels = [i for i in range(num_class)]
         

@@ -35,7 +35,7 @@ args = OmegaConf.merge(args, cli_args)
 
 # add log directories
 args.experiment_dir = os.path.join(args.name, datetime.now().strftime('%b%d_%H-%M-%S'))
-if args.action == "test":
+if args.action != "train":
     args.log_dir = os.path.join('Test_results', args.name)
     if args.logname is None:
         args.logname = args.action + "_" + args.dataset.shift + ".log"

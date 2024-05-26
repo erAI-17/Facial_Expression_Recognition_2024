@@ -41,6 +41,7 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
         additional_info: bool
             set to True if you want to receive also the uid and the video name from the get furthre notice
         """
+        self.dataset_name = name
         self.modalities = modalities
         self.mode = mode 
         self.dataset_conf = dataset_conf
@@ -49,18 +50,18 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
         
 
         if self.mode == "train":
-            pickle_name = 'annotation' + '_train.pkl'
+            pickle_name = 'annotations' + '_train.pkl'
         else:
-            pickle_name = 'annotation' + '_test.pkl'
+            pickle_name = 'annotations' + '_test.pkl'
 
         #!Read annotations for each dataset selected in args.name,  and create unique ann_list
-        datasets_names = name.split('_')
+        datasets_names = self.dataset_name.split('_')
         self.ann_list = []
         for dataset_name in datasets_names:
             self.ann_list_file = pd.read_pickle(os.path.join(self.dataset_conf.annotations_path, dataset_name, pickle_name))
-            logger.info(f"Dataloader for {self.mode} with {len(self.list_file)} samples generated")
+            logger.info(f"Dataloader for {self.mode} with {len(self.ann_list_file)} samples generated")
         
-            self.ann_list.extend([CalD3R_MenD3s_sample(dataset_name, row, self.dataset_conf) for row in self.ann_list_file.iterrows()])
+            self.ann_list.extend([CalD3R_MenD3s_sample(self.dataset_name, row, self.dataset_conf) for row in self.ann_list_file.iterrows()])
             
             
     def __getitem__(self, index):
