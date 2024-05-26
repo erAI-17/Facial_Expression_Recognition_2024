@@ -60,8 +60,9 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
         for dataset_name in datasets_names: #iterate over CalD3r and MenD3s to create unique training and validation annotation files
             self.ann_list_file = pd.read_pickle(os.path.join(self.dataset_conf.annotations_path, dataset_name, pickle_name))
             self.ann_list.extend([CalD3R_MenD3s_sample(self.dataset_name, row, self.dataset_conf) for row in self.ann_list_file.iterrows()])
-            
-        logger.info(f"Dataloader for {self.mode} with {len(self.ann_list_file)} samples generated")
+        
+        logger.info(f"Dataloader for {self.mode} with {len(self.ann_list)} samples generated")
+        
     
     def __len__(self):
             return len(self.ann_list)
