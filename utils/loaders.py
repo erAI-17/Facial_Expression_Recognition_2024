@@ -1,14 +1,15 @@
-import glob
 from abc import ABC
 import pandas as pd
 import torch.utils.data as data
 from PIL import Image
 import numpy as np
+import cv2
 import os
 import os.path
 from utils.logger import logger
 from utils.CalD3R_MenD3s_sample import CalD3R_MenD3s_sample
 import torchvision.transforms as transforms
+import torch
 
 class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
     def __init__(self, 
@@ -90,7 +91,7 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
         if self.transform is not None: #*ONLINE AUGMENTATION, NORMALIZATION
             transformed_img = self.transform[modality](img)
         else: 
-            transformed_img = transforms.ToTensor()(img)
+            transformed_img = transforms.ToTensor()(img).to(torch.float32)
             
         return transformed_img, ann_sample.label
 
@@ -106,8 +107,10 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
         
         if modality == 'RGB':
             try:
-                print('PATH:', os.path.join(data_path, tmpl.format(ann_sample.gender, ann_sample.subj_id, ann_sample.code, ann_sample.description_label, 'Color')))
-                img = Image.open(os.path.join(data_path, tmpl.format(ann_sample.gender, ann_sample.subj_id, ann_sample.code, ann_sample.description_label, 'Color'))).convert('RGB')
+                img = cv2.imread(os.path.join(data_path, tmpl.format(ann_sample.gender, ann_sample.subj_id, ann_sample.code, ann_sample.description_label, 'Color')))
+                # Convert the image from BGR to RGB
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                #img = Image.open(os.path.join(data_path, tmpl.format(ann_sample.gender, ann_sample.subj_id, ann_sample.code, ann_sample.description_label, 'Color'))).convert('RGB')
             except FileNotFoundError:
                 print("Img not found")
                 raise FileNotFoundError
@@ -115,7 +118,8 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
         
         if modality == 'DEPTH':
             try:
-                img = Image.open(os.path.join(data_path, tmpl.format(ann_sample.gender, ann_sample.subj_id, ann_sample.code, ann_sample.description_label, 'Depth')))
+                img = cv2.imread(os.path.join(data_path, tmpl.format(ann_sample.gender, ann_sample.subj_id, ann_sample.code, ann_sample.description_label, 'Depth')), cv2.IMREAD_UNCHANGED)
+                #img = Image.open(os.path.join(data_path, tmpl.format(ann_sample.gender, ann_sample.subj_id, ann_sample.code, ann_sample.description_label, 'Depth')))
             except FileNotFoundError:
                 print("Img not found")
                 raise FileNotFoundError

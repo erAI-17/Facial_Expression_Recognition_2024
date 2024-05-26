@@ -261,8 +261,7 @@ def validate(model, val_loader, device, it, num_classes):
     test_results = {'top1': model.accuracy.avg[1], 'top5': model.accuracy.avg[5],
                     'class_accuracies': np.array(class_accuracies)}
 
-    with open(os.path.join(args.log_dir, f'val_precision_{args.dataset.shift.split("-")[0]}-'
-                                         f'{args.dataset.shift.split("-")[-1]}.txt'), 'a+') as f:
+    with open(os.path.join(args.log_dir, f'val_precision_{args.dataset.name}'), 'a+') as f:
         f.write("[%d/%d]\tAcc@top1: %.2f%%\n" % (it, args.train.num_iter, test_results['top1']))
 
     return test_results

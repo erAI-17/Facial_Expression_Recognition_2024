@@ -74,7 +74,7 @@ class EmotionRecognition(tasks.Task, ABC):
         logits = {}
         features = {}
         for i_m, m in enumerate(self.modalities):
-            logits[m], feat = self.task_models[m](x=data[m], **kwargs) #*pass data to the selected model for that modality
+            logits[m], feat = self.task_models[m](data[m], **kwargs) #*pass data to the selected model for that modality
             
             if i_m == 0: #initially set up an empty dictionary for each modality to store corresponding features
                 for k in feat.keys():

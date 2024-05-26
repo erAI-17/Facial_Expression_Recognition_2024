@@ -83,8 +83,8 @@ class Accuracy(object):
                                   the element in a specific poisition was correctly classified or not
         target -> (batch, label): vector containing the ground truth for each element
         """
-        class_correct = list(0. for _ in range(0, self.classes))
-        class_total = list(0. for _ in range(0, self.classes))
+        class_correct = list(0. for _ in range(0, self.num_classes))
+        class_total = list(0. for _ in range(0, self.num_classes))
         for i in range(0, target.size(0)):
             class_label = target[i].item()
             class_correct[class_label] += correct[i].item()
