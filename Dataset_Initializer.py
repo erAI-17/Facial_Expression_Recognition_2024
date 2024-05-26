@@ -9,15 +9,14 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 
 '''
-This file allows for data visualization in different flavours. 
-Once sample has been selected by specifying 'dataset' 'gender', 'subjectid' and 'emotion', it will show sample as:
+This file allows for training-test split of dataset and data visualization . 
+For training-test split different proportion can be chosen (80-20, 90-10)
+For data visualization, it shows 1 sample as:
 - 2d image, 
 - depth map, 
-- generate point cloud (from 2d+depth_map), 
-- generate triangular mesh (from 2d+depth map) 
+- generate point cloud from 2d+depth_map, 
+- generate triangular mesh from 2d+depth map)
 
-As explained in paper point cloud is not continuous leading to a poor mesh.
-So, the most promising and used representation will be 2d+depth_map and the mesh obtained from 2d+depth_map.
 '''
 
 
@@ -280,16 +279,16 @@ def train_test_annotations(test_size):
 #!MAIN
 #!##
 if __name__ == '__main__':
-    path = '../Datasets/' + 'CalD3r'
+    path = '../Datasets/' + 'MenD3s' #MenD3s #CalD3r
     
     ##!#example load of images and depth map for 1 sample
-    images, d_maps = load_2d_and_3d(path, gender='M', subjectid='007', emotion='sadness') #choose example gender, subj_id and emotion
+    #images, d_maps = load_2d_and_3d(path, gender='M', subjectid='007', emotion='sadness') #choose example gender, subj_id and emotion
     #show
-    show(images[0], d_maps[0])
+    #show(images[0], d_maps[0])
     
     #!generate annotation files for each dataset, TEST and TRAIN
     train_test_annotations(test_size=0.2) #20% test, 80% train
-        
+    
     #!check annotation files 
     df = pd.read_pickle(path + '/annotations_test.pkl') 
     print(df)

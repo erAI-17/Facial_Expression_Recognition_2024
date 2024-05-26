@@ -57,13 +57,15 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
         #!Read annotations for each dataset selected in args.name,  and create unique ann_list
         datasets_names = self.dataset_name.split('_')
         self.ann_list = []
-        for dataset_name in datasets_names:
+        for dataset_name in datasets_names: #iterate over CalD3r and MenD3s to create unique training and validation annotation files
             self.ann_list_file = pd.read_pickle(os.path.join(self.dataset_conf.annotations_path, dataset_name, pickle_name))
-            logger.info(f"Dataloader for {self.mode} with {len(self.ann_list_file)} samples generated")
-        
             self.ann_list.extend([CalD3R_MenD3s_sample(self.dataset_name, row, self.dataset_conf) for row in self.ann_list_file.iterrows()])
             
-            
+        logger.info(f"Dataloader for {self.mode} with {len(self.ann_list_file)} samples generated")
+    
+    def __len__(self):
+            return len(self.ann_list)
+        
     def __getitem__(self, index):
         ann_sample = self.ann_list[index] #annotation sample
       
@@ -110,5 +112,4 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
         else:
             raise NotImplementedError("Modality not implemented")
 
-    def __len__(self):
-            return len(self.sample_list)
+    
