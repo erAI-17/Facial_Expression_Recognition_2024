@@ -26,7 +26,7 @@ dataset:
   DEPTH:
     data_path: ..\Datasets
   MESH:
-  data_path: ..\Datasets
+   data_path: ..\Datasets
 
 # these are the action recognition models for each modality
 models:

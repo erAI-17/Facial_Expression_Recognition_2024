@@ -99,16 +99,23 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
         '''
         Loads single image
         '''
-        data_path = os.path.join(self.dataset_conf[modality].data_path, ann_sample.datasets_name, ann_sample.label.capitalize(), modality)
+        data_path = os.path.join(self.dataset_conf[modality].data_path, ann_sample.datasets_name, ann_sample.description_label.capitalize(), modality)
         
         #!CalD3r and MenD3s have different image templates :/
         tmpl = "{}_{:03d}_{}_{}_{}.png" if ann_sample.datasets_name == 'CalD3r' else "{}_{:02d}_{}_{}_{}.png" if ann_sample.datasets_name == 'MenD3s' else None
-
-        if modality == 'RGB' or modality=="DEPTH" or modality=='MESH' or modality=='VOXEL': #? if modality=='MESH', load anyway the RGB and depth_map and create the mesh later before forward pass
+        
+        if modality == 'RGB':
             try:
-                #!I used different modality names
-                modality_name = 'Color' if modality =='RGB' else 'Depth' if modality =='DEPTH' else None
-                img = Image.open(os.path.join(data_path, tmpl.format(ann_sample.gender, ann_sample.subj_id, ann_sample.code, ann_sample.label, modality_name))).convert('RGB')
+                print('PATH:', os.path.join(data_path, tmpl.format(ann_sample.gender, ann_sample.subj_id, ann_sample.code, ann_sample.description_label, 'Color')))
+                img = Image.open(os.path.join(data_path, tmpl.format(ann_sample.gender, ann_sample.subj_id, ann_sample.code, ann_sample.description_label, 'Color'))).convert('RGB')
+            except FileNotFoundError:
+                print("Img not found")
+                raise FileNotFoundError
+            return img
+        
+        if modality == 'DEPTH':
+            try:
+                img = Image.open(os.path.join(data_path, tmpl.format(ann_sample.gender, ann_sample.subj_id, ann_sample.code, ann_sample.description_label, 'Depth')))
             except FileNotFoundError:
                 print("Img not found")
                 raise FileNotFoundError

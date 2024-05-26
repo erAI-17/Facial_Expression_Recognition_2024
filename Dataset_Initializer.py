@@ -36,7 +36,7 @@ def load_2d_and_3d(path, gender, subjectid, emotion):
     """
     
     path_images = path + '/' + emotion.capitalize() + '/RGB/'
-    path_d_maps = path + '/' + emotion.capitalize() + '/D/'
+    path_d_maps = path + '/' + emotion.capitalize() + '/DEPTH/'
     
     images = []
     d_maps = []
@@ -222,25 +222,25 @@ def train_test_annotations(test_size):
     """
     #!read all datasets and create unique annotation file where each row has schema [subj_id, code, label, add]
     datasets = ['CalD3r', 'MenD3s']
-    emotions = ['anger', 'disgust', 'fear', 'happiness', 'neutral', 'sadness', 'surprise']
+    emotions = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5, 'surprise':6}
     for dataset in datasets:
         data = []
         path = '../Datasets/'+ dataset 
-        for emotion in emotions: 
+        for emotion in emotions.keys(): 
             files_path = path + '/' + emotion.capitalize() + '/RGB' #?analyze only RGB modality because it's enough
             for filename in os.listdir(files_path):  
                 subj_id = filename.split("_")[1]   
                 code = filename.split("_")[2]
-                label = filename.split("_")[3]
+                description_label = filename.split("_")[3]
                 add = [filename.split("_")[0]]
                 
-                new_row = [subj_id, code, label, add]
+                new_row = [subj_id, code, description_label, emotions[description_label], add]
                 data.append(new_row)
         
         #!split data into train and test dataframes (making sure that all the samples with same subj_id, label and add fall inside the same split)
         grouped = {}
         for sample in data:
-            key = (sample[0], sample[2], tuple(sample[3]))  # (subj_id, code, label, add)
+            key = (sample[0], sample[2], sample[3], tuple(sample[4]))  # (subj_id, code, label, add)
             grouped.setdefault(key, []).append(sample) #? if key doesn't exist yet in the dictionary, it is set as empty by setdefault()
             
         #?#grouped: {'group1': [[sample1], [sample2],...], 'group2': [[]], ... }    
@@ -258,11 +258,11 @@ def train_test_annotations(test_size):
         # Flatten the list of groups back into arrays
         train_set = ([sample for group in train_groups for sample in group])
         test_set = ([sample for group in test_groups for sample in group])
-
-        #convert to dataframes
-        train_df = pd.DataFrame(train_set, columns=['subj_id', 'code', 'label', 'add'])
-        test_df  = pd.DataFrame(test_set, columns=['subj_id', 'code', 'label', 'add'])
         
+        #convert to dataframes
+        train_df = pd.DataFrame(train_set, columns=['subj_id', 'code', 'description_label', 'label', 'add'])
+        test_df  = pd.DataFrame(test_set, columns=['subj_id', 'code', 'description_label', 'label', 'add'])
+            
         #save annotation train file
         annotation_file = os.path.join(path, 'annotations_train.pkl')
         with open(annotation_file, 'wb') as file:
@@ -283,11 +283,11 @@ if __name__ == '__main__':
     
     ##!#example load of images and depth map for 1 sample
     #images, d_maps = load_2d_and_3d(path, gender='M', subjectid='007', emotion='sadness') #choose example gender, subj_id and emotion
-    #show
+    ##show
     #show(images[0], d_maps[0])
     
     #!generate annotation files for each dataset, TEST and TRAIN
-    #train_test_annotations(test_size=0.2) #20% test, 80% train
+    train_test_annotations(test_size=0.2) #20% test, 80% train
     
     #!check annotation files 
     df = pd.read_pickle(path + '/annotations_test.pkl') 

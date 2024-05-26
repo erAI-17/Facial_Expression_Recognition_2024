@@ -33,7 +33,11 @@ class CalD3R_MenD3s_sample(object):
     def label(self):
         if 'label' not in self._series.keys().tolist():
             raise NotImplementedError
-        return str(self._series['label'])
+        return int(self._series['label'])
+    
+    @property
+    def description_label(self):
+        return str(self._series['description_label'])
     
     @property
     def add(self):
