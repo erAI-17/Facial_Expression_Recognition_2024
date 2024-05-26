@@ -287,7 +287,7 @@ if __name__ == '__main__':
     #show(images[0], d_maps[0])
     
     #!generate annotation files for each dataset, TEST and TRAIN
-    train_test_annotations(test_size=0.2) #20% test, 80% train
+    #train_test_annotations(test_size=0.2) #20% test, 80% train
     
     #!check annotation files 
     df = pd.read_pickle(path + '/annotations_test.pkl') 

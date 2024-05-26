@@ -1,5 +1,5 @@
 class CalD3R_MenD3s_sample(object):
-    def __init__(self, dataset_name, row, dataset_conf): 
+    def __init__(self, datasets_name, row, dataset_conf): 
         '''
         row: list(str)
             single row from pkl annotation file, representing single sample
@@ -8,7 +8,7 @@ class CalD3R_MenD3s_sample(object):
         '''
         #?PRIVATE attributes have initial underscore and need getters (and setters if requires) to be set
         self._index = str(row[0]) 
-        self._dataset_name = dataset_name
+        self._datasets_name = datasets_name
         self._series = row[1]
         self.dataset_conf = dataset_conf
     
@@ -18,22 +18,22 @@ class CalD3R_MenD3s_sample(object):
         return int(self._index)
     
     @property
-    def dataset_name(self):
-        return self._dataset_name
+    def datasets_name(self):
+        return self._datasets_name
     
     @property
     def subj_id(self):
-        return self._series['subj_id']
+        return int(self._series['subj_id'])
     
     @property
     def code(self):
-        return self._series['code']
+        return str(self._series['code'])
 
     @property
     def label(self):
         if 'label' not in self._series.keys().tolist():
             raise NotImplementedError
-        return self._series['label']
+        return str(self._series['label'])
     
     @property
     def add(self):
@@ -41,7 +41,7 @@ class CalD3R_MenD3s_sample(object):
     
     @property
     def gender(self):
-        return self._series['add'][0] 
+        return str(self._series['add'][0]) 
 
 
 #?- **Direct Attribute**: 

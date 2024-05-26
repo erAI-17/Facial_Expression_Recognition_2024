@@ -5,6 +5,7 @@ import numpy as np
 import numbers
 import math
 import torch
+import torchvision.transforms as transforms
 
 
 class GroupRandomCrop(object):

@@ -8,10 +8,11 @@ import os
 import os.path
 from utils.logger import logger
 from utils.CalD3R_MenD3s_sample import CalD3R_MenD3s_sample
+import torchvision.transforms as transforms
 
 class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
     def __init__(self, 
-                 name,
+                 names,
                  modalities, 
                  mode, 
                  dataset_conf,
@@ -41,7 +42,7 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
         additional_info: bool
             set to True if you want to receive also the uid and the video name from the get furthre notice
         """
-        self.dataset_name = name
+        self.datasets_name = names
         self.modalities = modalities
         self.mode = mode 
         self.dataset_conf = dataset_conf
@@ -55,11 +56,10 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
             pickle_name = 'annotations' + '_test.pkl'
 
         #!Read annotations for each dataset selected in args.name,  and create unique ann_list
-        datasets_names = self.dataset_name.split('_')
         self.ann_list = []
-        for dataset_name in datasets_names: #iterate over CalD3r and MenD3s to create unique training and validation annotation files
+        for dataset_name in self.datasets_name.split('_'): #iterate over CalD3r and MenD3s to create unique training and validation annotation files
             self.ann_list_file = pd.read_pickle(os.path.join(self.dataset_conf.annotations_path, dataset_name, pickle_name))
-            self.ann_list.extend([CalD3R_MenD3s_sample(self.dataset_name, row, self.dataset_conf) for row in self.ann_list_file.iterrows()])
+            self.ann_list.extend([CalD3R_MenD3s_sample(dataset_name, row, self.dataset_conf) for row in self.ann_list_file.iterrows()])
         
         logger.info(f"Dataloader for {self.mode} with {len(self.ann_list)} samples generated")
         
@@ -74,11 +74,11 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
         sample = {}
         for m in self.modalities:
             img, label = self.get(m, ann_sample)
-            sample[m] = {img}
+            sample[m] = img
         if self.additional_info:
             return sample, ann_sample.label, ann_sample.uid
         else:
-            return sample, ann_sample.label
+            return sample, label
 
 
     def get(self, modality, ann_sample):
@@ -90,7 +90,7 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
         if self.transform is not None: #*ONLINE AUGMENTATION, NORMALIZATION
             transformed_img = self.transform[modality](img)
         else: 
-            transformed_img = img
+            transformed_img = transforms.ToTensor()(img)
             
         return transformed_img, ann_sample.label
 
@@ -99,12 +99,16 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
         '''
         Loads single image
         '''
-        data_path = os.path.join(self.dataset_conf[modality].data_path, ann_sample.dataset_name, ann_sample.label.capitalize(), modality)
-        tmpl = self.dataset_conf[modality].tmpl
+        data_path = os.path.join(self.dataset_conf[modality].data_path, ann_sample.datasets_name, ann_sample.label.capitalize(), modality)
+        
+        #!CalD3r and MenD3s have different image templates :/
+        tmpl = "{}_{:03d}_{}_{}_{}.png" if ann_sample.datasets_name == 'CalD3r' else "{}_{:02d}_{}_{}_{}.png" if ann_sample.datasets_name == 'MenD3s' else None
 
-        if modality == 'RGB' or modality=="DEPTH" or modality=='MESH': #? if modality=='MESH', load anyway the RGB and depth_map and create the mesh later before forward pass
+        if modality == 'RGB' or modality=="DEPTH" or modality=='MESH' or modality=='VOXEL': #? if modality=='MESH', load anyway the RGB and depth_map and create the mesh later before forward pass
             try:
-                img = Image.open(os.path.join(data_path, tmpl.format(ann_sample.gender, ann_sample.subj_id, ann_sample.code, ann_sample.label, modality))).convert('RGB')
+                #!I used different modality names
+                modality_name = 'Color' if modality =='RGB' else 'Depth' if modality =='DEPTH' else None
+                img = Image.open(os.path.join(data_path, tmpl.format(ann_sample.gender, ann_sample.subj_id, ann_sample.code, ann_sample.label, modality_name))).convert('RGB')
             except FileNotFoundError:
                 print("Img not found")
                 raise FileNotFoundError
