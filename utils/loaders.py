@@ -57,7 +57,7 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
         datasets_names = name.split('_')
         self.ann_list = []
         for dataset_name in datasets_names:
-            self.ann_list_file = pd.read_pickle(os.path.join(self.dataset.annotations_path, dataset_name, pickle_name))
+            self.ann_list_file = pd.read_pickle(os.path.join(self.dataset_conf.annotations_path, dataset_name, pickle_name))
             logger.info(f"Dataloader for {self.mode} with {len(self.list_file)} samples generated")
         
             self.ann_list.extend([CalD3R_MenD3s_sample(dataset_name, row, self.dataset_conf) for row in self.ann_list_file.iterrows()])
