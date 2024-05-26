@@ -34,7 +34,7 @@ dataset:
 # these are the action recognition models for each modality
 models:
   RGB:
-    model: CNN_RGB
+    model: RGB_CNN
     normalize: False
     dropout: 0.4
     kwargs: {}

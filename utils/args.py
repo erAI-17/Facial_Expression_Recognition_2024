@@ -16,20 +16,20 @@ def add_paths():
         path_conf.wandb_dir = ""
         args = OmegaConf.load(os.path.join(conf_path, "colab_default.yaml")) 
         
-    return path_conf
+    return path_conf, args
 
+
+# Merge path_args into config ones
+path_args, args = add_paths()
+args = OmegaConf.merge(args, path_args)
 
 # Read the cli args
 cli_args = OmegaConf.from_cli()
-
-path_args = add_paths()
 # read a specific config file
 if 'config' in cli_args and cli_args.config:
     conf_args = OmegaConf.load(cli_args.config)
     args = OmegaConf.merge(path_args.args, conf_args)
 
-
-args = OmegaConf.merge(args, path_args)
 # Merge cli args into config ones
 args = OmegaConf.merge(args, cli_args)
 

@@ -43,7 +43,7 @@ class EmotionRecognition(tasks.Task, ABC):
         self.model_args = model_args
         
         #!self.accuracy and self.loss track the evolution of the accuracy and the training loss
-        self.accuracy = utils.Accuracy(topk=(1, 5), classes=num_classes)
+        self.accuracy = utils.Accuracy(topk=(1, 5))
         self.loss = utils.AverageMeter()
         
         self.criterion = torch.nn.CrossEntropyLoss(weight=None, size_average=None, ignore_index=-100,

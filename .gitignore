@@ -1,0 +1,5 @@
+*.log
+     Experiment_logs/
+     models/__pycache__
+     tasks/__pycache__
+     utils/__pycache__
