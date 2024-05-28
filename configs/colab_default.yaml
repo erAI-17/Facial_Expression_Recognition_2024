@@ -19,8 +19,8 @@ test:
 dataset:
   name: ???
   annotations_path: ???
-  workers: 4 # number of workers for the dataloader
-  resolution: 224 # input resolution to the model
+  workers: 4 
+  resolution: 224 
   RGB:
     data_path: ???
   DEPTH:
@@ -28,7 +28,6 @@ dataset:
   MESH:
    data_path: ???
 
-# these are the action recognition models for each modality
 models:
   RGB:
     model: ???
