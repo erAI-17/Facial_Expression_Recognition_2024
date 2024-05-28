@@ -22,11 +22,11 @@ dataset:
   workers: 4 # number of workers for the dataloader
   resolution: 224 # input resolution to the model
   RGB:
-    data_path:  ..\Datasets
+    data_path: ???
   DEPTH:
-    data_path: ..\Datasets
+    data_path: ???
   MESH:
-   data_path: ..\Datasets
+   data_path: ???
 
 # these are the action recognition models for each modality
 models:
