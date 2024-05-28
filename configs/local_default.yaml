@@ -57,12 +57,3 @@ models:
     lr: 0.01
     sgd_momentum: 0.9
     weight_decay: 1e-7
-  VOXEL: 
-    model: VOXEL_CNN
-    normalize: False
-    dropout: 0.5
-    kwargs: {}
-    lr_steps: 3000
-    lr: 0.01
-    sgd_momentum: 0.9
-    weight_decay: 1e-7

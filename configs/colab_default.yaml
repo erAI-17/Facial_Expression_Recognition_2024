@@ -32,8 +32,8 @@ dataset:
 models:
   RGB:
     model: ???
-    normalize: False
-    dropout: 0.4
+    normalize: ???
+    dropout: ???
     kwargs: {}
     lr_steps: 3000
     lr: 0.01
@@ -41,8 +41,8 @@ models:
     weight_decay: 1e-7
   DEPTH:
     model: ???
-    normalize: False
-    dropout: 0.5
+    normalize: ???
+    dropout: ???
     kwargs: {}
     lr_steps: 3000
     lr: 0.01
@@ -50,17 +50,8 @@ models:
     weight_decay: 1e-7
   MESH:
     model: ???
-    normalize: False
-    dropout: 0.5
-    kwargs: {}
-    lr_steps: 3000
-    lr: 0.01
-    sgd_momentum: 0.9
-    weight_decay: 1e-7
-  VOXEL: 
-    model: ???
-    normalize: False
-    dropout: 0.5
+    normalize: ???
+    dropout: ???
     kwargs: {}
     lr_steps: 3000
     lr: 0.01
