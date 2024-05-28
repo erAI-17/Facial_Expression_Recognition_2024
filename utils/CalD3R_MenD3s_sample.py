@@ -62,11 +62,11 @@ class CalD3R_MenD3s_sample(object):
 #?This approach is useful for creating read-only attributes or for computing values dynamically when they are accessed. 
 #   class Class(object):
 #       def __init__(self, attribute): 
-#           self.attribute = attribute
+#           self._attribute = attribute
 #
 #       @property 
 #       def attribute(self):
-#           return int(self.attribute)
+#           return int(self._attribute)
 #
 #?    - **Pros**: More flexible. Encapsulates the logic for retrieving the value. If the logic changes, you only need to update the property method. 
 #?    - **Cons**: Slightly more complex. Each access involves a method call, which might have a negligible performance impact. 

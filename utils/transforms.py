@@ -6,6 +6,8 @@ import numbers
 import math
 import torch
 import torchvision.transforms as transforms
+import cv2
+import matplotlib.pyplot as plt
 
 
 class GroupRandomCrop(object):
@@ -275,66 +277,80 @@ class Stack(object):
                 # this concatenate gives me a vector of size [H, W, ch*num_images]
                 return np.concatenate(img_group, axis=2)
 
+#!###
+#! TRANFORMATIONS
+#!##
+class ToFloat32:
+        def __call__(self, x):
+            return x.to(torch.float32)
 
-class ToTorchFormatTensor(object):
-    """
-    Converts a PIL.Image (RGB) or numpy.ndarray (H x W x C) in the range [0, 255]
-    to a torch.FloatTensor of shape (C x H x W) in the range [0.0, 1.0]
-    """
+class ToFloat64:
+        def __call__(self, x):
+            return x.to(torch.float64)
+    
+class RGB_transf:
+    def __init__(self):
+        self.transform = transforms.Compose([
+            transforms.ToTensor(),  # Converts the image to a tensor
+            ToFloat32(),  # Ensures the tensor is of type float32
+            transforms.Normalize(mean=[0.5], std=[0.5])  # Normalize the tensor TO [-1,1]
+            
+            #!ILLUMINATION NORMALIZATION!!!!!
+    ])
+    
+    def __call__(self, img):
+        return self.transform(img)
+    
+class DEPTH_transf:
+    def __init__(self):
+        self.transform = transforms.Compose([
+            transforms.ToTensor(),  # Converts the image to a tensor
+            ToFloat32(),  # Ensures the tensor is of type float32
+            transforms.Normalize(mean=[0.5], std=[0.5])  # Normalize the tensor TO [-1,1]
+    ])
+    
+    def __call__(self, img):
+        return self.transform(img)    
 
-    def __init__(self, div=True):
-        self.div = div
-
-    def __call__(self, pic):
-        if isinstance(pic, np.ndarray):
-            # handle numpy array
-            # put it from HWC to CHW format
-            img = torch.from_numpy(pic).permute(2, 0, 1).contiguous()
-        else:
-            # handle PIL Image
-            img = torch.ByteTensor(torch.ByteStorage.from_buffer(pic.tobytes()))
-            img = img.view(pic.size[1], pic.size[0], len(pic.mode))
-            # put it from HWC to CHW format
-            # yikes, this transpose takes 80% of the loading time/CPU
-            img = img.transpose(0, 1).transpose(0, 2).contiguous()
-        img = (img.to(torch.float32).div(255) - 0.5) * 2 if self.div else img.to(torch.float32)
-        # print(img)
-        # tensor = (img / 255.) * 2 - 1
-        return img
-
-
-class IdentityTransform(object):
-
-    def __call__(self, data):
-        return data
 
 
 if __name__ == "__main__":
-    trans = torchvision.transforms.Compose([
-        GroupScale(256),
-        GroupRandomCrop(224),
-        Stack(),
-        ToTorchFormatTensor(),
-        GroupNormalize(
-            mean=[.485, .456, .406],
-            std=[.229, .224, .225]
-        )]
-    )
-
-    im = Image.open('../tensorflow-model-zoo.torch/lena_299.png')
-
-    color_group = [im] * 3
-    rst = trans(color_group)
-
-    gray_group = [im.convert('L')] * 9
-    gray_rst = trans(gray_group)
-
-    trans2 = torchvision.transforms.Compose([
-        GroupRandomSizedCrop(256),
-        Stack(),
-        ToTorchFormatTensor(),
-        GroupNormalize(
-            mean=[.485, .456, .406],
-            std=[.229, .224, .225])
+    
+    #!TRIALS
+    # trans = torchvision.transforms.Compose([
+    #     GroupScale(256),
+    #     GroupRandomCrop(224),
+    #     Stack(),
+    #     transforms.ToTensor(),  # Converts the image to a tensor
+    #     GroupNormalize(
+    #         mean=[.485, .456, .406],
+    #         std=[.229, .224, .225]
+    #     )]
+    # )
+    
+    trans = transforms.Compose([
+            transforms.ToTensor(),  # Converts the image to a tensor
+            ToFloat64(),  # Ensures the tensor is of type float32
+            transforms.Normalize(mean=[0.5], std=[0.5])  # Normalize the tensor TO [-1,1]
     ])
-    print(trans2(color_group))
+    
+    img = cv2.imread('../Datasets/CalD3r/Anger/RGB/F_001_1120_anger_Color.png')
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+    depth = cv2.imread('../Datasets/CalD3r/Anger/DEPTH/F_001_1120_anger_Depth.png', cv2.IMREAD_UNCHANGED)
+    
+    transf_img = np.array(trans(img)).transpose(1,2,0)
+    
+    transf_depth = np.array(trans(depth)).transpose(1,2,0)
+
+    plt.imshow(depth)
+    plt.axis('off')  # Hide axes
+    plt.show()
+
+    plt.imshow(transf_img)
+    plt.axis('off')  # Hide axes
+    plt.show()
+
+    plt.imshow(transf_depth)
+    plt.axis('off')  # Hide axes
+    plt.show()

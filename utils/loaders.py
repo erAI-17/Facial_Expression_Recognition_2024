@@ -8,8 +8,7 @@ import os
 import os.path
 from utils.logger import logger
 from utils.CalD3R_MenD3s_sample import CalD3R_MenD3s_sample
-import torchvision.transforms as transforms
-import torch
+
 
 class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
     def __init__(self, 
@@ -17,7 +16,7 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
                  modalities, 
                  mode, 
                  dataset_conf,
-                 transform=None, 
+                 transform,
                  additional_info=False, 
                  **kwargs):    
         """
@@ -38,7 +37,7 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
                 - tmpl: str 
                     template of single data name (for example, for an image: "img_{:010d}.jpg")
         
-        transform: bool 
+        transform: Dict{modality: [transformation1, transformation2,...]} 
             image normalization, online augmentation (crop, ...)
         additional_info: bool
             set to True if you want to receive also the uid and the video name from the get furthre notice
@@ -50,10 +49,9 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
         self.transform = transform
         self.additional_info = additional_info
         
-
         if self.mode == "train":
             pickle_name = 'annotations' + '_train.pkl'
-        else:
+        elif self.mode == "test" or self.mode == "val":
             pickle_name = 'annotations' + '_test.pkl'
 
         #!Read annotations for each dataset selected in args.name,  and create unique ann_list
@@ -64,7 +62,6 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
         
         logger.info(f"Dataloader for {self.mode} with {len(self.ann_list)} samples generated")
         
-    
     def __len__(self):
             return len(self.ann_list)
         
@@ -87,12 +84,11 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
         Loads single image, applies transformations if required (online augmentation, normalization,...)
         '''    
         img = self._load_data(modality, ann_sample)
-            
-        if self.transform is not None: #*ONLINE AUGMENTATION, NORMALIZATION
+        
+        #!apply transformations and augmentation!
+        if self.transform is not None: 
             transformed_img = self.transform[modality](img)
-        else: 
-            transformed_img = transforms.ToTensor()(img).to(torch.float32)
-            
+       
         return transformed_img, ann_sample.label
 
 

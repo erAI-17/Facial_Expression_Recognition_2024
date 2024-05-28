@@ -1,5 +1,4 @@
 from datetime import datetime
-from statistics import mean
 from utils.logger import logger
 import torch.nn.parallel
 import torch.optim
@@ -13,14 +12,15 @@ import os
 import models as model_list
 import tasks
 import wandb
+from utils.transforms import RGB_transf, DEPTH_transf
 
 # global variables among training functions
 training_iterations = 0
-modalities = None
 np.random.seed(13696641)
 torch.manual_seed(13696641)
 
 
+    
 def init_operations():
     """
     parse all the arguments, generate the logger, check gpus to be used and wandb
@@ -39,9 +39,9 @@ def init_operations():
 
 
 def main():
-    global training_iterations, modalities
+    global training_iterations
     init_operations()
-    modalities = args.modality
+    args.modality = args.modality
 
     # recover num_classes, valid paths, domains, 
     num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
@@ -51,7 +51,7 @@ def main():
 
     models = {}
     logger.info("Instantiating models per modality")
-    for m in modalities:
+    for m in args.modality:
         logger.info('{} Net\tModality: {}'.format(args.models[m].model, m))
 
         models[m] = getattr(model_list, args.models[m].model)()
@@ -72,19 +72,31 @@ def main():
         if args.resume_from is not None:
             emotion_classifier.load_last_model(args.resume_from)
         
-        #* USE GRADIENT ACCUMULATION (the batches are devided into smaller batches with gradient accumulation)
+        #* USE GRADIENT ACCUMULATION (the batches are devided into smaller batches with gradient accumulation).
+        #* RECALL that larger batch sizes lead to faster convergence because the estimated gradients are more accurate (more similar to the one that would be computed over the whole dataset)
+        #* and less affected by noise. So we want large batch sizes BUT we may have some memory constraints, so we use GRADIENT ACCUMULATION
+      
         #* TOTAL_BATCH (128) -> 4* BATCH_SIZE (32)
-        #* Every TOTAL_BATCH has to be iterated (forward pass + backward pass) "args.train.num_iter" times (5000)
-        #* So, each BATCH_SIZE (32) needs to be passed  train.num_iter 
+        #* There are 4 BATCH_SIZE inside TOTAL_BATCH each of which must be iterated (forward+backward) "args.train.num_iter" times,
+        #* so total number of iterations done over the whole dataset (since we are using smaller batches BATCH_SIZE) is
         training_iterations = args.train.num_iter * (args.total_batch // args.batch_size)
         
         
+        #*handling transformation per-modality
+        transformations = {}
+        for m in args.modality:
+            if m == 'RGB':
+                transformations[m] = RGB_transf()
+            if m == 'DEPTH':
+                transformations[m] = DEPTH_transf()
+            
         #*All dataloaders are generated here
         train_loader = torch.utils.data.DataLoader(CalD3R_MenD3s_Dataset(args.dataset.name,
-                                                                         modalities,
+                                                                         args.modality,
                                                                          'train', 
-                                                                         args.dataset, 
-                                                                         None),
+                                                                         args.dataset,
+                                                                         transformations,
+                                                                         additional_info=False),
                                                    batch_size=args.batch_size, 
                                                    shuffle=True,
                                                    num_workers=args.dataset.workers, 
@@ -93,10 +105,11 @@ def main():
 
 
         val_loader = torch.utils.data.DataLoader(CalD3R_MenD3s_Dataset(args.dataset.name,
-                                                                       modalities,
+                                                                       args.modality,
                                                                        'val', 
                                                                        args.dataset,
-                                                                       None),
+                                                                       transformations,
+                                                                       additional_info=False),
                                                  batch_size=args.batch_size, 
                                                  shuffle=False,
                                                  num_workers=args.dataset.workers, 
@@ -111,10 +124,10 @@ def main():
             emotion_classifier.load_last_model(args.resume_from)
             
         test_loader = torch.utils.data.DataLoader(CalD3R_MenD3s_Dataset(args.dataset.name,
-                                                                        modalities,
-                                                                        'val', 
-                                                                        args.dataset,
-                                                                        None),
+                                                                        args.modality,
+                                                                        'test', 
+                                                                        transformations,
+                                                                        args.dataset),
                                                  batch_size=args.batch_size, 
                                                  shuffle=False,
                                                  num_workers=args.dataset.workers, 
@@ -131,39 +144,31 @@ def train(emotion_classifier, train_loader, val_loader, device, num_classes):
     emotion_classifier: Task containing the model to be trained for each modality
     train_loader: dataloader containing the training data
     val_loader: dataloader containing the validation data
-    device: device on which you want to test
+    device: device to use (cpu, gpu)
     num_classes: int, number of classes in the classification problem
     """
-    global training_iterations, modalities
+    
+    
+    global training_iterations
 
     data_loader_source = iter(train_loader)
-    emotion_classifier.train(True)
-    emotion_classifier.zero_grad()
+    emotion_classifier.train(True) #? set the model to training mode
+    emotion_classifier.zero_grad() #?clear any existing gradient
     
     #*current_iter is just for restoring from a saved run. Otherwise iteration is set to 0.
     iteration = emotion_classifier.current_iter * (args.total_batch // args.batch_size)
 
     #* real_iter is the number of iterations on TOTAL_BATCH
-    #* this is needed because the lr schedule is defined on the real_iter
     for i in range(iteration, training_iterations):
-        #* iteration in BATCH_SIZE < TOTAL_BATCH
         real_iter = (i + 1) / (args.total_batch // args.batch_size)
-        if real_iter == args.train.lr_steps:
-            # learning rate decay at iteration = lr_steps
+        if real_iter == args.train.lr_steps: #? reduce learning rate 
             emotion_classifier.reduce_learning_rate()
-        # gradient_accumulation_step is a bool used to understand if we accumulated at least total_batch samples' gradient
-        gradient_accumulation_step = real_iter.is_integer()
-
-        """
-        Retrieve the data from the loaders
-        """
-        start_t = datetime.now()
-        
-        #* the following code is necessary as we do not reason in terms of epochs so,
+    
         #* as soon as the dataloader is finished we need to redefine the iterator
+        start_t = datetime.now()
         try:
             source_data, source_label = next(data_loader_source) #*get the next batch of data with next()!
-        except StopIteration:
+        except StopIteration: #? if data loader iterator is exhausted, FETCH NEW BATCH_SIZE
             data_loader_source = iter(train_loader)
             source_data, source_label = next(data_loader_source)
         end_t = datetime.now()
@@ -172,29 +177,28 @@ def train(emotion_classifier, train_loader, val_loader, device, num_classes):
                     f"{(end_t - start_t).total_seconds() // 60} m {(end_t - start_t).total_seconds() % 60} s")
 
 
-        #* emotion recognition
-        source_label = source_label.to(device)
+        #* PASS DATA AND LABELS TO MODELS
+        source_label = source_label.to(device) #?labels to GPU
         data = {}
-        for m in modalities:
-            data[m] = source_data[m].to(device)
-            #print("shape from the modalities for loop is:",data[m].shape)
+        for m in args.modality:
+            data[m] = source_data[m].to(device) #? data to GPU
         logits, _ = emotion_classifier.forward(data)
         emotion_classifier.compute_loss(logits, source_label, loss_weight=1)
         emotion_classifier.backward(retain_graph=False)
         emotion_classifier.compute_accuracy(logits, source_label)
                 
-        # update weights and zero gradients if total_batch samples are passed
-        if gradient_accumulation_step:
+        #?update weights and zero gradients if TOTAL_BATCH is finished!!
+        if real_iter.is_integer(): 
             logger.info("[%d/%d]\tlast Verb loss: %.4f\tMean verb loss: %.4f\tAcc@1: %.2f%%\tAccMean@1: %.2f%%" %
                         (real_iter, args.train.num_iter, emotion_classifier.loss.val, emotion_classifier.loss.avg,
                          emotion_classifier.accuracy.val[1], emotion_classifier.accuracy.avg[1]))
 
             emotion_classifier.check_grad()
-            emotion_classifier.step()
+            emotion_classifier.step() #optimization step
             emotion_classifier.zero_grad()
 
-        # every eval_freq "real iteration" (iterations on total_batch) the validation is done
-        if gradient_accumulation_step and real_iter % args.train.eval_freq == 0:
+        #? every "eval_freq" iterations the validation is done
+        if real_iter.is_integer() and real_iter % args.train.eval_freq == 0:
             val_metrics = validate(emotion_classifier, val_loader, device, int(real_iter), num_classes)
 
             if val_metrics['top1'] <= emotion_classifier.best_iter_score:
@@ -219,7 +223,6 @@ def validate(model, val_loader, device, it, num_classes):
     it: int, iteration among the training num_iter at which the model is tested
     num_classes: int, number of classes in the classification problem
     """
-    global modalities
 
     model.reset_acc()
     model.train(False)
@@ -230,15 +233,15 @@ def validate(model, val_loader, device, it, num_classes):
         for i_val, (data, label) in enumerate(val_loader):
             label = label.to(device)
 
-            for m in modalities:
+            for m in args.modality:
                 batch = data[m].shape[0]
                 logits[m] = torch.zeros((batch, num_classes)).to(device)
             
-            for m in modalities:
+            for m in args.modality:
                 data[m] = data[m].to(device)
 
             output, _ = model(data)
-            for m in modalities:
+            for m in args.modality:
                 logits[m] = output[m]
             
             model.compute_accuracy(logits, label)
@@ -265,6 +268,67 @@ def validate(model, val_loader, device, it, num_classes):
         f.write("[%d/%d]\tAcc@top1: %.2f%%\n" % (it, args.train.num_iter, test_results['top1']))
 
     return test_results
+
+
+
+
+def testing(model, val_loader, device, it, num_classes):
+    """
+    function to validate the model on the test set
+    
+    model: Task containing the model to be tested
+    val_loader: dataloader containing the validation data
+    device: device on which you want to test
+    it: int, iteration among the training num_iter at which the model is tested
+    num_classes: int, number of classes in the classification problem
+    """
+
+    model.reset_acc()
+    model.train(False)
+    logits = {}
+
+    # Iterate over the models
+    with torch.no_grad():
+        for i_val, (data, label) in enumerate(val_loader):
+            label = label.to(device)
+
+            for m in args.modality:
+                batch = data[m].shape[0]
+                logits[m] = torch.zeros((batch, num_classes)).to(device)
+            
+            for m in args.modality:
+                data[m] = data[m].to(device)
+
+            output, _ = model(data)
+            for m in args.modality:
+                logits[m] = output[m]
+            
+            model.compute_accuracy(logits, label)
+
+            if (i_val + 1) % (len(val_loader) // 5) == 0:
+                logger.info("[{}/{}] top1= {:.3f}% top5 = {:.3f}%".format(i_val + 1, len(val_loader),
+                                                                          model.accuracy.avg[1], model.accuracy.avg[5]))
+
+        class_accuracies = [(x / y) * 100 for x, y in zip(model.accuracy.correct, model.accuracy.total)]
+        logger.info('Final accuracy: top1 = %.2f%%\ttop5 = %.2f%%' % (model.accuracy.avg[1],
+                                                                      model.accuracy.avg[5]))
+        for i_class, class_acc in enumerate(class_accuracies):
+            logger.info('Class %d = [%d/%d] = %.2f%%' % (i_class,
+                                                         int(model.accuracy.correct[i_class]),
+                                                         int(model.accuracy.total[i_class]),
+                                                         class_acc))
+
+    logger.info('Accuracy by averaging class accuracies (same weight for each class): {}%'
+                .format(np.array(class_accuracies).mean(axis=0)))
+    test_results = {'top1': model.accuracy.avg[1], 'top5': model.accuracy.avg[5],
+                    'class_accuracies': np.array(class_accuracies)}
+
+    with open(os.path.join(args.log_dir, f'val_precision_{args.dataset.name}'), 'a+') as f:
+        f.write("[%d/%d]\tAcc@top1: %.2f%%\n" % (it, args.train.num_iter, test_results['top1']))
+
+    return test_results
+
+
 
 if __name__ == '__main__':
     main()
