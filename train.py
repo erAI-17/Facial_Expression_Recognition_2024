@@ -97,7 +97,7 @@ def main():
                                                                          args.dataset,
                                                                          transformations,
                                                                          additional_info=False),
-                                                   batch_size=args.batch_size, 
+                                                   batch_size=args.batch_size, #small BATCH_SIZE
                                                    shuffle=True,
                                                    num_workers=args.dataset.workers, 
                                                    pin_memory=True, 
@@ -158,17 +158,20 @@ def train(emotion_classifier, train_loader, val_loader, device, num_classes):
     #*current_iter is just for restoring from a saved run. Otherwise iteration is set to 0.
     iteration = emotion_classifier.current_iter * (args.total_batch // args.batch_size)
 
-    #* real_iter is the number of iterations on TOTAL_BATCH
-    for i in range(iteration, training_iterations):
+    #*iteration: forward and backward of 1 BATCH_SIZE
+    #*epoch: forward and backward of ALL DATASET (If dataset contains 1000 samples and batch size= 100, 1 epoch consists of 10 iterations)
+    for i in range(iteration, training_iterations): #ITERATIONS on batches (of BATCH_SIZE) 
         real_iter = (i + 1) / (args.total_batch // args.batch_size)
         if real_iter == args.train.lr_steps: #? reduce learning rate 
             emotion_classifier.reduce_learning_rate()
     
-        #* as soon as the dataloader is finished we need to redefine the iterator
+        #*we reason in terms of ITERATIONS on batches (of BATCH_SIZE) not EPOCHS!!
+        #? If the  data_loader_source  iterator is exhausted (i.e., it has iterated over the entire dataset), a  StopIteration  exception is raised. 
+        #? The  except StopIteration  block catches this exception and reinitializes the iterator with effectively starting the iteration from the beginning of the dataset again. 
         start_t = datetime.now()
         try:
             source_data, source_label = next(data_loader_source) #*get the next batch of data with next()!
-        except StopIteration: #? if data loader iterator is exhausted, FETCH NEW BATCH_SIZE
+        except StopIteration:
             data_loader_source = iter(train_loader)
             source_data, source_label = next(data_loader_source)
         end_t = datetime.now()
@@ -226,25 +229,16 @@ def validate(model, val_loader, device, it, num_classes):
 
     model.reset_acc()
     model.train(False)
+    
     logits = {}
-
-    # Iterate over the models
     with torch.no_grad():
-        for i_val, (data, label) in enumerate(val_loader):
-            label = label.to(device)
-
-            for m in args.modality:
-                batch = data[m].shape[0]
-                logits[m] = torch.zeros((batch, num_classes)).to(device)
+        for i_val, (data, label) in enumerate(val_loader): #*for each batch in val loader
             
+            label = label.to(device)
             for m in args.modality:
                 data[m] = data[m].to(device)
-
-            output, _ = model(data)
-            for m in args.modality:
-                logits[m] = output[m]
-            
-            model.compute_accuracy(logits, label)
+                logits, _ = model.forward(data)
+                model.compute_accuracy(logits, label)
 
             if (i_val + 1) % (len(val_loader) // 5) == 0:
                 logger.info("[{}/{}] top1= {:.3f}% top5 = {:.3f}%".format(i_val + 1, len(val_loader),
