@@ -16,10 +16,10 @@ class DEPTH_CNN(nn.Module):
         self.fc1 = nn.Linear(128 * 28 * 28, 128)  # 28x28 is the size after pooling
         self.fc2 = nn.Linear(128, num_classes)  
 
-    def forward(self, x):
+    def forward(self, x):   #x.size = tensor[32, 3, 224,224]
         x = self.pool(F.relu(self.conv1(x)))
         x = self.pool(F.relu(self.conv2(x)))
-        x = self.pool(F.relu(self.conv3(x)))
+        x = self.pool(F.relu(self.conv3(x))) #x.size = tensor[32, 128, 28, 28]
         feat = x
         x = x.view(-1, 128 * 28 * 28)  # Flatten the tensor
         x = F.relu(self.fc1(x))

@@ -63,8 +63,8 @@ class EmotionRecognition(tasks.Task, ABC):
 
         Parameters
         ----------
-        data : Dict[str, torch.Tensor] ->{'RGB':[[[ ]]] }
-            a dictionary that stores the input data for each modality 
+        data : Dict[str, torch.Tensor] ->{'RGB':tensor[32, 3, 224,224], 'DEPTH':tensor[32, 1, 224,224] } #* [BATCH_SIZE, C , H, W]
+            a dictionary that stores the input data for each modality. 
 
         Returns
         -------
@@ -74,7 +74,7 @@ class EmotionRecognition(tasks.Task, ABC):
         logits = {}
         features = {}
         for i_m, m in enumerate(self.modalities):
-            logits[m], feat = self.task_models[m](data[m], **kwargs) #*pass data to the selected model for that modality
+            logits[m], feat = self.task_models[m](data[m], **kwargs) #logits [32,7]
             
             if i_m == 0: #initially set up an empty dictionary for each modality to store corresponding features
                 for k in feat.keys():
@@ -99,8 +99,8 @@ class EmotionRecognition(tasks.Task, ABC):
             weight of the classification loss, by default 1.0
         """
         #!modality logits fusion for loss 
-        fused_logits = reduce(lambda x, y: x + y, logits.values()) #?reduces an iterable to a single value following given function
-        loss = self.criterion(fused_logits, label) 
+        fused_logits = reduce(lambda x, y: x + y, logits.values()) #[32,7] #?creates 1 array of logits by summing ALL arrays of logits from different modalities 
+        loss = self.criterion(fused_logits, label)  # [32]
         
         #? Update the loss value, weighting it by the ratio of the batch size to the total batch size (for gradient accumulation)
         self.loss.update(torch.mean(loss_weight * loss) / (self.total_batch / self.batch_size), self.batch_size)

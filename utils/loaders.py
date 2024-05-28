@@ -85,7 +85,7 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
         '''    
         img = self._load_data(modality, ann_sample)
         
-        #!apply transformations and augmentation!
+        #!apply transformations (convert to tensor, normalize)!
         if self.transform is not None: 
             transformed_img = self.transform[modality](img)
        
@@ -104,20 +104,18 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
         if modality == 'RGB':
             try:
                 img = cv2.imread(os.path.join(data_path, tmpl.format(ann_sample.gender, ann_sample.subj_id, ann_sample.code, ann_sample.description_label, 'Color')))
-                # Convert the image from BGR to RGB
-                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-                #img = Image.open(os.path.join(data_path, tmpl.format(ann_sample.gender, ann_sample.subj_id, ann_sample.code, ann_sample.description_label, 'Color'))).convert('RGB')
             except FileNotFoundError:
-                print("Img not found")
-                raise FileNotFoundError
+                print("Img not found at path:", os.path.join(data_path, tmpl.format(ann_sample.gender, ann_sample.subj_id, ann_sample.code, ann_sample.description_label, 'Color')))
+                raise FileNotFoundError      
+            # Convert the image from BGR to RGB
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             return img
         
         if modality == 'DEPTH':
             try:
                 img = cv2.imread(os.path.join(data_path, tmpl.format(ann_sample.gender, ann_sample.subj_id, ann_sample.code, ann_sample.description_label, 'Depth')), cv2.IMREAD_UNCHANGED)
-                #img = Image.open(os.path.join(data_path, tmpl.format(ann_sample.gender, ann_sample.subj_id, ann_sample.code, ann_sample.description_label, 'Depth')))
             except FileNotFoundError:
-                print("Img not found")
+                print("Img not found at path:", os.path.join(data_path, tmpl.format(ann_sample.gender, ann_sample.subj_id, ann_sample.code, ann_sample.description_label, 'Depth')))
                 raise FileNotFoundError
             return img
 

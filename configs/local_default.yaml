@@ -1,7 +1,7 @@
 action: train # train or test
 name: training # name of the experiment needed for the logs
 modality: ['RGB', 'DEPTH'] #["RGB","DEPTH"] #['VOXEL'] #['MESH']
-total_batch: 128
+total_batch: 32
 batch_size: 32 # batch size for the forward
 gpus: null # gpus adopted
 wandb_name: null # needed for wandb logging
@@ -12,7 +12,7 @@ models_dir: null # directory containing all the models
 train:
   num_iter: 200 #10000?? number of training iterations with BATCH_SIZE (32) NOT on TOTAL_BATCH (128)
   lr_steps: 180 #8500 steps before reducing learning rate
-  eval_freq: 50 # evaluation frequency
+  eval_freq: 5 # evaluation frequency
   
 test:
   

@@ -158,7 +158,7 @@ def train(emotion_classifier, train_loader, val_loader, device, num_classes):
     #*current_iter is just for restoring from a saved run. Otherwise iteration is set to 0.
     iteration = emotion_classifier.current_iter * (args.total_batch // args.batch_size)
 
-    #*iteration: forward and backward of 1 BATCH_SIZE
+    #*iteration: forward and backward of 1 batch of BATCH_SIZE. Next iteration will be on next Batch of BATCH_SIZE!!
     #*epoch: forward and backward of ALL DATASET (If dataset contains 1000 samples and batch size= 100, 1 epoch consists of 10 iterations)
     for i in range(iteration, training_iterations): #ITERATIONS on batches (of BATCH_SIZE) 
         real_iter = (i + 1) / (args.total_batch // args.batch_size)
