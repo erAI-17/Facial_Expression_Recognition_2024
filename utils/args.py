@@ -9,6 +9,7 @@ def add_paths():
     path_conf.dataset = {}
     # Retrieve the configs path
     conf_path = os.path.join(os.path.dirname(__file__), '../configs')
+    print(conf_path)
     if platform.node() == 'MSI': #? IF LOCAL RUN platform.node() = 'MSI'
         path_conf.wandb_dir = ""  
         args = OmegaConf.load(os.path.join(conf_path, "local_default.yaml")) 
