@@ -25,7 +25,6 @@ args = OmegaConf.merge(args, path_args)
 
 # Read the command line arguments
 cli_args = OmegaConf.from_cli()
-print('ARGS vkeys', cli_args.values())
 # read a specific config file
 if 'config' in cli_args and cli_args.config:
     conf_args = OmegaConf.load(cli_args.config)
