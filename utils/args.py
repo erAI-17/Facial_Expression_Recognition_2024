@@ -5,7 +5,7 @@ from omegaconf import OmegaConf
 
 
 def add_paths():
-    path_conf = OmegaConf.create()
+    path_conf = OmegaConf.create() #*dictionary of argument: value
     path_conf.dataset = {}
     # Retrieve the configs path
     conf_path = os.path.join(os.path.dirname(__file__), '../configs')
@@ -23,12 +23,13 @@ def add_paths():
 path_args, args = add_paths()
 args = OmegaConf.merge(args, path_args)
 
-# Read the cli args
+# Read the command line arguments
 cli_args = OmegaConf.from_cli()
+print('ARGS vkeys', cli_args.values())
 # read a specific config file
 if 'config' in cli_args and cli_args.config:
     conf_args = OmegaConf.load(cli_args.config)
-    args = OmegaConf.merge(path_args.args, conf_args)
+    args = OmegaConf.merge(args, conf_args)
 
 # Merge cli args into config ones
 args = OmegaConf.merge(args, cli_args)

@@ -72,10 +72,11 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
         sample = {}
         for m in self.modalities:
             img, label = self.get(m, ann_sample)
-            sample[m] = img
+
             if img is None:  #! If any modality image is None because of corrupted or missing file, take the sample at next index instead
                 return self.__getitem__((index + 1) % len(self.ann_list))
-            sample[m] = img
+            else:
+                sample[m] = img
             
         if self.additional_info:
             return sample, ann_sample.label, ann_sample.uid
@@ -88,6 +89,9 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
         Loads single image, applies transformations if required (online augmentation, normalization,...)
         '''    
         img = self._load_data(modality, ann_sample)
+        
+        if img is None: #!file corrupted or missing (handled in __get_item__)
+            return None, None
         
         #*apply transformations (convert to tensor, normalize)!
         if self.transform is not None: 
