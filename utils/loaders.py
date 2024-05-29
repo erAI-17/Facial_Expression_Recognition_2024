@@ -73,6 +73,10 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
         for m in self.modalities:
             img, label = self.get(m, ann_sample)
             sample[m] = img
+            if img is None:  #! If any modality image is None because of corrupted or missing file, take the sample at next index instead
+                return self.__getitem__((index + 1) % len(self.ann_list))
+            sample[m] = img
+            
         if self.additional_info:
             return sample, ann_sample.label, ann_sample.uid
         else:
@@ -85,7 +89,7 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
         '''    
         img = self._load_data(modality, ann_sample)
         
-        #!apply transformations (convert to tensor, normalize)!
+        #*apply transformations (convert to tensor, normalize)!
         if self.transform is not None: 
             transformed_img = self.transform[modality](img)
        
@@ -104,20 +108,31 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
         if modality == 'RGB':
             try:
                 img = cv2.imread(os.path.join(data_path, tmpl.format(ann_sample.gender, ann_sample.subj_id, ann_sample.code, ann_sample.description_label, 'Color')))
-            except FileNotFoundError:
-                print("Img not found at path:", os.path.join(data_path, tmpl.format(ann_sample.gender, ann_sample.subj_id, ann_sample.code, ann_sample.description_label, 'Color')))
-                raise FileNotFoundError      
-            # Convert the image from BGR to RGB
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            return img
+                
+                if img is None: #!image not found or corrupt, cv2 returns None
+                    print("Img not found at path:", os.path.join(data_path, tmpl.format(ann_sample.gender, ann_sample.subj_id, ann_sample.code, ann_sample.description_label, 'Color')))
+                    raise FileNotFoundError 
+                     
+                # Convert the image from BGR to RGB
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                return img
+            
+            except Exception as e: 
+                logger.error(f"Error loading RGB image: {e}")
+                return None
         
         if modality == 'DEPTH':
             try:
                 img = cv2.imread(os.path.join(data_path, tmpl.format(ann_sample.gender, ann_sample.subj_id, ann_sample.code, ann_sample.description_label, 'Depth')), cv2.IMREAD_UNCHANGED)
-            except FileNotFoundError:
-                print("Img not found at path:", os.path.join(data_path, tmpl.format(ann_sample.gender, ann_sample.subj_id, ann_sample.code, ann_sample.description_label, 'Depth')))
-                raise FileNotFoundError
-            return img
+                if img is None: #!image not found or corrupt, cv2 returns None
+                    print("Img not found at path:", os.path.join(data_path, tmpl.format(ann_sample.gender, ann_sample.subj_id, ann_sample.code, ann_sample.description_label, 'Depth')))
+                    raise FileNotFoundError
+                
+                return img
+            
+            except Exception as e: 
+                logger.error(f"Error loading DEPTH image: {e}")
+                return None
 
         else:
             raise NotImplementedError("Modality not implemented")
