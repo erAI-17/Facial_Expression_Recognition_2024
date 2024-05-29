@@ -11,7 +11,7 @@ class RGB_CNN(nn.Module):
     def __init__(self):
         num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
         super(RGB_CNN, self).__init__()
-        self.model = models.resnet18(weights=True)
+        self.model = models.resnet18(weights=True)  #download pretrained weights? ==True
         self.model.fc = nn.Linear(self.model.fc.in_features, num_classes)
         
         # Freeze all layers except the last fully connected layer

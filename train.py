@@ -83,7 +83,7 @@ def main():
                                                 drop_last=False)
     
     #!compute class weights for Weighted Cross Entropy Loss
-    class_weights = compute_class_weights(train_loader)
+    class_weights = compute_class_weights(train_loader).to(device)
     
     #!Create  EmotionRecognition  object that wraps all the models for each modality
     models = {}
