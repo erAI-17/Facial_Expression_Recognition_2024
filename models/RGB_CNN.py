@@ -14,11 +14,12 @@ class RGB_CNN(nn.Module):
         self.model = models.resnet18(weights=True)  #download pretrained weights? ==True
         self.model.fc = nn.Linear(self.model.fc.in_features, num_classes)
         
-        # Freeze all layers except the last fully connected layer
-        for param in self.model.parameters():
-            param.requires_grad = False
-        for param in self.model.fc.parameters():
-            param.requires_grad = True   
+        # Freeze all layers except the last two residual blocks and the last fully connected layer
+        for name, param in self.model.named_parameters():
+            if 'layer3' in name or 'layer4' in name or 'fc' in name:
+                param.requires_grad = True
+            else:
+                param.requires_grad = False
 
     def forward(self, x):
         x = self.model(x)
