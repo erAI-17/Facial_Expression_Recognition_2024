@@ -5,7 +5,6 @@ from functools import reduce
 import wandb
 import tasks
 from utils.logger import logger
-
 from typing import Dict, Tuple
 
 
@@ -16,7 +15,7 @@ class EmotionRecognition(tasks.Task, ABC):
                  batch_size: int, 
                  total_batch: int, 
                  models_dir: str, 
-                 num_classes: int, 
+                 class_weights: torch.FloatTensor, 
                  model_args: Dict[str, float], 
                  args, **kwargs) -> None:
         
@@ -46,17 +45,30 @@ class EmotionRecognition(tasks.Task, ABC):
         self.accuracy = utils.Accuracy(topk=(1, 5))
         self.loss = utils.AverageMeter()
         
-        self.criterion = torch.nn.CrossEntropyLoss(weight=None, size_average=None, ignore_index=-100,
+        
+        #! CrossEntropyLoss
+        # self.criterion = torch.nn.CrossEntropyLoss(weight=None, size_average=None, ignore_index=-100,
+        #                                            reduce=None, reduction='none')
+        #!Weighted CEL
+        self.criterion = torch.nn.CrossEntropyLoss(weight=class_weights, size_average=None, ignore_index=-100,
                                                    reduce=None, reduction='none')
         
         # Initialize the model parameters and the optimizer
         optim_params = {}
         self.optimizer = dict()
         for m in self.modalities:
+            #?select only parameters of the model that have requires_grad == True. If they have requires_grad == False it means they should not be
+            #? includeed in gradient computation and NOT be updated because of PRE-TRAINING FREEZING
             optim_params[m] = filter(lambda parameter: parameter.requires_grad, self.task_models[m].parameters())
-            self.optimizer[m] = torch.optim.SGD(optim_params[m], model_args[m].lr,
-                                                weight_decay=model_args[m].weight_decay,
-                                                momentum=model_args[m].sgd_momentum)
+            
+            #!ADAM
+            self.optimizer[m] = torch.optim.Adam(optim_params[m], model_args[m].lr,
+                                                weight_decay=model_args[m].weight_decay)
+            
+            #!SGD with momentum
+            # self.optimizer[m] = torch.optim.SGD(optim_params[m], model_args[m].lr,
+            #                                     weight_decay=model_args[m].weight_decay,
+            #                                     momentum=model_args[m].sgd_momentum)
 
     def forward(self, data: Dict[str, torch.Tensor], **kwargs) -> Tuple[Dict[str, torch.Tensor], Dict[str, torch.Tensor]]:
         """Forward step of the task

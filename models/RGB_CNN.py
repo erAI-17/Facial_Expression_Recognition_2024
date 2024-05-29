@@ -11,8 +11,14 @@ class RGB_CNN(nn.Module):
     def __init__(self):
         num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
         super(RGB_CNN, self).__init__()
-        self.model = models.resnet18(pretrained=True)
+        self.model = models.resnet18(weights=True)
         self.model.fc = nn.Linear(self.model.fc.in_features, num_classes)
+        
+        # Freeze all layers except the last fully connected layer
+        for param in self.model.parameters():
+            param.requires_grad = False
+        for param in self.model.fc.parameters():
+            param.requires_grad = True   
 
     def forward(self, x):
         x = self.model(x)

@@ -1,6 +1,7 @@
 from collections.abc import Mapping
 import torch
 from utils.args import args
+import numpy as np
 
 def get_domains_and_labels(arguments):    
     if arguments.dataset.name == 'CalD3r_MenD3s':
@@ -92,9 +93,10 @@ class Accuracy(object):
         return class_correct, class_total
 
 
-
 class AverageMeter(object):
-    """Computes and stores the average and current value"""
+    """Computes and stores the average and current value
+       Used for loss update  
+    """
     def __init__(self):
         self.reset()
         self.val, self.acc, self.avg, self.sum, self.count = 0, 0, 0, 0, 0
@@ -112,6 +114,17 @@ class AverageMeter(object):
         self.sum += val * n
         self.count += n
         self.avg = self.sum / self.count
+
+#!weights for Weighted Cross Entropy Loss
+def compute_class_weights(train_loader):
+    num_classes, _ = get_domains_and_labels(args)
+    class_counts = np.zeros(num_classes)
+    for _, labels in train_loader:
+        for label in labels:
+            class_counts[label.item()] += 1
+    class_weights = 1. / class_counts
+    class_weights = class_weights / class_weights.sum() * num_classes  # Normalize weights
+    return torch.FloatTensor(class_weights)
 
 
 def pformat_dict(d, indent=0):

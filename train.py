@@ -12,14 +12,13 @@ import os
 import models as model_list
 import tasks
 import wandb
+from utils.utils import compute_class_weights
 from utils.transforms import RGB_transf, DEPTH_transf
 
 # global variables among training functions
 training_iterations = 0
 np.random.seed(13696641)
 torch.manual_seed(13696641)
-
-
     
 def init_operations():
     """
@@ -49,24 +48,61 @@ def main():
     # device where training is run
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    #!handling transformation per-modality for all data loaders (train, validation,, testing)
+    transformations = {}
+    for m in args.modality:
+        if m == 'RGB':
+            transformations[m] = RGB_transf()
+        if m == 'DEPTH':
+            transformations[m] = DEPTH_transf()
+            
+    #!Create data loaders
+    train_loader = torch.utils.data.DataLoader(CalD3R_MenD3s_Dataset(args.dataset.name,
+                                                                        args.modality,
+                                                                        'train', 
+                                                                        args.dataset,
+                                                                        transformations,
+                                                                        additional_info=False),
+                                                batch_size=args.batch_size, #small BATCH_SIZE
+                                                shuffle=True,
+                                                num_workers=args.dataset.workers, 
+                                                pin_memory=True, 
+                                                drop_last=True)
+
+
+    val_loader = torch.utils.data.DataLoader(CalD3R_MenD3s_Dataset(args.dataset.name,
+                                                                    args.modality,
+                                                                    'val', 
+                                                                    args.dataset,
+                                                                    transformations,
+                                                                    additional_info=False),
+                                                batch_size=args.batch_size, 
+                                                shuffle=False,
+                                                num_workers=args.dataset.workers, 
+                                                pin_memory=True, 
+                                                drop_last=False)
+    
+    #!compute class weights for Weighted Cross Entropy Loss
+    class_weights = compute_class_weights(train_loader)
+    
+    #!Create  EmotionRecognition  object that wraps all the models for each modality
     models = {}
     logger.info("Instantiating models per modality")
     for m in args.modality:
         logger.info('{} Net\tModality: {}'.format(args.models[m].model, m))
-
         models[m] = getattr(model_list, args.models[m].model)()
 
-    # The models (for each modality) are wrapped into the EmotionRecognition task which manages all the training-testing
     emotion_classifier = tasks.EmotionRecognition("emotion-classifier", 
                                                  models, 
                                                  args.batch_size,
                                                  args.total_batch, 
                                                  args.models_dir, 
-                                                 num_classes,
+                                                 class_weights,
                                                  args.models, 
                                                  args=args)
     emotion_classifier.load_on_gpu(device)
-
+    
+    #!handle TRAIN and TESTING
     if args.action == "train":
         # resume_from argument is adopted in case of restoring from a checkpoint
         if args.resume_from is not None:
@@ -80,45 +116,10 @@ def main():
         #* There are 4 BATCH_SIZE inside TOTAL_BATCH each of which must be iterated (forward+backward) "args.train.num_iter" times,
         #* so total number of iterations done over the whole dataset (since we are using smaller batches BATCH_SIZE) is
         training_iterations = args.train.num_iter * (args.total_batch // args.batch_size)
-        
-        
-        #*handling transformation per-modality
-        transformations = {}
-        for m in args.modality:
-            if m == 'RGB':
-                transformations[m] = RGB_transf()
-            if m == 'DEPTH':
-                transformations[m] = DEPTH_transf()
             
-        #*All dataloaders are generated here
-        train_loader = torch.utils.data.DataLoader(CalD3R_MenD3s_Dataset(args.dataset.name,
-                                                                         args.modality,
-                                                                         'train', 
-                                                                         args.dataset,
-                                                                         transformations,
-                                                                         additional_info=False),
-                                                   batch_size=args.batch_size, #small BATCH_SIZE
-                                                   shuffle=True,
-                                                   num_workers=args.dataset.workers, 
-                                                   pin_memory=True, 
-                                                   drop_last=True)
-
-
-        val_loader = torch.utils.data.DataLoader(CalD3R_MenD3s_Dataset(args.dataset.name,
-                                                                       args.modality,
-                                                                       'val', 
-                                                                       args.dataset,
-                                                                       transformations,
-                                                                       additional_info=False),
-                                                 batch_size=args.batch_size, 
-                                                 shuffle=False,
-                                                 num_workers=args.dataset.workers, 
-                                                 pin_memory=True, 
-                                                 drop_last=False)
-        
         train(emotion_classifier, train_loader, val_loader, device, num_classes)
 
-    #*test/validate
+    #!TEST
     elif args.action == "test":
         if args.resume_from is not None:
             emotion_classifier.load_last_model(args.resume_from)
@@ -147,8 +148,7 @@ def train(emotion_classifier, train_loader, val_loader, device, num_classes):
     device: device to use (cpu, gpu)
     num_classes: int, number of classes in the classification problem
     """
-    
-    
+       
     global training_iterations
 
     data_loader_source = iter(train_loader)
@@ -265,62 +265,6 @@ def validate(model, val_loader, device, it, num_classes):
 
 
 
-
-def testing(model, val_loader, device, it, num_classes):
-    """
-    function to validate the model on the test set
-    
-    model: Task containing the model to be tested
-    val_loader: dataloader containing the validation data
-    device: device on which you want to test
-    it: int, iteration among the training num_iter at which the model is tested
-    num_classes: int, number of classes in the classification problem
-    """
-
-    model.reset_acc()
-    model.train(False)
-    logits = {}
-
-    # Iterate over the models
-    with torch.no_grad():
-        for i_val, (data, label) in enumerate(val_loader):
-            label = label.to(device)
-
-            for m in args.modality:
-                batch = data[m].shape[0]
-                logits[m] = torch.zeros((batch, num_classes)).to(device)
-            
-            for m in args.modality:
-                data[m] = data[m].to(device)
-
-            output, _ = model(data)
-            for m in args.modality:
-                logits[m] = output[m]
-            
-            model.compute_accuracy(logits, label)
-
-            if (i_val + 1) % (len(val_loader) // 5) == 0:
-                logger.info("[{}/{}] top1= {:.3f}% top5 = {:.3f}%".format(i_val + 1, len(val_loader),
-                                                                          model.accuracy.avg[1], model.accuracy.avg[5]))
-
-        class_accuracies = [(x / y) * 100 for x, y in zip(model.accuracy.correct, model.accuracy.total)]
-        logger.info('Final accuracy: top1 = %.2f%%\ttop5 = %.2f%%' % (model.accuracy.avg[1],
-                                                                      model.accuracy.avg[5]))
-        for i_class, class_acc in enumerate(class_accuracies):
-            logger.info('Class %d = [%d/%d] = %.2f%%' % (i_class,
-                                                         int(model.accuracy.correct[i_class]),
-                                                         int(model.accuracy.total[i_class]),
-                                                         class_acc))
-
-    logger.info('Accuracy by averaging class accuracies (same weight for each class): {}%'
-                .format(np.array(class_accuracies).mean(axis=0)))
-    test_results = {'top1': model.accuracy.avg[1], 'top5': model.accuracy.avg[5],
-                    'class_accuracies': np.array(class_accuracies)}
-
-    with open(os.path.join(args.log_dir, f'val_precision_{args.dataset.name}'), 'a+') as f:
-        f.write("[%d/%d]\tAcc@top1: %.2f%%\n" % (it, args.train.num_iter, test_results['top1']))
-
-    return test_results
 
 
 
