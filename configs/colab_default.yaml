@@ -11,9 +11,9 @@ models_dir: null
 fusion_modalities: True
 
 train:
-  num_iter: 200 
-  lr_steps: 190 
-  eval_freq: 10 
+  num_iter: 5000 
+  lr_steps: 480 
+  eval_freq: 500 
   
 test:
   
@@ -48,10 +48,10 @@ models:
     lr: 0.01
     sgd_momentum: 0.9
     weight_decay: 1e-7
-  MESH:
-    model: ???
-    normalize: ???
-    dropout: ???
+  FUSION:
+    model: feature_level_concat_FUSION_net
+    normalize: False
+    dropout: 0.5
     kwargs: {}
     lr_steps: 3000
     lr: 0.01
