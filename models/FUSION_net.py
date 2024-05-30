@@ -20,22 +20,25 @@ class feature_level_concat_FUSION_net(nn.Module):
         super(feature_level_concat_FUSION_net, self).__init__()
         self.rgb_model = RGB_CNN()  # Define the RGB network
         self.depth_model = DEPTH_CNN()  # Define the Depth network
-        self.fc1 = nn.Linear(128 * 28 * 28 * 2, 128)  # Adjust based on the feature map size
+        self.fc1 = nn.Linear(512 * 2, 128)  # Adjust based on the feature map size
         self.fc2 = nn.Linear(128, num_classes)  # Assuming 10 classes for classification
 
     def forward(self, data):
-        print('data RGB:', data['RGB'].size)
-        print('data DEPTH:', data['DEPTH'].size)
-        rgb_output, rgb_feat  = self.rgb_model(data['RGB']) 
-        depth_output, depth_feat = self.depth_model(data['DEPTH'])  
-        print(rgb_feat.size)
-        print(depth_feat.size)
-        combined = torch.cat((rgb_feat, depth_feat), dim=1)  # Concatenate features
-        combined = combined.view(-1, 128 * 28 * 28 * 2)  # Flatten the tensor
-        print(combined.size)
-        x = F.relu(self.fc1(combined))
+        rgb_output, rgb_feat  = self.rgb_model(data['RGB']) #?late feat [batch_size:32, 512]
+        depth_output, depth_feat = self.depth_model(data['DEPTH'])  #?late feat [batch_size:32, 512]
+        
+        #concatenate the features at different levels (mid, late) from the RGB and DEEP networks
+        combined_features = []
+        for level in rgb_feat.keys():
+            combined = torch.cat((rgb_feat[level], depth_feat[level]), dim=1)  # Concatenate features
+            combined_features.append(combined)
+
+        # Average all levels features
+        avg_combined = torch.mean(torch.stack(combined_features), dim=0)
+        
+        x = F.relu(self.fc1(avg_combined))
         x = self.fc2(x)
-        return x
+        return x, {}
     
     
 class Attention(nn.Module):
@@ -56,16 +59,16 @@ class Attention_Fusion_CNN(nn.Module):
         super(Attention_Fusion_CNN, self).__init__()
         self.RGB_CNN = RGB_CNN()
         self.DEPTH_CNN = DEPTH_CNN()
-        self.attention = Attention(128 * 28 * 28)  # Adjust based on the feature map size
-        self.fc1 = nn.Linear(128 * 28 * 28, 128)
+        self.attention = Attention(512)  # Adjust based on the feature map size
+        self.fc1 = nn.Linear(512, 128)
         self.fc2 = nn.Linear(128, num_classes)  # Assuming 10 classes for classification
 
     def forward(self, image, d_map):
         rgb_output, rgb_feat = self.RGB_CNN(image)
         depth_output, depth_feat = self.DEPTH_CNN(d_map)
-        rgb_features_flat = rgb_feat.view(-1, 128 * 28 * 28)
-        depth_features_flat = depth_feat.view(-1, 128 * 28 * 28)
+        rgb_features_flat = rgb_feat.view(-1, 512)
+        depth_features_flat = depth_feat.view(-1, 512)
         attended_features = self.attention(rgb_features_flat, depth_features_flat)
         x = F.relu(self.fc1(attended_features))
         x = self.fc2(x)
-        return x
+        return x, {}

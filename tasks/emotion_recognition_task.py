@@ -90,9 +90,9 @@ class EmotionRecognition(tasks.Task, ABC):
             
             if i_m == 0: #initially set up an empty dictionary for each modality to store corresponding features
                 for k in feat.keys():
-                    features[k] = {} #dictionary of dictionaries
+                    features[k] = {} 
             
-            for k in feat.keys(): #save features for each modality inside dictionary features
+            for k in feat.keys(): #for each level of feature extraction (early-mid-late), save the features extracted
                 features[k][m] = feat[k]
 
         return logits, features
