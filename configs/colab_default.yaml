@@ -49,9 +49,9 @@ models:
     sgd_momentum: 0.9
     weight_decay: 1e-7
   FUSION:
-    model: feature_level_concat_FUSION_net
-    normalize: False
-    dropout: 0.5
+    model: ???
+    normalize: ???
+    dropout: ???
     kwargs: {}
     lr_steps: 3000
     lr: 0.01
