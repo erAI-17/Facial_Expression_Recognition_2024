@@ -86,11 +86,20 @@ def main():
     class_weights = compute_class_weights(train_loader).to(device)
     
     #!Create  EmotionRecognition  object that wraps all the models for each modality
-    models = {}
-    logger.info("Instantiating models per modality")
-    for m in args.modality:
-        logger.info('{} Net\tModality: {}'.format(args.models[m].model, m))
-        models[m] = getattr(model_list, args.models[m].model)()
+    
+    #?if FUSING modalities, ONLY instanciate the fusion network. Else, instanciate a different model per modality and train them separately for logits fusion
+    if args.fusion_modalities == True:
+        logger.info("Instantiating FUSION model: %s", args.models['FUSION'].model)
+        
+        fusion_model = getattr(model_list, args.models['FUSION'].model)()
+        models = {'FUSION':fusion_model }
+    else:
+        models = {}
+        for m in args.modality:
+            logger.info("Instantiating models per modality")
+            logger.info('{} Net\tModality: {}'.format(args.models[m].model, m))
+            models[m] = getattr(model_list, args.models[m].model)()
+        
 
     emotion_classifier = tasks.EmotionRecognition("emotion-classifier", 
                                                  models, 
@@ -183,8 +192,14 @@ def train(emotion_classifier, train_loader, val_loader, device, num_classes):
         #* PASS DATA AND LABELS TO MODELS
         source_label = source_label.to(device) #?labels to GPU
         data = {}
-        for m in args.modality:
-            data[m] = source_data[m].to(device) #? data to GPU
+        
+        #?if FUSING modalities, data dictionary contains RGB and DEPTH for FUSION network. 
+        if args.fusion_modalities == True:
+            data['FUSION'] = {m: source_data[m].to(device) for m in args.modality}
+        else: #? else data dictionary contains SEPARATE modality data for each modality (they will be passed into different models)
+            for m in args.modality:
+                data[m] = source_data[m].to(device) #? data to GPU
+                
         logits, _ = emotion_classifier.forward(data)
         emotion_classifier.compute_loss(logits, source_label, loss_weight=1)
         emotion_classifier.backward(retain_graph=False)
@@ -235,10 +250,15 @@ def validate(model, val_loader, device, it, num_classes):
         for i_val, (data, label) in enumerate(val_loader): #*for each batch in val loader
             
             label = label.to(device)
-            for m in args.modality:
-                data[m] = data[m].to(device)
-                logits, _ = model.forward(data)
-                model.compute_accuracy(logits, label)
+            #?if FUSING modalities, data dictionary contains RGB and DEPTH for FUSION network. 
+            if args.fusion_modalities == True:
+                data['FUSION'] = {m: data[m].to(device) for m in args.modality} #a dictionary itself
+            else: #? else data dictionary contains SEPARATE modality data for each modality (they will be passed into different models)
+                for m in args.modality:
+                    data[m] = data[m].to(device) #? data to GPU
+            
+            logits, _ = model.forward(data)
+            model.compute_accuracy(logits, label)
 
             if (i_val + 1) % (len(val_loader) // 5) == 0:
                 logger.info("[{}/{}] top1= {:.3f}% top5 = {:.3f}%".format(i_val + 1, len(val_loader),

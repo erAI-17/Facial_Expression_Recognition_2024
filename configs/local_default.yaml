@@ -8,6 +8,7 @@ wandb_name: null # needed for wandb logging
 resume_from: null # checkpoint directory
 logname: null # name of the logs
 models_dir: null # directory containing all the models
+fusion_modalities: True
 
 train:
   num_iter: 500 #10000?? number of training iterations with BATCH_SIZE (32) NOT on TOTAL_BATCH (128)
@@ -48,8 +49,8 @@ models:
     lr: 0.01
     sgd_momentum: 0.9
     weight_decay: 1e-7
-  MESH:
-    model: MESH_CNN
+  FUSION:
+    model: feature_level_concat_FUSION_net
     normalize: False
     dropout: 0.5
     kwargs: {}
