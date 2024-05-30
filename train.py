@@ -252,7 +252,7 @@ def validate(model, val_loader, device, it, num_classes):
             label = label.to(device)
             #?if FUSING modalities, data dictionary contains RGB and DEPTH for FUSION network. 
             if args.fusion_modalities == True:
-                data['FUSION'] = {m: data[m].to(device) for m in args.modality} #a dictionary itself
+                data['FUSION'] = {m: data[m].to(device) for m in args.modality} #a dictionary
             else: #? else data dictionary contains SEPARATE modality data for each modality (they will be passed into different models)
                 for m in args.modality:
                     data[m] = data[m].to(device) #? data to GPU

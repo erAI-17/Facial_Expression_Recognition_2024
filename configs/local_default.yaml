@@ -13,7 +13,7 @@ fusion_modalities: True
 train:
   num_iter: 500 #10000?? number of training iterations with BATCH_SIZE (32) NOT on TOTAL_BATCH (128)
   lr_steps: 450 #8500 steps before reducing learning rate
-  eval_freq: 5 # evaluation frequency
+  eval_freq: 2 # evaluation frequency
   
 test:
   
