@@ -36,9 +36,9 @@ class RGB_CNN(nn.Module):
         x = self.model.layer4(x)
         x = self.model.avgpool(x)
         #? Extract features before the last fully connected layer
-        features = torch.flatten(x, 1)
-        x = self.model.fc(features)
-        return x, {'late_feat': features}
+        late_feat = torch.flatten(x, 1)
+        x = self.model.fc(late_feat)
+        return x, {'late_feat': late_feat}
 
 # #!RAW
 # class RGB_CNN(nn.Module):
