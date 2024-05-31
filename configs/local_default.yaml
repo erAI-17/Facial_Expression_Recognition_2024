@@ -11,17 +11,17 @@ models_dir: null # directory containing all the models
 fusion_modalities: True
 
 train:
-  num_iter: 500 #10000?? number of training iterations with BATCH_SIZE (32) NOT on TOTAL_BATCH (128)
-  lr_steps: 450 #8500 steps before reducing learning rate
-  eval_freq: 2 # evaluation frequency
+  num_iter: 500 
+  lr_steps: 450 
+  eval_freq: 2 
   
 test:
   
 dataset:
   name: CalD3r_MenD3s #Bosphorus 
-  annotations_path: ..\Datasets  #train_val  #Action-Net/data/ #!!!!
-  workers: 4 # number of workers for the dataloader
-  resolution: 224 # input resolution to the model
+  annotations_path: ..\Datasets  
+  workers: 4 
+  resolution: 224 
   RGB:
     data_path:  ..\Datasets
   DEPTH:
@@ -29,7 +29,6 @@ dataset:
   MESH:
     data_path: ..\Datasets
 
-# these are the action recognition models for each modality
 models:
   RGB:
     model: RGB_CNN

@@ -47,11 +47,11 @@ class EmotionRecognition(tasks.Task, ABC):
         
         
         #! CrossEntropyLoss
-        # self.criterion = torch.nn.CrossEntropyLoss(weight=None, size_average=None, ignore_index=-100,
-        #                                            reduce=None, reduction='none')
+        self.criterion = torch.nn.CrossEntropyLoss(weight=None, size_average=None, ignore_index=-100,
+                                                    reduce=None, reduction='none')
         #!Weighted CEL
-        self.criterion = torch.nn.CrossEntropyLoss(weight=class_weights, size_average=None, ignore_index=-100,
-                                                   reduce=None, reduction='none')
+        #self.criterion = torch.nn.CrossEntropyLoss(weight=class_weights, size_average=None, ignore_index=-100,
+        #                                           reduce=None, reduction='none')
         
         # Initialize the model parameters and the optimizer
         optim_params = {}
@@ -61,6 +61,9 @@ class EmotionRecognition(tasks.Task, ABC):
             #? includeed in gradient computation and NOT be updated because of PRE-TRAINING FREEZING
             optim_params[m] = filter(lambda parameter: parameter.requires_grad, self.task_models[m].parameters())
             
+            #? optim_params[m] : The parameters of the model  m  that require gradients. 
+            #? model_args[m].lr : Initial learning rate for the optimizer
+            #? weight_decay : The weight decay (L2 penalty) for the optimizer. 
             #!ADAM
             self.optimizer[m] = torch.optim.Adam(optim_params[m], model_args[m].lr,
                                                 weight_decay=model_args[m].weight_decay)
