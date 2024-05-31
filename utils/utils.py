@@ -122,7 +122,7 @@ def compute_class_weights(train_loader):
     for _, labels in train_loader:
         for label in labels:
             class_counts[label.item()] += 1
-    class_weights = 1. / class_counts
+    class_weights = 1. / class_counts #reciproc: gives higher weights to low represented classes and viceversa
     class_weights = class_weights / class_weights.sum() * num_classes  # Normalize weights
     return torch.FloatTensor(class_weights)
 
