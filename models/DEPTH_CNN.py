@@ -5,14 +5,14 @@ import utils
 from utils.args import args
 import torchaudio.transforms as T
 from torchvision import models
-from torchvision.models import ResNet18_Weights
+from torchvision.models import ResNet18_Weights, ResNet50_Weights
 
 #!PRETRAINED RESNET-18
 class DEPTH_CNN(nn.Module):
     def __init__(self):
         num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
         super(DEPTH_CNN, self).__init__()
-        self.model = models.resnet18(weights=ResNet18_Weights.DEFAULT) 
+        self.model = models.resnet50(weights=ResNet50_Weights.DEFAULT) 
         self.model.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
         self.model.fc = nn.Linear(self.model.fc.in_features, num_classes)
         

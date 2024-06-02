@@ -20,7 +20,8 @@ class feature_level_concat_FUSION_net(nn.Module):
         super(feature_level_concat_FUSION_net, self).__init__()
         self.rgb_model = RGB_CNN()  # Define the RGB network
         self.depth_model = DEPTH_CNN()  # Define the Depth network
-        self.fc1 = nn.Linear(512 * 2, 128)  # Adjust based on the feature map size
+        #self.fc1 = nn.Linear(512 * 2, 128)  # ResNet18
+        self.fc1 = nn.Linear(2048 * 2, 128)  # ResNet50
         self.fc2 = nn.Linear(128, num_classes)  # Assuming 10 classes for classification
 
     def forward(self, data):
@@ -72,3 +73,33 @@ class Attention_Fusion_CNN(nn.Module):
         x = F.relu(self.fc1(attended_features))
         x = self.fc2(x)
         return x, {}
+    
+    
+#!!!FOCAL LOSS
+class FocalLoss(nn.Module):
+    def __init__(self, alpha=1, gamma=2, reduction='mean'):
+        '''
+         Args:
+            alpha (float): Weighting factor for the rare class. Default is 1.
+            gamma (float): Focusing parameter. Default is 2.
+            reduction (str): Specifies the reduction to apply to the output: 'none' | 'mean' | 'sum'. Default is 'mean'.
+        '''
+        super(FocalLoss, self).__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+        self.reduction = reduction
+
+    def forward(self, inputs, targets):
+        # Cross entropy loss
+        BCE_loss = F.cross_entropy(inputs, targets, reduction='none')
+        # The probability of the true class
+        pt = torch.exp(-BCE_loss)
+        # Focal loss calculation
+        F_loss = self.alpha * (1 - pt) ** self.gamma * BCE_loss
+
+        if self.reduction == 'mean':
+            return F_loss.mean()
+        elif self.reduction == 'sum':
+            return F_loss.sum()
+        else:
+            return F_loss

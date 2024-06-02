@@ -6,6 +6,7 @@ import wandb
 import tasks
 from utils.logger import logger
 from typing import Dict, Tuple
+from models.FUSION_net import FocalLoss
 
 
 class EmotionRecognition(tasks.Task, ABC):
@@ -52,6 +53,9 @@ class EmotionRecognition(tasks.Task, ABC):
         #!Weighted CEL
         #self.criterion = torch.nn.CrossEntropyLoss(weight=class_weights, size_average=None, ignore_index=-100,
         #                                           reduce=None, reduction='none')
+        
+        #!Focal Loss #dynamically scales the loss for each sample based on the prediction confidence.
+        #self.criterion = FocalLoss(alpha=1, gamma=2, reduction='mean')
         
         # Initialize the model parameters and the optimizer
         optim_params = {}
@@ -144,6 +148,27 @@ class EmotionRecognition(tasks.Task, ABC):
             self.optimizer[m].param_groups[-1]["lr"] = new_lr
 
             logger.info(f"Reducing learning rate modality {m}: {prev_lr} --> {new_lr}")
+            
+        # #?gradually unfreeze layers of pretrained network
+        # def unfreeze_layers(emotion_classifier, layers_to_unfreeze):
+        #     for name, param in emotion_classifier.named_parameters():
+        #         if any(layer in name for layer in layers_to_unfreeze):
+        #             param.requires_grad = True
+        
+        
+        # initial_unfreeze_layers = [['layer4'], ['layer3']]
+        # additional_unfreeze_layers = [['layer2'], ['layer1'], ['conv1']]  # Adjust as needed
+        
+        # unfreeze_interval = 1500 # between 5 epochs (1078) and 10 epochs (2156)
+        # unfreeze_iter = set(range(0, args.train.num_iter, unfreeze_interval))  # Epochs at which to unfreeze layers
+        
+        # if real_iter in unfreeze_iter:
+        #     layers_to_unfreeze = initial_unfreeze_layers.pop(0) if initial_unfreeze_layers else additional_unfreeze_layers.pop(0)
+        #     unfreeze_layers(emotion_classifier, layers_to_unfreeze)
+        #     optimizer = optim.Adam(filter(lambda p: p.requires_grad, emotion_classifier.parameters()), emotion_classifier.lr) #take current learning rate 
+        #!###############################################    
+            
+            
 
     def reset_loss(self):
         """Reset the classification loss.

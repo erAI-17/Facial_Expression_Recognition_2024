@@ -171,9 +171,11 @@ def train(emotion_classifier, train_loader, val_loader, device, num_classes):
     #*epoch: forward and backward of ALL DATASET (If dataset contains 1000 samples and batch size= 100, 1 epoch consists of 10 iterations)
     for i in range(iteration, training_iterations): #ITERATIONS on batches (of BATCH_SIZE) 
         real_iter = (i + 1) / (args.total_batch // args.batch_size)
-        if real_iter == args.train.lr_steps: #? reduce learning rate 
-            emotion_classifier.reduce_learning_rate()
-    
+        
+        #? reduce learning rate 
+        if real_iter == args.train.lr_steps:
+            emotion_classifier.reduce_learning_rate() 
+            
         #*we reason in terms of ITERATIONS on batches (of BATCH_SIZE) not EPOCHS!!
         #? If the  data_loader_source  iterator is exhausted (i.e., it has iterated over the entire dataset), a  StopIteration  exception is raised. 
         #? The  except StopIteration  block catches this exception and reinitializes the iterator with effectively starting the iteration from the beginning of the dataset again. 
@@ -214,7 +216,7 @@ def train(emotion_classifier, train_loader, val_loader, device, num_classes):
             emotion_classifier.check_grad()
             emotion_classifier.step() #optimization step
             emotion_classifier.zero_grad()
-
+    
         #? every "eval_freq" iterations the validation is done
         if real_iter.is_integer() and real_iter % args.train.eval_freq == 0:
             val_metrics = validate(emotion_classifier, val_loader, device, int(real_iter), num_classes)
