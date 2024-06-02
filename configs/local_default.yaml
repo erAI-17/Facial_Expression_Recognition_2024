@@ -31,7 +31,7 @@ dataset:
 
 models:
   RGB:
-    model: RGB_CNN
+    model: RGB_ResNet50
     normalize: False
     dropout: 0.4
     kwargs: {}
@@ -40,7 +40,7 @@ models:
     sgd_momentum: 0.9
     weight_decay: 1e-7
   DEPTH:
-    model: DEPTH_CNN
+    model: DEPTH_ResNet50
     normalize: False
     dropout: 0.5
     kwargs: {}
@@ -56,4 +56,4 @@ models:
     lr_steps: 3000
     lr: 0.01
     sgd_momentum: 0.9
-    weight_decay: 1e-7
+    weight_decay: 1e-5
