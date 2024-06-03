@@ -11,8 +11,8 @@ models_dir: null
 fusion_modalities: True
 
 train:
-  num_iter: 5000 
-  lr_steps: 3000 
+  num_iter: 10000 
+  lr_steps: 5000 
   eval_freq: 500 
   
 test:
