@@ -1,7 +1,7 @@
 action: ???
 name: ???
 modality: ???
-total_batch: 32 
+total_batch: 128 
 batch_size: 32 
 gpus: null 
 wandb_name: null 
