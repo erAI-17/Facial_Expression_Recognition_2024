@@ -12,10 +12,10 @@ class RGB_ResNet18(nn.Module):
     def __init__(self):
         num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
         super(RGB_ResNet18, self).__init__()
-        self.model = models.resnet50(weights=ResNet50_Weights.DEFAULT)  #download pretrained weights? ==True, ResNet18_Weights.DEFAULT TO GET THE MOST UPDATED WEIGHTS
+        self.model = models.resnet18(weights=ResNet18_Weights.DEFAULT)  #download pretrained weights? ==True, ResNet18_Weights.DEFAULT TO GET THE MOST UPDATED WEIGHTS
         self.model.fc = nn.Linear(self.model.fc.in_features, num_classes)
         
-        #? Freeze all layers except the last two residual blocks and the last fully connected layer
+        #? Freeze all layers except the last residual blocks and the last fully connected layer
         for name, param in self.model.named_parameters():
             if 'layer4' in name or 'fc' in name:
                 param.requires_grad = True
@@ -37,8 +37,10 @@ class RGB_ResNet18(nn.Module):
         x = self.model.avgpool(x)
         #? Extract features before the last fully connected layer
         late_feat = torch.flatten(x, 1)
-        x = self.model.fc(late_feat)
-        return x, {'late_feat': late_feat}
+        
+        #x = self.model.fc(late_feat) #!unnecessary computation
+        
+        return x , {'late_feat': late_feat}
     
 #! RESNET50
 class RGB_ResNet50(nn.Module):
@@ -69,8 +71,10 @@ class RGB_ResNet50(nn.Module):
         x = self.model.layer4(x)
         x = self.model.avgpool(x)
         #? Extract features before the last fully connected layer
-        late_feat = torch.flatten(x, 1)
-        x = self.model.fc(late_feat)
+        late_feat = torch.flatten(x, 1) #[batch_size, 2048, 1, 1] , then flattened to  [batch_size, 2048]
+        
+        #x = self.model.fc(late_feat) #!unnecessary computation
+        
         return x, {'late_feat': late_feat}
     
 

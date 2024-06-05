@@ -12,12 +12,12 @@ class DEPTH_ResNet18(nn.Module):
     def __init__(self):
         num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
         super(DEPTH_ResNet18, self).__init__()
-        self.model = models.resnet50(weights=ResNet50_Weights.DEFAULT) 
+        self.model = models.resnet18(weights=ResNet50_Weights.DEFAULT) 
         
         # Modify the first convolutional layer to accept grayscale images
         self.model.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
         # Initialize the new conv1 layer with pretrained weights
-        pretrained_weights = models.resnet50(weights=ResNet50_Weights.DEFAULT).conv1.weight
+        pretrained_weights = models.resnet18(weights=ResNet18_Weights.DEFAULT).conv1.weight
         self.model.conv1.weight.data = pretrained_weights.mean(dim=1, keepdim=True)
         
         self.model.fc = nn.Linear(self.model.fc.in_features, num_classes)
@@ -45,7 +45,9 @@ class DEPTH_ResNet18(nn.Module):
         x = self.model.avgpool(x)
         #? Extract features before the last fully connected layer
         features = torch.flatten(x, 1)
-        x = self.model.fc(features)
+        
+        #x = self.model.fc(features) #!unnecessary computation
+        
         return x, {'late_feat': features}
 
 #! RESNET50
@@ -85,6 +87,8 @@ class DEPTH_ResNet50(nn.Module):
         x = self.model.avgpool(x)
         #? Extract features before the last fully connected layer
         late_feat = torch.flatten(x, 1)
-        x = self.model.fc(late_feat)
+        
+        #x = self.model.fc(late_feat) #!unnecessary computation
+        
         return x, {'late_feat': late_feat}
     

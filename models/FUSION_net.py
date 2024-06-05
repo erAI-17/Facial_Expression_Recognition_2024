@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import utils
 from utils.args import args
 import torchaudio.transforms as T
-
+import models as model_list
 from models.RGB_CNN import RGB_ResNet18, RGB_ResNet50
 from models.DEPTH_CNN import DEPTH_ResNet18, DEPTH_ResNet50
 
@@ -17,8 +17,9 @@ class feature_level_concat_FUSION_net(nn.Module):
     def __init__(self):
         num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
         super(feature_level_concat_FUSION_net, self).__init__()
-        self.rgb_model = RGB_ResNet50()  # Define the RGB network
-        self.depth_model = DEPTH_ResNet50()  # Define the Depth network
+        #?define RGB and Depth networks (from configuration file)
+        self.rgb_model = getattr(model_list, args.models['RGB'].model)() #RGB_ResNet50()  
+        self.depth_model = getattr(model_list, args.models['DEPTH'].model)() #RGB_ResNet50() 
     
         #self.fc1 = nn.Linear(512 * 2, 128)  # ResNet18
         self.fc1 = nn.Linear(2048 * 2, 128)  # ResNet50
