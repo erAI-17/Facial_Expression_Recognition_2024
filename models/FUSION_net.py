@@ -127,6 +127,11 @@ class Attention_Fusion_CNN(nn.Module):
         rgb_output, rgb_feat  = self.rgb_model(data['RGB'])
         depth_output, depth_feat = self.depth_model(data['DEPTH'])
         
+        #resnet18
+            #mid: [batch_size, 256, 14, 14] #late: #[batch_size, 512, 1, 1]
+        #resnet50
+            #mid: [batch_size, 1024, 14, 14] #late: #[batch_size, 2048, 1, 1]
+        
         # Apply attention to mid-level features
         mid_feats = self.attention_mid(rgb_feat['mid_feat'], depth_feat['mid_feat'])
         
