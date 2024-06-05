@@ -16,7 +16,7 @@ class feature_FUSION_net(nn.Module):
     '''
     def __init__(self):
         num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
-        super(feature_level_concat_FUSION_net, self).__init__()
+        super(feature_FUSION_net, self).__init__()
         #?define RGB and Depth networks (from configuration file)
         self.rgb_model = getattr(model_list, args.models['RGB'].model)() #RGB_ResNet50()  
         self.depth_model = getattr(model_list, args.models['DEPTH'].model)() #RGB_ResNet50() 
