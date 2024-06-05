@@ -11,25 +11,41 @@ from models.DEPTH_CNN import DEPTH_ResNet18, DEPTH_ResNet50
 class feature_FUSION_net(nn.Module):
     '''
     Naive network that concatenates the features from 2 modalities (RGB and Depth map).
-    Performs better than logit level fusion, but requires additional training.
-    Still the CONCATENATION fusion is NOT efficient
+    Still the CONCATENATION + level_averaging fusion is NOT efficient
+    
+    This handles both Resnet18 and Resnet50
     '''
     def __init__(self):
         num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
         super(feature_FUSION_net, self).__init__()
+        
         #?define RGB and Depth networks (from configuration file)
-        self.rgb_model = getattr(model_list, args.models['RGB'].model)() #RGB_ResNet50()  
-        self.depth_model = getattr(model_list, args.models['DEPTH'].model)() #RGB_ResNet50() 
-    
-        self.conv1 = nn.Conv2d(4096, 2048, kernel_size=3, padding=1)
-        self.bn1 = nn.BatchNorm2d(2048)
-        self.conv2 = nn.Conv2d(2048, 1024, kernel_size=3, padding=1)
-        self.bn2 = nn.BatchNorm2d(1024)
+        self.rgb_model = getattr(model_list, args.models['RGB'].model)()
+        self.depth_model = getattr(model_list, args.models['DEPTH'].model)() 
 
-        # Fully connected layers
-        self.fc1 = nn.Linear(1024 * 7 * 7, 512)  # Adjust dimensions based on input size
-        self.fc2 = nn.Linear(512, 128)
-        self.fc3 = nn.Linear(128, num_classes)  # Assuming num_classes for classification
+        #!Resnet18
+        if args.models['RGB'].model == 'RGB_ResNet18' and args.models['DEPTH'].model == 'DEPTH_ResNet18':
+            self.conv1 = nn.Conv2d(2048, 1024, kernel_size=3, padding=1)
+            self.bn1 = nn.BatchNorm2d(1024)
+            self.conv2 = nn.Conv2d(1024, 512, kernel_size=3, padding=1)
+            self.bn2 = nn.BatchNorm2d(512)
+
+            # Fully connected layers
+            self.fc1 = nn.Linear(512 * 7 * 7, 256) 
+            self.fc2 = nn.Linear(256, 128)
+            self.fc3 = nn.Linear(128, num_classes)  
+        
+        #!Resnet50
+        if args.models['RGB'].model == 'RGB_ResNet50' and args.models['DEPTH'].model == 'DEPTH_ResNet50':
+            self.conv1 = nn.Conv2d(4096, 2048, kernel_size=3, padding=1)
+            self.bn1 = nn.BatchNorm2d(2048)
+            self.conv2 = nn.Conv2d(2048, 1024, kernel_size=3, padding=1)
+            self.bn2 = nn.BatchNorm2d(1024)
+
+            # Fully connected layers
+            self.fc1 = nn.Linear(1024 * 7 * 7, 512)  
+            self.fc2 = nn.Linear(512, 128)
+            self.fc3 = nn.Linear(128, num_classes) 
 
     def forward(self, data):
         rgb_output, rgb_feat  = self.rgb_model(data['RGB']) #?late feat [batch_size:32, 512]
@@ -48,7 +64,7 @@ class feature_FUSION_net(nn.Module):
         x = F.relu(self.bn1(self.conv1(avg_combined)))
         x = F.relu(self.bn2(self.conv2(x)))
 
-        # Flatten the features
+        # Flatten the features to prepare them for FC
         x = torch.flatten(x, 1)
 
         # Apply fully connected layers
