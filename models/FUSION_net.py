@@ -25,75 +25,80 @@ class feature_FUSION_net(nn.Module):
 
         #!Resnet18
         if args.models['RGB'].model == 'RGB_ResNet18' and args.models['DEPTH'].model == 'DEPTH_ResNet18':
-            self.conv1 = nn.Conv2d(2048, 1024, kernel_size=3, padding=1)
-            self.bn1 = nn.BatchNorm2d(1024)
-            self.conv2 = nn.Conv2d(1024, 512, kernel_size=3, padding=1)
-            self.bn2 = nn.BatchNorm2d(512)
+            self.conv1 = nn.Conv2d(512, 512, kernel_size=3, padding=1)
+            self.bn1 = nn.BatchNorm2d(512)
 
             # Fully connected layers
-            self.fc1 = nn.Linear(512 * 7 * 7, 256) 
-            self.fc2 = nn.Linear(256, 128)
-            self.fc3 = nn.Linear(128, num_classes)  
+            self.fc1 = nn.Linear(512 * 14 * 14 + 512 * 2, 1024) 
+            self.fc2 = nn.Linear(1024, 512)
+            self.fc3 = nn.Linear(512, num_classes)   
+            
         
         #!Resnet50
         if args.models['RGB'].model == 'RGB_ResNet50' and args.models['DEPTH'].model == 'DEPTH_ResNet50':
-            self.conv1 = nn.Conv2d(4096, 2048, kernel_size=3, padding=1)
+            self.conv1 = nn.Conv2d(2048, 2048, kernel_size=3, padding=1)
             self.bn1 = nn.BatchNorm2d(2048)
-            self.conv2 = nn.Conv2d(2048, 1024, kernel_size=3, padding=1)
-            self.bn2 = nn.BatchNorm2d(1024)
 
             # Fully connected layers
-            self.fc1 = nn.Linear(1024 * 7 * 7, 512)  
-            self.fc2 = nn.Linear(512, 128)
-            self.fc3 = nn.Linear(128, num_classes) 
+            self.fc1 = nn.Linear(2048 * 14 * 14 + 2048 *2, 1024)  
+            self.fc2 = nn.Linear(1024, 512)
+            self.fc3 = nn.Linear(512, num_classes) 
 
     def forward(self, data):
-        rgb_output, rgb_feat  = self.rgb_model(data['RGB']) #?late feat [batch_size:32, 512]
-        depth_output, depth_feat = self.depth_model(data['DEPTH'])  #?late feat [batch_size:32, 512]
+        rgb_output, rgb_feat  = self.rgb_model(data['RGB'])
+        depth_output, depth_feat = self.depth_model(data['DEPTH'])
         
-        #concatenate the features at different levels (mid, late) from the RGB and DEEP networks
-        combined_features = []
-        for level in rgb_feat.keys():
-            combined = torch.cat((rgb_feat[level], depth_feat[level]), dim=1)  # Concatenate features
-            combined_features.append(combined)
+        #resnet18
+            #mid: [batch_size, 256, 14, 14] #late: #[batch_size, 512, 1, 1]
+        #resnet50
+            #mid: [batch_size, 1024, 14, 14] #late: #[batch_size, 2048, 1, 1]
+                    
+        # Extract mid-level and late-level features
+        mid_feat_rgb = rgb_feat['mid_feat']
+        mid_feat_depth = depth_feat['mid_feat']
+        late_feat_rgb = rgb_feat['late_feat']
+        late_feat_depth = depth_feat['late_feat']
 
-        # Average all levels features
-        avg_combined = torch.mean(torch.stack(combined_features), dim=0)
+        # Concatenate mid-level features
+        mid_combined = torch.cat((mid_feat_rgb, mid_feat_depth), dim=1)
 
-        # Apply additional convolutional layers
-        x = F.relu(self.bn1(self.conv1(avg_combined)))
-        x = F.relu(self.bn2(self.conv2(x)))
+        # Apply additional convolutions on mid-level features
+        x = F.relu(self.bn1(self.conv1(mid_combined)))
+        if hasattr(self, 'conv2'):
+            x = F.relu(self.bn2(self.conv2(x)))
 
-        # Flatten the features to prepare them for FC
+        # Flatten mid-level features
         x = torch.flatten(x, 1)
 
+        # Concatenate flattened mid-level features with late-level features
+        late_combined = torch.cat((late_feat_rgb, late_feat_depth), dim=1)
+        # Flatten late-level features
+        late_flat = torch.flatten(late_combined, 1)
+        
+        combined_features = torch.cat((x, late_flat), dim=1)
+
         # Apply fully connected layers
-        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc1(combined_features))
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
-        
+
         return x, {}
     
     
+    
 class Attention(nn.Module):
-    def __init__(self, feature_dim):
+    def __init__(self, feat_dim):
         super(Attention, self).__init__()
-        self.fc1 = nn.Linear(feature_dim * 2, feature_dim)
-        self.fc2 = nn.Linear(feature_dim, 1)
+        self.fc1 = nn.Linear(feat_dim * 2, feat_dim)
+        self.fc2 = nn.Linear(feat_dim, 1)
 
-    def forward(self, rgb_features, depth_features):
-        combined_features = torch.cat((rgb_features, depth_features), dim=1)
-        attention_weights = torch.sigmoid(self.fc2(F.relu(self.fc1(combined_features))))
-        attended_features = attention_weights * rgb_features + (1 - attention_weights) * depth_features
-        return attended_features
+    def forward(self, rgb_feats, depth_feats):
+        combined_feats = torch.cat((rgb_feats, depth_feats), dim=1)
+        attention_weights = torch.sigmoid(self.fc2(F.relu(self.fc1(combined_feats))))
+        attended_feats = attention_weights * rgb_feats + (1 - attention_weights) * depth_feats
+        return attended_feats
     
 class Attention_Fusion_CNN(nn.Module):
-    '''
-    Naive network that concatenates the features from 2 modalities (RGB and Depth map).
-    Still the CONCATENATION + level_averaging fusion is NOT efficient
-    
-    This handles both Resnet18 and Resnet50
-    '''
     def __init__(self):
         num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
         super(Attention_Fusion_CNN, self).__init__()
@@ -104,35 +109,35 @@ class Attention_Fusion_CNN(nn.Module):
         
         #!Resnet18
         if args.models['RGB'].model == 'RGB_ResNet18' and args.models['DEPTH'].model == 'DEPTH_ResNet18':            
-            self.attention_mid = Attention(1024)  # Adjust based on the feature map size
-            self.attention_late = Attention(2048)  # Adjust based on the feature map size
-            self.fc1 = nn.Linear(2048, 512)
-            self.fc2 = nn.Linear(512, num_classes)
+            self.attention_mid = Attention(256)  # Adjust based on the feature map size
+            self.attention_late = Attention(512)  # Adjust based on the feature map size
+            self.fc1 = nn.Linear(512 * 2, 256)
+            self.fc2 = nn.Linear(256, num_classes)
 
 
         #!Resnet50
         if args.models['RGB'].model == 'RGB_ResNet50' and args.models['DEPTH'].model == 'DEPTH_ResNet50':
             self.attention_mid = Attention(1024)  # Adjust based on the feature map size
             self.attention_late = Attention(2048)  # Adjust based on the feature map size
-            self.fc1 = nn.Linear(2048, 512)
-            self.fc2 = nn.Linear(512, num_classes)
+            self.fc1 = nn.Linear(2048 * 2, 256)
+            self.fc2 = nn.Linear(256, num_classes)
 
 
-    def forward(self, image, d_map):
-        rgb_output, rgb_feat = self.RGB_CNN(image)
-        depth_output, depth_feat = self.DEPTH_CNN(d_map)
+    def forward(self, data):
+        rgb_output, rgb_feat  = self.rgb_model(data['RGB'])
+        depth_output, depth_feat = self.depth_model(data['DEPTH'])
         
         # Apply attention to mid-level features
-        mid_features = self.attention_mid(rgb_feat['mid_feat'], depth_feat['mid_feat'])
+        mid_feats = self.attention_mid(rgb_feat['mid_feat'], depth_feat['mid_feat'])
         
-        # Apply attention to late-level features
-        late_features = self.attention_late(rgb_feat['late_feat'], depth_feat['late_feat'])
+        # Apply attention to late-level feats
+        late_feats = self.attention_late(rgb_feat['late_feat'], depth_feat['late_feat'])
         
-        # Combine mid and late features
-        combined_features = torch.cat((mid_features, late_features), dim=1)
+        # Combine mid and late feats
+        combined_feats = torch.cat((mid_feats, late_feats), dim=1)
         
         # Apply fully connected layers
-        x = F.relu(self.fc1(combined_features))
+        x = F.relu(self.fc1(combined_feats))
         x = self.fc2(x)
         
         return x, {}

@@ -11,7 +11,7 @@ from torchvision.models import ResNet18_Weights, ResNet50_Weights
 class DEPTH_ResNet18(nn.Module):
     def __init__(self):
         super(DEPTH_ResNet18, self).__init__()
-        self.model = models.resnet18(weights=ResNet50_Weights.DEFAULT) 
+        self.model = models.resnet18(weights=ResNet18_Weights.DEFAULT) 
         
         # Modify the first convolutional layer to accept grayscale images
         self.model.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
@@ -35,10 +35,9 @@ class DEPTH_ResNet18(nn.Module):
         #?layers 1,2,3,4 are residual blocks of the ResNet model, each consisting of multiple convolutional layers and skip connections. 
         x = self.model.layer1(x)
         x = self.model.layer2(x)
-        mid_feat = self.model.layer3(x)
+        mid_feat = self.model.layer3(x) #[batch_size, 256, 14, 14]
         late_feat = self.model.layer4(mid_feat)
-        late_feat = self.model.avgpool(late_feat)
-        late_feat = torch.flatten(late_feat, 1) #[batch_size, 2048, 1, 1] , then flattened to  [batch_size, 2048]
+        late_feat = self.model.avgpool(late_feat) #[batch_size, 512, 1, 1]
         
         return x, {'mid_feat': mid_feat, 'late_feat': late_feat}
     
@@ -71,10 +70,9 @@ class DEPTH_ResNet50(nn.Module):
         #?layers 1,2,3,4 are residual blocks of the ResNet model, each consisting of multiple convolutional layers and skip connections. 
         x = self.model.layer1(x)
         x = self.model.layer2(x)
-        mid_feat = self.model.layer3(x)
+        mid_feat = self.model.layer3(x)  #[batch_size, 1024, 1, 1]
         late_feat = self.model.layer4(mid_feat)
-        late_feat = self.model.avgpool(late_feat)
-        late_feat = torch.flatten(late_feat, 1) #[batch_size, 2048, 1, 1] , then flattened to  [batch_size, 2048]
+        late_feat = self.model.avgpool(late_feat) #[batch_size, 2048, 1, 1] 
         
         return x, {'mid_feat': mid_feat, 'late_feat': late_feat}
     
