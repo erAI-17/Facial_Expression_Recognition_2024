@@ -31,14 +31,14 @@ dataset:
 
 models:
   RGB:
-    model: RGB_ResNet50
+    model: RGB_ResNet18
     kwargs: {}
     lr_steps: 3000
     lr: 0.01
     sgd_momentum: 0.9
     weight_decay: 1e-7
   DEPTH:
-    model: DEPTH_ResNet50
+    model: DEPTH_ResNet18
     kwargs: {}
     lr_steps: 3000
     lr: 0.01
