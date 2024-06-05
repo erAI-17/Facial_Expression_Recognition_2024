@@ -32,8 +32,6 @@ dataset:
 models:
   RGB:
     model: RGB_ResNet50
-    normalize: False
-    dropout: 0.4
     kwargs: {}
     lr_steps: 3000
     lr: 0.01
@@ -41,17 +39,13 @@ models:
     weight_decay: 1e-7
   DEPTH:
     model: DEPTH_ResNet50
-    normalize: False
-    dropout: 0.5
     kwargs: {}
     lr_steps: 3000
     lr: 0.01
     sgd_momentum: 0.9
     weight_decay: 1e-7
   FUSION:
-    model: feature_level_concat_FUSION_net
-    normalize: False
-    dropout: 0.5
+    model: feature_FUSION_net
     kwargs: {}
     lr_steps: 3000
     lr: 0.01

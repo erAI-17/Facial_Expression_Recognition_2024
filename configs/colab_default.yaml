@@ -32,8 +32,6 @@ dataset:
 models:
   RGB:
     model: ???
-    normalize: ???
-    dropout: ???
     kwargs: {}
     lr_steps: 3000
     lr: 0.01
@@ -41,8 +39,6 @@ models:
     weight_decay: 1e-7
   DEPTH:
     model: ???
-    normalize: ???
-    dropout: ???
     kwargs: {}
     lr_steps: 3000
     lr: 0.01
@@ -50,8 +46,6 @@ models:
     weight_decay: 1e-7
   FUSION:
     model: ???
-    normalize: ???
-    dropout: ???
     kwargs: {}
     lr_steps: 3000
     lr: 0.01

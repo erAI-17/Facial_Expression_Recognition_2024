@@ -8,7 +8,7 @@ import models as model_list
 from models.RGB_CNN import RGB_ResNet18, RGB_ResNet50
 from models.DEPTH_CNN import DEPTH_ResNet18, DEPTH_ResNet50
 
-class feature_level_concat_FUSION_net(nn.Module):
+class feature_FUSION_net(nn.Module):
     '''
     Naive network that concatenates the features from 2 modalities (RGB and Depth map).
     Performs better than logit level fusion, but requires additional training.
@@ -21,9 +21,15 @@ class feature_level_concat_FUSION_net(nn.Module):
         self.rgb_model = getattr(model_list, args.models['RGB'].model)() #RGB_ResNet50()  
         self.depth_model = getattr(model_list, args.models['DEPTH'].model)() #RGB_ResNet50() 
     
-        #self.fc1 = nn.Linear(512 * 2, 128)  # ResNet18
-        self.fc1 = nn.Linear(2048 * 2, 128)  # ResNet50
-        self.fc2 = nn.Linear(128, num_classes)  # Assuming 10 classes for classification
+        self.conv1 = nn.Conv2d(4096, 2048, kernel_size=3, padding=1)
+        self.bn1 = nn.BatchNorm2d(2048)
+        self.conv2 = nn.Conv2d(2048, 1024, kernel_size=3, padding=1)
+        self.bn2 = nn.BatchNorm2d(1024)
+
+        # Fully connected layers
+        self.fc1 = nn.Linear(1024 * 7 * 7, 512)  # Adjust dimensions based on input size
+        self.fc2 = nn.Linear(512, 128)
+        self.fc3 = nn.Linear(128, num_classes)  # Assuming num_classes for classification
 
     def forward(self, data):
         rgb_output, rgb_feat  = self.rgb_model(data['RGB']) #?late feat [batch_size:32, 512]
@@ -37,9 +43,19 @@ class feature_level_concat_FUSION_net(nn.Module):
 
         # Average all levels features
         avg_combined = torch.mean(torch.stack(combined_features), dim=0)
+
+        # Apply additional convolutional layers
+        x = F.relu(self.bn1(self.conv1(avg_combined)))
+        x = F.relu(self.bn2(self.conv2(x)))
+
+        # Flatten the features
+        x = torch.flatten(x, 1)
+
+        # Apply fully connected layers
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
         
-        x = F.relu(self.fc1(avg_combined))
-        x = self.fc2(x)
         return x, {}
     
     
