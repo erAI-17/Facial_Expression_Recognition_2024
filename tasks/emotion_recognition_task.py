@@ -118,7 +118,7 @@ class EmotionRecognition(tasks.Task, ABC):
             weight of the classification loss, by default 1.0
         """
         #!modality logits fusion for loss 
-        fused_logits = reduce(lambda x, y: x + y, logits.values()) #[32,7] #?creates 1 array of logits by summing ALL arrays of logits from different modalities 
+        fused_logits = reduce(lambda x, y: x + y, logits.values()) #?creates 1 array of logits by summing ALL arrays of logits from different modalities 
         loss = self.criterion(fused_logits, label)  # [32]
         
         #? Update the loss value, weighting it by the ratio of the batch size to the total batch size (for gradient accumulation)

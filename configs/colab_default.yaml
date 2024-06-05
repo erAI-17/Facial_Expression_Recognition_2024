@@ -8,7 +8,7 @@ wandb_name: null
 resume_from: null 
 logname: null 
 models_dir: null 
-fusion_modalities: True
+fusion_modalities: ???
 
 train:
   num_iter: 10000 
