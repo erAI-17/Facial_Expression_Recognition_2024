@@ -98,7 +98,7 @@ class Attention(nn.Module):
         attended_feats = attention_weights * rgb_feats + (1 - attention_weights) * depth_feats
         return attended_feats
     
-class Attention_Fusion_CNN(nn.Module):
+class Attention_Fusion_net(nn.Module):
     def __init__(self):
         num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
         super(Attention_Fusion_CNN, self).__init__()

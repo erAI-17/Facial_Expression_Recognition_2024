@@ -42,7 +42,7 @@ class DEPTH_ResNet18(nn.Module):
         return x, {'mid_feat': mid_feat, 'late_feat': late_feat}
     
 
-#! RESNET50
+#!PRETRAINED RESNET50
 class DEPTH_ResNet50(nn.Module):
     def __init__(self):
         super(DEPTH_ResNet50, self).__init__()

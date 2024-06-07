@@ -36,7 +36,7 @@ class RGB_ResNet18(nn.Module):
         return x, {'mid_feat': mid_feat, 'late_feat': late_feat}
     
 
-#! RESNET50
+#!PRETRAINED RESNET50
 class RGB_ResNet50(nn.Module):
     def __init__(self):
         super(RGB_ResNet50, self).__init__()
