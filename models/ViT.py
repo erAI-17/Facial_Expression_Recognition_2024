@@ -39,24 +39,23 @@ class ViT(nn.Module):
         with torch.no_grad():
             outputs = self.model(inputs)
         # Extract features from the [CLS] token
-        features = outputs.last_hidden_state[:, 0, :]
+        features = outputs.last_hidden_state[:, 0, :] #[batch_size, 768]
         return features    
 
     def forward(self, x):
-        rgb_prep = self._preprocessing_(x['RGB'])
-        depth_prep = self._preprocessing_(x['DEPTH'])
-        print(f"RGB preprocessed shape: {rgb_prep.shape}")
-        print(f"Depth preprocessed shape: {depth_prep.shape}")
+        rgb = x['RGB']
+        # Replicate the single channel to create a 3-channel image (1s to leave inalterated those dimensions)
+        depth  = x['DEPTH'].repeat(1, 3, 1, 1)
+        
+        # rgb = self._preprocessing_(rgb)
+        # depth = self._preprocessing_(depth)
         
         # Extract features
-        rgb_feat = self._extract_features_(rgb_prep)
-        depth_feat = self._extract_features_(depth_prep)
-        print(f"RGB features shape: {rgb_feat.shape}")
-        print(f"Depth features shape: {depth_feat.shape}")
+        rgb_feat = self._extract_features_(rgb)
+        depth_feat = self._extract_features_(depth)
         
         # Concatenation fusion
         combined_feat = torch.cat((rgb_feat, depth_feat), dim=1)
-        print(f"Combined features shape: {combined_feat.shape}")
         
         # Classification
         x = self.fc(combined_feat)

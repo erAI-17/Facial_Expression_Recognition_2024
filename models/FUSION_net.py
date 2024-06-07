@@ -101,7 +101,7 @@ class Attention(nn.Module):
 class Attention_Fusion_net(nn.Module):
     def __init__(self):
         num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
-        super(Attention_Fusion_CNN, self).__init__()
+        super(Attention_Fusion_net, self).__init__()
         
         #?define RGB and Depth networks (from configuration file)
         self.rgb_model = getattr(model_list, args.models['RGB'].model)()
