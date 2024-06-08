@@ -42,7 +42,14 @@ class RGB_transf:
                 ])
     
     def __call__(self, img):
-        return self.transform(img)
+        # Convert NumPy array to PIL Image
+        if isinstance(img, np.ndarray):
+            img = Image.fromarray(img)
+            
+        # Apply transformations
+        img = self.transform(img)
+        
+        return img
     
 class DEPTH_transf:
     def __init__(self, augment=False):
@@ -65,7 +72,14 @@ class DEPTH_transf:
             ])
     
     def __call__(self, img):
-        return self.transform(img)    
+        # Convert NumPy array to PIL Image
+        if isinstance(img, np.ndarray):
+            img = Image.fromarray(img)
+            
+        # Apply transformations
+        img = self.transform(img)
+        
+        return img    
 
 
 
