@@ -8,7 +8,7 @@ import torch
 import torchvision.transforms as transforms
 import cv2
 import matplotlib.pyplot as plt
-
+from utils.args import args
 
 #!###
 #! TRANFORMATIONS
@@ -22,26 +22,47 @@ class ScaleToUnitInterval():
         return img / img.max()
     
 class RGB_transf:
-    def __init__(self):
-        self.transform = transforms.Compose([
-            transforms.ToTensor(),  # Converts the image unit8 [0,255] to a tensor and normalizes to [0,1]
-            ToFloat32(),  # Ensures the tensor is of type float32
-            transforms.Normalize(mean=[0.5], std=[0.5])  # Normalize the tensor TO [-1,1]
-            
-            #!ILLUMINATION NORMALIZATION!!!!!
-    ])
+    def __init__(self, augment=False):
+        if augment:
+            self.transform = transforms.Compose([
+                transforms.RandomHorizontalFlip(),  # Randomly flip the image horizontally
+                transforms.RandomRotation(10),  # Randomly rotate the image by 10 degrees
+                transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
+                #transforms.RandomResizedCrop(224, scale=(0.8, 1.0)),  # Randomly crop and resize the image
+                transforms.ToTensor(),  # Converts the image to a tensor but doesn't normalize to [0,1]
+                ToFloat32(),  # Ensures the tensor is of type float32
+                ScaleToUnitInterval(),  # Scale to [0,1]
+                transforms.Normalize(mean=[0.5], std=[0.5])  # Normalize the tensor to [-1,1]
+            ])
+        else:
+                self.transform = transforms.Compose([
+                    transforms.ToTensor(),  # Converts the image unit8 [0,255] to a tensor and normalizes to [0,1]
+                    ToFloat32(),  # Ensures the tensor is of type float32
+                    transforms.Normalize(mean=[0.5], std=[0.5])  # Normalize the tensor to [-1,1]
+                ])
     
     def __call__(self, img):
         return self.transform(img)
     
 class DEPTH_transf:
-    def __init__(self):
-        self.transform = transforms.Compose([
-            transforms.ToTensor(),  # Converts the image to a tensor BUT it doesn't noralize into [0,1] because input image is unit16 [0,65535]
-            ToFloat32(),  # Ensures the tensor is of type float32
-            ScaleToUnitInterval(),# need to scale into [0,1] because .toTensor() doesn't automatically do it
-            transforms.Normalize(mean=[0.5], std=[0.5])  # Normalize the tensor TO [-1,1]
-    ])
+    def __init__(self, augment=False):
+        if augment:
+            self.transform = transforms.Compose([
+                transforms.RandomHorizontalFlip(),
+                transforms.RandomRotation(10),
+                #transforms.RandomResizedCrop(224, scale=(0.8, 1.0)),  # Randomly crop and resize the image
+                transforms.ToTensor(),  # Converts the image to a tensor BUT it doesn't noralize into [0,1] because input image is unit16 [0,65535]
+                ToFloat32(),  # Ensures the tensor is of type float32
+                ScaleToUnitInterval(),# need to scale into [0,1] because .toTensor() doesn't automatically do it
+                transforms.Normalize(mean=[0.5], std=[0.5])  # Normalize the tensor to [-1,1]
+            ])
+        else:
+            self.transform = transforms.Compose([
+                transforms.ToTensor(),  # Converts the image to a tensor BUT it doesn't noralize into [0,1] because input image is unit16 [0,65535]
+                ToFloat32(),  # Ensures the tensor is of type float32
+                ScaleToUnitInterval(),# need to scale into [0,1] because .toTensor() doesn't automatically do it
+                transforms.Normalize(mean=[0.5], std=[0.5])  # Normalize the tensor to [-1,1]
+            ])
     
     def __call__(self, img):
         return self.transform(img)    
@@ -49,8 +70,9 @@ class DEPTH_transf:
 
 
 if __name__ == "__main__":
-    
+    #!##
     #!TRY different configurations
+    #!##
     rgb_tranf = RGB_transf()
     depth_tranf = DEPTH_transf()
 

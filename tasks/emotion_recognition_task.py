@@ -6,7 +6,7 @@ import wandb
 import tasks
 from utils.logger import logger
 from typing import Dict, Tuple
-from models.FUSION_net import FocalLoss
+from models.Losses import FocalLoss, CenterLoss
 
 
 class EmotionRecognition(tasks.Task, ABC):

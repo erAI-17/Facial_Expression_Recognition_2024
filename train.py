@@ -48,20 +48,25 @@ def main():
     # device where training is run
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    #!handling transformation per-modality for all data loaders (train, validation,, testing)
-    transformations = {}
+    #!TRANSFORMATIONS and AUGMENTATION for TRAINING samples, 
+    #!ONLY TRANSFORMATION (NO AUGMENTATION) for VALIDATION/TEST samples
+    train_transf = {}
+    val_transf = {}
     for m in args.modality:
         if m == 'RGB':
-            transformations[m] = RGB_transf()
+            train_transf[m] = RGB_transf(augment=True)
+            val_transf[m] = RGB_transf(augment=False)
         if m == 'DEPTH':
-            transformations[m] = DEPTH_transf()
+            train_transf[m] = DEPTH_transf(augment=True)
+            val_transf[m] = DEPTH_transf(augment=True)
+    #? augmentation is ONLINE: at each epoch, the model sees different augmented versions of the same samples. So it doesn't increase the number of training samples
+    #? If OFFLINE augmentation, instead, we multiply the number of trining samples by producing some augmented version of each samples.
             
-    #!Create data loaders
     train_loader = torch.utils.data.DataLoader(CalD3R_MenD3s_Dataset(args.dataset.name,
                                                                         args.modality,
                                                                         'train', 
                                                                         args.dataset,
-                                                                        transformations,
+                                                                        train_transf,
                                                                         additional_info=False),
                                                 batch_size=args.batch_size, #small BATCH_SIZE
                                                 shuffle=True,
@@ -69,12 +74,11 @@ def main():
                                                 pin_memory=True, 
                                                 drop_last=True)
 
-
     val_loader = torch.utils.data.DataLoader(CalD3R_MenD3s_Dataset(args.dataset.name,
                                                                     args.modality,
                                                                     'val', 
                                                                     args.dataset,
-                                                                    transformations,
+                                                                    val_transf,
                                                                     additional_info=False),
                                                 batch_size=args.batch_size, 
                                                 shuffle=False,
@@ -136,7 +140,7 @@ def main():
         test_loader = torch.utils.data.DataLoader(CalD3R_MenD3s_Dataset(args.dataset.name,
                                                                         args.modality,
                                                                         'test', 
-                                                                        transformations,
+                                                                        val_transf,
                                                                         args.dataset),
                                                  batch_size=args.batch_size, 
                                                  shuffle=False,

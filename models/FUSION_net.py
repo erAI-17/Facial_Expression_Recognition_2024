@@ -147,32 +147,4 @@ class Attention_Fusion_net(nn.Module):
         
         return x, {}
     
-    
-#!!!FOCAL LOSS
-class FocalLoss(nn.Module):
-    def __init__(self, alpha=1, gamma=2, reduction='mean'):
-        '''
-         Args:
-            alpha (float): Weighting factor for the rare class. Default is 1.
-            gamma (float): Focusing parameter. Default is 2.
-            reduction (str): Specifies the reduction to apply to the output: 'none' | 'mean' | 'sum'. Default is 'mean'.
-        '''
-        super(FocalLoss, self).__init__()
-        self.alpha = alpha
-        self.gamma = gamma
-        self.reduction = reduction
-
-    def forward(self, inputs, targets):
-        # Cross entropy loss
-        BCE_loss = F.cross_entropy(inputs, targets, reduction='none')
-        # The probability of the true class
-        pt = torch.exp(-BCE_loss)
-        # Focal loss calculation
-        F_loss = self.alpha * (1 - pt) ** self.gamma * BCE_loss
-
-        if self.reduction == 'mean':
-            return F_loss.mean()
-        elif self.reduction == 'sum':
-            return F_loss.sum()
-        else:
-            return F_loss
+  
