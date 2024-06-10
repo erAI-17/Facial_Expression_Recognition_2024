@@ -79,9 +79,6 @@ def plot_actions(X, Y):
     # Show the plot
     plt.show()  
 
-
-# videos ->                 record              -> clips (num_clips) -> num_frames_per_clip
-# P08_01 -> P08_01 start_frame end_frame action -> 
 def main(): #**USING EPICKITCHENDATASET
     """
     #! I3D returns features of dimesnion: n_records (ex: 1345) x num_clips (ex: 5) x 1 x 1024
@@ -100,7 +97,6 @@ def main(): #**USING EPICKITCHENDATASET
                                               additional_info=True, 
                                               **{"save": args.split})
     
-    #**saved features will be in "full_saved_features.model_features"
     #?print(full_saved_features.model_features)
     saved_features = np.array(full_saved_features.model_features["features_RGB"].tolist())  #* original shape is (-1, args.save.num_clips, 1, 1024)
     #average the num_clips features for each record
@@ -110,12 +106,12 @@ def main(): #**USING EPICKITCHENDATASET
     
     #Dimensionality reduction
     #*PCA
-    pca = PCA(n_components=2)
-    reduced_features = pca.fit_transform(saved_features)
+    #pca = PCA(n_components=2)
+    #reduced_features = pca.fit_transform(saved_features)
     
     #*tSNE
-    #tsne = manifold.TSNE(n_components=2, random_state=0)
-    #reduced_features = tsne.fit_transform(saved_features)
+    tsne = manifold.TSNE(n_components=2, random_state=0)
+    reduced_features = tsne.fit_transform(saved_features)
     #?print(reduced_features.shape)  #* num_records x 2
        
     #extract central frame for each record
@@ -124,7 +120,6 @@ def main(): #**USING EPICKITCHENDATASET
     #dataset for the plotting 
     useful_dataset = full_saved_features.model_features.loc[:, ["uid", "verb"]]
     useful_dataset["central_frames"] = central_frames
-    #?print(useful_dataset.shape)
     
     #load each central frame image for each record
     central_frames_images = list()
@@ -140,7 +135,6 @@ def main(): #**USING EPICKITCHENDATASET
     plot_actions(reduced_features, useful_dataset)
     plot_central_frames(reduced_features, central_frames_images)     
    
-
     return 0
 
 

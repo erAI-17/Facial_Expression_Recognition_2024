@@ -212,6 +212,7 @@ def train(emotion_classifier, train_loader, val_loader, device, num_classes):
         emotion_classifier.compute_accuracy(logits, source_label)
                 
         #?update weights and zero gradients if TOTAL_BATCH is finished!!
+        #? also print the training loss MEAN over the 4 32batches inside the TOTAL_BATCH
         if real_iter.is_integer(): 
             logger.info("[%d/%d]\tlast Verb loss: %.4f\tMean verb loss: %.4f\tAcc@1: %.2f%%\tAccMean@1: %.2f%%" %
                         (real_iter, args.train.num_iter, emotion_classifier.loss.val, emotion_classifier.loss.avg,
@@ -226,10 +227,9 @@ def train(emotion_classifier, train_loader, val_loader, device, num_classes):
             val_metrics = validate(emotion_classifier, val_loader, device, int(real_iter), num_classes)
 
             if val_metrics['top1'] <= emotion_classifier.best_iter_score:
-                logger.info("New best accuracy {:.2f}%"
-                            .format(emotion_classifier.best_iter_score))
+                logger.info("OLD best accuracy {:.2f}% at iteration {}".format(emotion_classifier.best_iter_score, emotion_classifier.best_iter))
             else:
-                logger.info("New best accuracy {:.2f}%".format(val_metrics['top1']))
+                logger.info("NEW best accuracy {:.2f}%".format(val_metrics['top1']))
                 emotion_classifier.best_iter = real_iter
                 emotion_classifier.best_iter_score = val_metrics['top1']
 

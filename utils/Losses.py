@@ -54,9 +54,9 @@ class CenterLoss(nn.Module):
         center_loss = F.mse_loss(features, centers_batch)
         return center_loss
     
-class HybridLoss(nn.Module):
+class CEL_CL_Loss(nn.Module):
     def __init__(self, num_classes, feat_dim, lambda_center=0.5, device='cpu'):
-        super(HybridLoss, self).__init__()
+        super(CEL_CL_Loss, self).__init__()
         self.cross_entropy_loss = nn.CrossEntropyLoss()
         self.center_loss = CenterLoss(num_classes, feat_dim, device)
         self.lambda_center = lambda_center

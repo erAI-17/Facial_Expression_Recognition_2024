@@ -6,7 +6,7 @@ import wandb
 import tasks
 from utils.logger import logger
 from typing import Dict, Tuple
-from models.Losses import FocalLoss, CenterLoss
+from utils.Losses import FocalLoss, CenterLoss
 
 
 class EmotionRecognition(tasks.Task, ABC):
@@ -56,6 +56,9 @@ class EmotionRecognition(tasks.Task, ABC):
         
         #!Focal Loss #dynamically scales the loss for each sample based on the prediction confidence.
         #self.criterion = FocalLoss(alpha=1, gamma=2, reduction='mean')
+        
+        #!CEL+Center Loss 
+        #self.criterion = CEL_CL_Loss(alpha=1, gamma=2, reduction='mean')
         
         # Initialize the model parameters and the optimizer
         optim_params = {}

@@ -16,7 +16,7 @@ class Accuracy(object):
     #?Top-K Accuracy is a generalization of top-1 accuracy. It considers the prediction correct if the true label is among the top K predicted classes. 
     #? For example, top-5 accuracy means that the true label is considered correctly predicted if it is among the model's top 5 predicted classes. 
 
-    def __init__(self, topk=(1,)):
+    def __init__(self, topk=(1,5)):
         assert len(topk) > 0
         self.topk = topk
         self.num_classes, _ = get_domains_and_labels(args)

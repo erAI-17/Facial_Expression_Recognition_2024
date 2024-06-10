@@ -16,7 +16,6 @@ For data visualization, it shows 1 sample as:
 - depth map, 
 - generate point cloud from 2d+depth_map, 
 - generate triangular mesh from 2d+depth map)
-
 '''
 
 
