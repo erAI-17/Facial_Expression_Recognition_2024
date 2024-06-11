@@ -221,7 +221,7 @@ def train(emotion_classifier, train_loader, val_loader, device, num_classes):
                             (real_iter, args.train.num_iter, emotion_classifier.loss.val, emotion_classifier.loss.avg,
                             emotion_classifier.accuracy.val[1], emotion_classifier.accuracy.avg[1]))
 
-                training_losses.append((emotion_classifier.loss.avg, real_iter)) #? PLOT TRAINING LOSS
+                training_losses.append(((emotion_classifier.loss.avg.item()), real_iter)) #? PLOT TRAINING LOSS
                 emotion_classifier.check_grad()
                 emotion_classifier.step() #optimization step
                 emotion_classifier.zero_grad()

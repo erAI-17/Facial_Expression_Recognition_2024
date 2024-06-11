@@ -11,8 +11,8 @@ models_dir: null # directory containing all the models
 fusion_modalities: True
 
 train:
-  num_iter: 5
-  lr_steps: 4
+  num_iter: 1
+  lr_steps: 1
   eval_freq: 1
   
 test:
