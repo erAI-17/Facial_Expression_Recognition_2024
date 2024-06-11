@@ -94,7 +94,7 @@ def main():
     
     #?if FUSING modalities, ONLY instanciate the fusion network. Else, instanciate a different model per modality and train them separately for logits fusion
     if args.fusion_modalities == True:
-        logger.info("Instantiating FUSION model: %s", args.models['FUSION'].model)
+        logger.info("Instantiating model: %s", args.models['FUSION'].model)
         
         fusion_model = getattr(model_list, args.models['FUSION'].model)()
         models = {'FUSION':fusion_model }
@@ -221,10 +221,11 @@ def train(emotion_classifier, train_loader, val_loader, device, num_classes):
                             (real_iter, args.train.num_iter, emotion_classifier.loss.val, emotion_classifier.loss.avg,
                             emotion_classifier.accuracy.val[1], emotion_classifier.accuracy.avg[1]))
 
+                training_losses.append((emotion_classifier.loss.avg, real_iter)) #? PLOT TRAINING LOSS
                 emotion_classifier.check_grad()
                 emotion_classifier.step() #optimization step
                 emotion_classifier.zero_grad()
-                training_losses.append((emotion_classifier.loss.avg, real_iter)) #? PLOT TRAINING LOSS
+                
         
             #? every "eval_freq" iterations the validation is done
             if real_iter.is_integer() and real_iter % args.train.eval_freq == 0:
@@ -257,7 +258,7 @@ def train(emotion_classifier, train_loader, val_loader, device, num_classes):
             plt.ylabel('Loss')
             plt.title('Training Loss')
             plt.legend()
-            plt.savefig('training_loss.png')  # Save the training loss plot
+            #plt.savefig('training_loss.png')  # Save the training loss plot
 
         #? Plot Validation Accuracy
         if validation_accuracies:
@@ -269,7 +270,7 @@ def train(emotion_classifier, train_loader, val_loader, device, num_classes):
             plt.ylabel('Accuracy')
             plt.title('Validation Accuracy')
             plt.legend()
-            plt.savefig('validation_accuracy.png')  # Save the validation accuracy plot
+            plt.savefig(os.path.join('/Images/Models_performance/', args.name, args.models.FUSION.model, '.png'))  # Save the validation accuracy plot
 
         plt.tight_layout()
         plt.show()

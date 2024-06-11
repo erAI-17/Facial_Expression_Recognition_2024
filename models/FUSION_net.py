@@ -57,7 +57,7 @@ class feature_FUSION_net(nn.Module):
         late_feat_rgb = rgb_feat['late_feat']
         late_feat_depth = depth_feat['late_feat']
 
-        # Concatenate mid-level features
+        # Concatenate 2 modalities mid-level features
         mid_combined = torch.cat((mid_feat_rgb, mid_feat_depth), dim=1)
 
         # Apply additional convolutions on mid-level features
@@ -68,11 +68,12 @@ class feature_FUSION_net(nn.Module):
         # Flatten mid-level features
         x = torch.flatten(x, 1)
 
-        # Concatenate flattened mid-level features with late-level features
+        # Concatenate 2 modalities late-level features
         late_combined = torch.cat((late_feat_rgb, late_feat_depth), dim=1)
         # Flatten late-level features
         late_flat = torch.flatten(late_combined, 1)
         
+        # Concatenate flattened mid-level features with late-level features
         combined_features = torch.cat((x, late_flat), dim=1)
 
         # Apply fully connected layers
