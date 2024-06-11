@@ -270,9 +270,20 @@ def train(emotion_classifier, train_loader, val_loader, device, num_classes):
             plt.ylabel('Accuracy')
             plt.title('Validation Accuracy')
             plt.legend()
-            plt.savefig(os.path.join('/Images/Models_performance/', f'{args.name}_{args.models.FUSION.model}.png')) # Save the validation accuracy plot
 
         plt.tight_layout()
+        # Define the directory path where the image will be saved
+        directory_path = '~/Images/Models_performance/'
+        os.makedirs(directory_path, exist_ok=True)
+
+        # Format the filename using args.name and args.models.FUSION.model
+        filename = f'{args.name}_{args.models.FUSION.model}.png'
+
+        # Combine the directory path and filename
+        file_path = os.path.join(directory_path, filename)
+
+        # Save the plot with the formatted filename
+        plt.savefig(file_path)
         plt.show()
 
 
