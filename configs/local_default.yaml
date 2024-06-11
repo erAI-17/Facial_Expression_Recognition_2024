@@ -1,7 +1,7 @@
 action: train # train or test
 name: training # name of the experiment needed for the logs
 modality: ['RGB', 'DEPTH'] #["RGB","DEPTH"] #['VOXEL'] #['MESH']
-total_batch: 128
+total_batch: 32
 batch_size: 32 # batch size for the forward
 gpus: null # gpus adopted
 wandb_name: null # needed for wandb logging
@@ -45,7 +45,7 @@ models:
     sgd_momentum: 0.9
     weight_decay: 1e-7
   FUSION:
-    model: ViT #feature_FUSION_net
+    model: feature_FUSION_net #feature_FUSION_net #ViT
     kwargs: {}
     lr_steps: 3000
     lr: 0.01

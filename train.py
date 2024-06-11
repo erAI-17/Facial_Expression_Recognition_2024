@@ -252,7 +252,7 @@ def train(emotion_classifier, train_loader, val_loader, device, num_classes):
             # Unzip the training_losses into two lists: one for loss values and one for iterations
             losses, real_iter = zip(*training_losses)
             plt.subplot(1, 2, 1)
-            plt.plot(losses, real_iter, label='Training Loss')
+            plt.plot(real_iter, losses, label='Training Loss')
             plt.xlabel('Iterations')
             plt.ylabel('Loss')
             plt.title('Training Loss')
@@ -264,7 +264,7 @@ def train(emotion_classifier, train_loader, val_loader, device, num_classes):
             # Unzip the training_losses into two lists: one for loss values and one for iterations
             val_acc, real_iter = zip(*validation_accuracies)
             plt.subplot(1, 2, 2)
-            plt.plot(val_acc, real_iter, label='Validation Accuracy')
+            plt.plot(real_iter, val_acc, label='Validation Accuracy')
             plt.xlabel('Iterations')
             plt.ylabel('Accuracy')
             plt.title('Validation Accuracy')
