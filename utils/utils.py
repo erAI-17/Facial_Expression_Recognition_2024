@@ -115,8 +115,10 @@ class AverageMeter(object):
         self.count += n
         self.avg = self.sum / self.count
 
-#!weights for Weighted Cross Entropy Loss
+
 def compute_class_weights(train_loader):
+    """This function computes weights for each class used in Weighted Cross Entropy Loss
+    """
     num_classes, _ = get_domains_and_labels(args)
     class_counts = np.zeros(num_classes)
     for _, labels in train_loader:
@@ -136,3 +138,12 @@ def pformat_dict(d, indent=0):
         else:
             fstr += ' ' + str(value)
     return fstr
+
+
+def plots():
+    """Reads log files from a training process and plots:
+            the loss in training process (at every epoch);
+            the accuracy on validation set during training at each validation step.
+    """
+    
+    

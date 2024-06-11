@@ -9,6 +9,10 @@ from transformers import AutoImageProcessor, AutoModel
 
 
 class ViT(nn.Module):
+    """This model is a fine-tuned version of:
+        google/vit-base-patch16-224-in21k 
+    on the FER 2013, MMI Facial Expression Database, and AffectNet dataset datasets.
+    """
     def __init__(self):
         num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
         super(ViT, self).__init__()
@@ -63,8 +67,8 @@ class ViT(nn.Module):
         # depth = self._preprocessing_(depth)
         
         # Extract features
-        rgb_feat = self._extract_features_(rgb)
-        depth_feat = self._extract_features_(depth)
+        rgb_feat = self._extract_features_(rgb) # [32, 768]
+        depth_feat = self._extract_features_(depth) # [32, 768]
         
         # Concatenation fusion
         combined_feat = torch.cat((rgb_feat, depth_feat), dim=1)

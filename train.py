@@ -6,6 +6,7 @@ import torch
 from utils.loaders import CalD3R_MenD3s_Dataset
 from utils.args import args
 from utils.utils import pformat_dict
+import matplotlib.pyplot as plt
 import utils
 import numpy as np
 import os
@@ -171,70 +172,107 @@ def train(emotion_classifier, train_loader, val_loader, device, num_classes):
     #*current_iter is just for restoring from a saved run. Otherwise iteration is set to 0.
     iteration = emotion_classifier.current_iter * (args.total_batch // args.batch_size)
 
-    #*iteration: forward and backward of 1 batch of BATCH_SIZE. Next iteration will be on next Batch of BATCH_SIZE!!
-    #*epoch: forward and backward of ALL DATASET (If dataset contains 1000 samples and batch size= 100, 1 epoch consists of 10 iterations)
-    for i in range(iteration, training_iterations): #ITERATIONS on batches (of BATCH_SIZE) 
-        real_iter = (i + 1) / (args.total_batch // args.batch_size)
-        
-        #? reduce learning rate 
-        if real_iter == args.train.lr_steps:
-            emotion_classifier.reduce_learning_rate() 
-            
-        #*we reason in terms of ITERATIONS on batches (of BATCH_SIZE) not EPOCHS!!
-        #? If the  data_loader_source  iterator is exhausted (i.e., it has iterated over the entire dataset), a  StopIteration  exception is raised. 
-        #? The  except StopIteration  block catches this exception and reinitializes the iterator with effectively starting the iteration from the beginning of the dataset again. 
-        start_t = datetime.now()
-        try:
-            source_data, source_label = next(data_loader_source) #*get the next batch of data with next()!
-        except StopIteration:
-            data_loader_source = iter(train_loader)
-            source_data, source_label = next(data_loader_source)
-        end_t = datetime.now()
-
-        logger.info(f"Iteration {i}/{training_iterations} batch retrieved! Elapsed time = "
-                    f"{(end_t - start_t).total_seconds() // 60} m {(end_t - start_t).total_seconds() % 60} s")
-
-
-        #* PASS DATA AND LABELS TO MODELS
-        source_label = source_label.to(device) #?labels to GPU
-        data = {}
-        
-        #?if FUSING modalities, data dictionary contains RGB and DEPTH for FUSION network. 
-        if args.fusion_modalities == True:
-            data['FUSION'] = {m: source_data[m].to(device) for m in args.modality}
-        else: #? else data dictionary contains SEPARATE modality data for each modality (they will be passed into different models)
-            for m in args.modality:
-                data[m] = source_data[m].to(device) #? data to GPU
-                
-        logits, _ = emotion_classifier.forward(data)
-        emotion_classifier.compute_loss(logits, source_label, loss_weight=1)
-        emotion_classifier.backward(retain_graph=False)
-        emotion_classifier.compute_accuracy(logits, source_label)
-                
-        #?update weights and zero gradients if TOTAL_BATCH is finished!!
-        #? also print the training loss MEAN over the 4 32batches inside the TOTAL_BATCH
-        if real_iter.is_integer(): 
-            logger.info("[%d/%d]\tlast Verb loss: %.4f\tMean verb loss: %.4f\tAcc@1: %.2f%%\tAccMean@1: %.2f%%" %
-                        (real_iter, args.train.num_iter, emotion_classifier.loss.val, emotion_classifier.loss.avg,
-                         emotion_classifier.accuracy.val[1], emotion_classifier.accuracy.avg[1]))
-
-            emotion_classifier.check_grad()
-            emotion_classifier.step() #optimization step
-            emotion_classifier.zero_grad()
     
-        #? every "eval_freq" iterations the validation is done
-        if real_iter.is_integer() and real_iter % args.train.eval_freq == 0:
-            val_metrics = validate(emotion_classifier, val_loader, device, int(real_iter), num_classes)
+    training_losses = []
+    validation_accuracies = []
+    try: #? try-finallly construct to plot training losses and validation accuracies even if you stop earlier the function (Keyboardinterrupt exception raises)
+        
+        #*iteration: forward and backward of 1 batch of BATCH_SIZE. Next iteration will be on next Batch of BATCH_SIZE!!
+        #*epoch: forward and backward of ALL DATASET (If dataset contains 1000 samples and batch size= 100, 1 epoch consists of 10 iterations)
+        for i in range(iteration, training_iterations): #ITERATIONS on batches (of BATCH_SIZE) 
+            real_iter = (i + 1) / (args.total_batch // args.batch_size)
+            
+            #? reduce learning rate 
+            if real_iter == args.train.lr_steps:
+                emotion_classifier.reduce_learning_rate() 
+                
+            #*we reason in terms of ITERATIONS on batches (of BATCH_SIZE) not EPOCHS!!
+            #? If the  data_loader_source  iterator is exhausted (i.e., it has iterated over the entire dataset), a  StopIteration  exception is raised. 
+            #? The  except StopIteration  block catches this exception and reinitializes the iterator with effectively starting the iteration from the beginning of the dataset again. 
+            start_t = datetime.now()
+            try:
+                source_data, source_label = next(data_loader_source) #*get the next batch of data with next()!
+            except StopIteration:
+                data_loader_source = iter(train_loader)
+                source_data, source_label = next(data_loader_source)
+            end_t = datetime.now()
 
-            if val_metrics['top1'] <= emotion_classifier.best_iter_score:
-                logger.info("OLD best accuracy {:.2f}% at iteration {}".format(emotion_classifier.best_iter_score, emotion_classifier.best_iter))
-            else:
-                logger.info("NEW best accuracy {:.2f}%".format(val_metrics['top1']))
-                emotion_classifier.best_iter = real_iter
-                emotion_classifier.best_iter_score = val_metrics['top1']
+            logger.info(f"Iteration {i}/{training_iterations} batch retrieved! Elapsed time = "
+                        f"{(end_t - start_t).total_seconds() // 60} m {(end_t - start_t).total_seconds() % 60} s")
 
-            emotion_classifier.save_model(real_iter, val_metrics['top1'], prefix=None)
-            emotion_classifier.train(True)
+            source_label = source_label.to(device) #?labels to GPU
+            data = {}
+            #?if FUSING modalities, data dictionary contains RGB and DEPTH for FUSION network. 
+            if args.fusion_modalities == True:
+                data['FUSION'] = {m: source_data[m].to(device) for m in args.modality}
+            else: #? else data dictionary contains SEPARATE modality data for each modality (they will be passed into different models)
+                for m in args.modality:
+                    data[m] = source_data[m].to(device) #? data to GPU
+                    
+            logits, _ = emotion_classifier.forward(data)
+            emotion_classifier.compute_loss(logits, source_label, loss_weight=1)
+            emotion_classifier.backward(retain_graph=False)
+            emotion_classifier.compute_accuracy(logits, source_label)
+                    
+            #? update weights and zero gradients if TOTAL_BATCH is finished!!
+            #? also print the training loss MEAN over the 4 32batches inside the TOTAL_BATCH
+            if real_iter.is_integer(): 
+                logger.info("[%d/%d]\tlast Verb loss: %.4f\tMean verb loss: %.4f\tAcc@1: %.2f%%\tAccMean@1: %.2f%%" %
+                            (real_iter, args.train.num_iter, emotion_classifier.loss.val, emotion_classifier.loss.avg,
+                            emotion_classifier.accuracy.val[1], emotion_classifier.accuracy.avg[1]))
+
+                emotion_classifier.check_grad()
+                emotion_classifier.step() #optimization step
+                emotion_classifier.zero_grad()
+                training_losses.append((emotion_classifier.loss.avg, real_iter)) #? PLOT TRAINING LOSS
+        
+            #? every "eval_freq" iterations the validation is done
+            if real_iter.is_integer() and real_iter % args.train.eval_freq == 0:
+                val_metrics = validate(emotion_classifier, val_loader, device, int(real_iter), num_classes)
+                validation_accuracies.append((val_metrics['top1'], real_iter)) #?PLOT VALIDATION ACCURACIES
+
+                if val_metrics['top1'] <= emotion_classifier.best_iter_score:
+                    logger.info("OLD best accuracy {:.2f}% at iteration {}".format(emotion_classifier.best_iter_score, emotion_classifier.best_iter))
+                else:
+                    logger.info("NEW best accuracy {:.2f}%".format(val_metrics['top1']))
+                    emotion_classifier.best_iter = real_iter
+                    emotion_classifier.best_iter_score = val_metrics['top1']
+
+                emotion_classifier.save_model(real_iter, val_metrics['top1'], prefix=None)
+                emotion_classifier.train(True)  
+    
+    except KeyboardInterrupt:
+        logger.info("Training interrupted by user.")
+    finally:
+        # Plot the training loss and validation accuracy
+        plt.figure(figsize=(12, 5))
+
+        #? Plot Training Loss
+        if training_losses:
+            # Unzip the training_losses into two lists: one for loss values and one for iterations
+            losses, real_iter = zip(*training_losses)
+            plt.subplot(1, 2, 1)
+            plt.plot(losses, real_iter, label='Training Loss')
+            plt.xlabel('Iterations')
+            plt.ylabel('Loss')
+            plt.title('Training Loss')
+            plt.legend()
+            plt.savefig('training_loss.png')  # Save the training loss plot
+
+        #? Plot Validation Accuracy
+        if validation_accuracies:
+            # Unzip the training_losses into two lists: one for loss values and one for iterations
+            val_acc, real_iter = zip(*validation_accuracies)
+            plt.subplot(1, 2, 2)
+            plt.plot(val_acc, real_iter, label='Validation Accuracy')
+            plt.xlabel('Iterations')
+            plt.ylabel('Accuracy')
+            plt.title('Validation Accuracy')
+            plt.legend()
+            plt.savefig('validation_accuracy.png')  # Save the validation accuracy plot
+
+        plt.tight_layout()
+        plt.show()
 
 
 def validate(model, val_loader, device, it, num_classes):
@@ -266,13 +304,17 @@ def validate(model, val_loader, device, it, num_classes):
             logits, _ = model.forward(data)
             model.compute_accuracy(logits, label)
 
+            #?print the validation accuracy at 5 steps: 20% - 40% - 60% - 80% - 100% of validation set
+            #? (only look at the last one if you're only interested on OVERALL validation accuracy on the whole validation set)
             if (i_val + 1) % (len(val_loader) // 5) == 0:
                 logger.info("[{}/{}] top1= {:.3f}% top5 = {:.3f}%".format(i_val + 1, len(val_loader),
                                                                           model.accuracy.avg[1], model.accuracy.avg[5]))
 
-        class_accuracies = [(x / y) * 100 for x, y in zip(model.accuracy.correct, model.accuracy.total)]
+        #?at the end print OVERALL validation accuracy on the whole validation set)
         logger.info('Final accuracy: top1 = %.2f%%\ttop5 = %.2f%%' % (model.accuracy.avg[1],
                                                                       model.accuracy.avg[5]))
+        #? at teh end print the PER-CLASS accuracy
+        class_accuracies = [(x / y) * 100 for x, y in zip(model.accuracy.correct, model.accuracy.total)]
         for i_class, class_acc in enumerate(class_accuracies):
             logger.info('Class %d = [%d/%d] = %.2f%%' % (i_class,
                                                          int(model.accuracy.correct[i_class]),

@@ -11,8 +11,6 @@ from models.DEPTH_CNN import DEPTH_ResNet18, DEPTH_ResNet50
 class feature_FUSION_net(nn.Module):
     '''
     Naive network that concatenates the features from 2 modalities (RGB and Depth map).
-    Still the CONCATENATION + level_averaging fusion is NOT efficient
-    
     This handles both Resnet18 and Resnet50
     '''
     def __init__(self):

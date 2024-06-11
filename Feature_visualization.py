@@ -1,17 +1,8 @@
-import pickle
-from utils.logger import logger
-import torch.nn.parallel
 import torch.optim
 import torch
 from utils.loaders import EpicKitchensDataset
 from utils.args import args
-from utils.utils import pformat_dict
-import utils
 import numpy as np
-import pandas as pd
-import os
-import models as model_list
-import tasks
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 from matplotlib.cm import get_cmap
