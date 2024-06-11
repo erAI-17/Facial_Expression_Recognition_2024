@@ -270,7 +270,7 @@ def train(emotion_classifier, train_loader, val_loader, device, num_classes):
             plt.ylabel('Accuracy')
             plt.title('Validation Accuracy')
             plt.legend()
-            plt.savefig(os.path.join('/Images/Models_performance/', args.name, args.models.FUSION.model, '.png'))  # Save the validation accuracy plot
+            plt.savefig(os.path.join('/Images/Models_performance/', f'{args.name}_{args.models.FUSION.model}.png')) # Save the validation accuracy plot
 
         plt.tight_layout()
         plt.show()
