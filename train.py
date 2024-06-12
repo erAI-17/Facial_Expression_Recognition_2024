@@ -273,7 +273,7 @@ def train(emotion_classifier, train_loader, val_loader, device, num_classes):
 
         plt.tight_layout()
         # Define the directory path where the image will be saved
-        directory_path = '~/Images/Models_performance/'
+        directory_path = '/Images/Models_performance/'
         os.makedirs(directory_path, exist_ok=True)
 
         # Format the filename using args.name and args.models.FUSION.model
