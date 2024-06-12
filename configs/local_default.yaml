@@ -45,7 +45,7 @@ models:
     sgd_momentum: 0.9
     weight_decay: 1e-7
   FUSION:
-    model: feature_FUSION_net #feature_FUSION_net #ViT
+    model: feat_fusion #feat_fusion #att_sel_dusion #ViT
     kwargs: {}
     lr_steps: 3000
     lr: 0.01
