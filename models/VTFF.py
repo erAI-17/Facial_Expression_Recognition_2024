@@ -7,7 +7,7 @@ import torchaudio.transforms as T
 import models as model_list
 from models.RGB_CNN import RGB_ResNet18, RGB_ResNet50
 from models.DEPTH_CNN import DEPTH_ResNet18, DEPTH_ResNet50
-from torch.utils.tensorboard import SummaryWriter
+
 
 class TransformerEncoderLayer(nn.Module):
    """SINGLE Transformer encoder layer, consisting of multi-head self-attention and a MLP.
