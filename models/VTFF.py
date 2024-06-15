@@ -46,7 +46,7 @@ class VTFF(nn.Module):
    num_heads = 8
    num_layers = 4
    mlp_dim = 3072 #?MLP dimension INTERNAL to each transformer layer
-   num_classes, valid_labels = utils.get_domains_and_labels(args)
+   num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
    def __init__(self, Cp, num_heads, num_layers, mlp_dim, num_classes):
       super(VTFF, self).__init__()
       #? attentional selective fusion module producing X_fused [batch_size, Cf=256 x Hd=14 x Wd=14]
