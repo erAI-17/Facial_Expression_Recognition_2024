@@ -175,8 +175,8 @@ class att_sel_fusion(nn.Module):
       #?classification (for ablation study: not using transformer)
          #?Flatten the input feature matrix
       x = X_fused.view(X_fused.size(0), -1) #batch_size, -1
-      #x = F.relu(self.fc1(X_fused))
-      #x = self.fc2(x)
+      x = F.relu(self.fc1(X_fused))
+      x = self.fc2(x)
       
       return x, {'fused_feat': X_fused}
    
