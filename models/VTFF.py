@@ -145,8 +145,9 @@ class att_sel_fusion(nn.Module):
       self.relu = nn.ReLU()
 
       #?classification (for ablation study: not using transformer)
-      self.fc1 = nn.Linear(256*14*14, 256)
-      self.fc2 = nn.Linear(256, num_classes)
+      self.fc1 = nn.Linear(256*14*14, 1024)
+      self.fc2 = nn.Linear(1024, 512)
+      self.fc3 = nn.Linear(512, num_classes)
       
       
    def forward(self, data):
@@ -158,7 +159,7 @@ class att_sel_fusion(nn.Module):
       #resnet50
          #mid: [batch_size, 1024, 14, 14] #late: #[batch_size, 2048, 1, 1]
       
-      U = self.W_RGB(rgb_feat['mid_feat']) + self.W_D(depth_feat['mid_feat'])
+      U = self.W_RGB(rgb_feat['mid_feat']) + self.W_D(depth_feat['mid_feat']) # [batch_size, 256, 14, 14]
       
       # Global context
       G = self.sigmoid(self.bnG2(self.conv2G(self.relu(self.bnG1(self.conv1G(F.adaptive_avg_pool2d(U, 1))))))) #[batch_sizee, C,1,1]
@@ -175,7 +176,7 @@ class att_sel_fusion(nn.Module):
       #?classification (for ablation study: not using transformer)
          #?Flatten the input feature matrix
       x = X_fused.view(X_fused.size(0), -1) #batch_size, -1
-      x = F.relu(self.fc1(X_fused))
+      x = F.relu(self.fc1(x))
       x = self.fc2(x)
       
       return x, {'fused_feat': X_fused}
