@@ -182,9 +182,22 @@ def train(emotion_classifier, train_loader, val_loader, device, num_classes):
         for i in range(iteration, training_iterations): #ITERATIONS on batches (of BATCH_SIZE) 
             real_iter = (i + 1) / (args.total_batch // args.batch_size)
             
-            #? reduce learning rate 
-            if real_iter == args.train.lr_steps:
-                emotion_classifier.reduce_learning_rate() 
+            
+            #? reduce learning rate from ad hoc function (deviding by 10) 
+            #if real_iter == args.train.lr_steps:
+            #    emotion_classifier.reduce_learning_rate() 
+            #?otherwise use a lr scheduler defined in task
+            learning_rates = []
+            if args.fusion_modalities == True:                
+                current_lr = emotion_classifier.optimizer['FUSION'].param_groups[-1]['lr']
+                learning_rates.append((current_lr, real_iter))
+                logger.info(f"Current learning rate: {current_lr}")
+            else:
+                for m in args.modality:
+                    current_lr = emotion_classifier.optimizer[m].param_groups[-1]['lr']
+                    learning_rates.append((current_lr, real_iter))
+                    logger.info(f"Current learning rate: {current_lr}")
+                    
                 
             #*we reason in terms of ITERATIONS on batches (of BATCH_SIZE) not EPOCHS!!
             #? If the  data_loader_source  iterator is exhausted (i.e., it has iterated over the entire dataset), a  StopIteration  exception is raised. 
@@ -223,7 +236,7 @@ def train(emotion_classifier, train_loader, val_loader, device, num_classes):
 
                 training_losses.append(((emotion_classifier.loss.avg.item()), real_iter)) #? PLOT TRAINING LOSS
                 emotion_classifier.check_grad()
-                emotion_classifier.step() #optimization step
+                emotion_classifier.step() #step() attribute calls BOTH  optimizer.step()  and, if implemented,  scheduler.step()
                 emotion_classifier.zero_grad()
                 
         
@@ -241,26 +254,26 @@ def train(emotion_classifier, train_loader, val_loader, device, num_classes):
 
                 emotion_classifier.save_model(real_iter, val_metrics['top1'], prefix=None)
                 emotion_classifier.train(True)  
-    
-    except KeyboardInterrupt:
-        logger.info("Training interrupted by user.")
+
     finally:
         # Plot the training loss and validation accuracy
         plt.figure(figsize=(12, 5))
-
-        #? Plot Training Loss
+        
+        #? Plot Training Loss along with learning rates at each iteration
         if training_losses:
             # Unzip the training_losses into two lists: one for loss values and one for iterations
             losses, real_iter = zip(*training_losses)
+            lrs, _ = zip(*learning_rates)
             plt.subplot(1, 2, 1)
             plt.plot(real_iter, losses, label='Training Loss')
+            plt.plot(real_iter, lrs, label='learning Rate')
             plt.xlabel('Iterations')
             plt.ylabel('Loss')
             plt.title('Training Loss')
             plt.legend()
             #plt.savefig('training_loss.png')  # Save the training loss plot
 
-        #? Plot Validation Accuracy
+        #? Plot Validation Accuracy along with learning rates at each iteration
         if validation_accuracies:
             # Unzip the training_losses into two lists: one for loss values and one for iterations
             val_acc, real_iter = zip(*validation_accuracies)
@@ -272,7 +285,7 @@ def train(emotion_classifier, train_loader, val_loader, device, num_classes):
             plt.legend()
 
         plt.tight_layout()
-        plt.savefig()
+        plt.savefig('Images/')
         plt.show()
 
 

@@ -62,7 +62,8 @@ class EmotionRecognition(tasks.Task, ABC):
         
         # Initialize the model parameters and the optimizer
         optim_params = {}
-        self.optimizer = dict()
+        self.optimizer = {}
+        self.scheduler = {}
         for m in self.modalities:
             #?select only parameters of the model that have requires_grad == True. If they have requires_grad == False it means they should not be
             #? includeed in gradient computation and NOT be updated because of PRE-TRAINING FREEZING
@@ -74,11 +75,15 @@ class EmotionRecognition(tasks.Task, ABC):
             #!ADAM
             self.optimizer[m] = torch.optim.Adam(optim_params[m], model_args[m].lr,
                                                 weight_decay=model_args[m].weight_decay)
+            # Use a learning rate scheduler to decrease the learning rate over time
+            self.scheduler[m] = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer[m], T_max=args.train.num_iter, eta_min=0.00001)
             
             #!SGD with momentum
             # self.optimizer[m] = torch.optim.SGD(optim_params[m], model_args[m].lr,
             #                                     weight_decay=model_args[m].weight_decay,
             #                                     momentum=model_args[m].sgd_momentum)
+            # #Use a learning rate scheduler to decrease the learning rate over time
+            # self.scheduler[m] = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer[m], T_max=1000, eta_min=0)
 
     def forward(self, data: Dict[str, torch.Tensor], **kwargs) -> Tuple[Dict[str, torch.Tensor], Dict[str, torch.Tensor]]:
         """Forward step of the task

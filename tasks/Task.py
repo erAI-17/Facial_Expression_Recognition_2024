@@ -267,6 +267,8 @@ class Task(torch.nn.Module, metaclass=ABCMeta):
         """Perform the optimization step once all the gradients of the gradient accumulation are accumulated."""
         for m in self.modalities:
             self.optimizer[m].step()
+            if self.scheduler[m] is not None:  
+                self.scheduler[m].step()
 
     def check_grad(self):
         """Check that the gradients of the model are not over a certain threshold.
