@@ -285,7 +285,7 @@ def train(emotion_classifier, train_loader, val_loader, device, num_classes):
             plt.legend()
 
         plt.tight_layout()
-        plt.savefig('Images/')
+        plt.savefig('./Images/')
         plt.show()
 
 
