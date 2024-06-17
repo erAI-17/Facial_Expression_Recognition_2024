@@ -11,9 +11,9 @@ models_dir: null # directory containing all the models
 fusion_modalities: True
 
 train:
-  num_iter: 10
-  lr_steps: 5
-  eval_freq: 2
+  num_iter: 3
+  lr_steps: 2
+  eval_freq: 1
   
 test:
   
@@ -45,7 +45,7 @@ models:
     sgd_momentum: 0.9
     weight_decay: 1e-7
   FUSION:
-    model: att_sel_fusion #feat_fusion #att_sel_dusion #ViT
+    model: feat_fusion #feat_fusion #att_sel_dusion #ViT
     kwargs: {}
     lr_steps: 3000
     lr: 0.01

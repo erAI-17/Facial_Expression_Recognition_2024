@@ -149,7 +149,7 @@ def main():
                                                  pin_memory=True, 
                                                  drop_last=False)
 
-        validate(emotion_classifier, test_loader, device, emotion_classifier.current_iter, num_classes)
+        validate(emotion_classifier, test_loader, device, emotion_classifier.current_iter)
 
 
 def train(emotion_classifier, train_loader, val_loader, device, num_classes):
@@ -229,7 +229,7 @@ def train(emotion_classifier, train_loader, val_loader, device, num_classes):
         
             #? every "eval_freq" iterations the validation is done
             if real_iter.is_integer() and real_iter % args.train.eval_freq == 0:
-                val_metrics = validate(emotion_classifier, val_loader, device, int(real_iter), num_classes)
+                val_metrics = validate(emotion_classifier, val_loader, device, int(real_iter))
                 validation_accuracies.append((val_metrics['top1'], real_iter)) #?PLOT VALIDATION ACCURACIES
 
                 if val_metrics['top1'] <= emotion_classifier.best_iter_score:
@@ -287,7 +287,7 @@ def train(emotion_classifier, train_loader, val_loader, device, num_classes):
         plt.show()
 
 
-def validate(model, val_loader, device, it, num_classes):
+def validate(model, val_loader, device, it):
     """
     function to validate the model on the test set
     
@@ -295,7 +295,6 @@ def validate(model, val_loader, device, it, num_classes):
     val_loader: dataloader containing the validation data
     device: device on which you want to test
     it: int, iteration among the training num_iter at which the model is tested
-    num_classes: int, number of classes in the classification problem
     """
 
     model.reset_acc()
@@ -325,7 +324,7 @@ def validate(model, val_loader, device, it, num_classes):
         #?at the end print OVERALL validation accuracy on the whole validation set)
         logger.info('Final accuracy: top1 = %.2f%%\ttop5 = %.2f%%' % (model.accuracy.avg[1],
                                                                       model.accuracy.avg[5]))
-        #? at teh end print the PER-CLASS accuracy
+        #? at the end print the PER-CLASS accuracy
         class_accuracies = [(x / y) * 100 for x, y in zip(model.accuracy.correct, model.accuracy.total)]
         for i_class, class_acc in enumerate(class_accuracies):
             logger.info('Class %d = [%d/%d] = %.2f%%' % (i_class,
