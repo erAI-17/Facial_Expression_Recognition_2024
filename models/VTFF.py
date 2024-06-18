@@ -177,7 +177,8 @@ class att_sel_fusion(nn.Module):
          #?Flatten the input feature matrix
       x = X_fused.view(X_fused.size(0), -1) #batch_size, -1
       x = F.relu(self.fc1(x))
-      x = self.fc2(x)
+      x = F.relu(self.fc2(x))
+      x = self.fc3(x)
       
       return x, {'fused_feat': X_fused}
    
