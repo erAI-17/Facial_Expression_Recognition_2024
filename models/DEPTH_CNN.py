@@ -24,7 +24,7 @@ class DEPTH_ResNet18(nn.Module):
             if 'layer4' in name:
                 param.requires_grad = True
             else:
-                param.requires_grad = False
+                param.requires_grad = True
 
     def forward(self, x):
         x = self.model.conv1(x)
