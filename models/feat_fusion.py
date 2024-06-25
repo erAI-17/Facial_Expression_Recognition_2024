@@ -35,13 +35,13 @@ class feat_fusion(nn.Module):
         #!Resnet50
         if args.models['RGB'].model == 'RGB_ResNet50' and args.models['DEPTH'].model == 'DEPTH_ResNet50':
             self.conv1 = nn.Conv2d(2048, 2048, kernel_size=3, padding=1)
-            self.bn1 = nn.BatchNorm2d(2048)
+            self.bn = nn.BatchNorm2d(2048)
 
             # Fully connected layers
-            self.fc1 = nn.Linear(2048 * 14 * 14 + 2048 *2,(2048 * 14 * 14 + 2048 *2)/8) 
-            self.fc2 = nn.Linear((2048 * 14 * 14 + 2048 *2)/8, (2048 * 14 * 14 + 2048 *2)/16) 
-            self.fc3 = nn.Linear((2048 * 14 * 14 + 2048 *2)/16, (2048 * 14 * 14 + 2048 *2)/32)
-            self.fc4 = nn.Linear((2048 * 14 * 14 + 2048 *2)/132, num_classes) 
+            self.fc1 = nn.Linear(2048 * 14 * 14 + 2048 *2,4096) 
+            self.fc2 = nn.Linear(4096, 2048) 
+            self.fc3 = nn.Linear(2048, 512)
+            self.fc4 = nn.Linear(512, num_classes) 
 
     def forward(self, data):
         rgb_output, rgb_feat  = self.rgb_model(data['RGB'])
@@ -62,8 +62,8 @@ class feat_fusion(nn.Module):
         mid_combined = torch.cat((mid_feat_rgb, mid_feat_depth), dim=1)
 
         # Apply additional convolutions on mid-level features
-        x = F.relu(self.bn1(self.conv1(mid_combined)))
-        x = F.relu(self.bn2(self.conv2(x)))
+        x = F.relu(self.bn(self.conv1(mid_combined)))
+        x = F.relu(self.bn(self.conv2(x)))
 
         # Flatten mid-level features
         x = torch.flatten(x, 1)
