@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
 import open3d as o3d
+import platform
 import matplotlib.pyplot as plt
 import os
 import math
@@ -278,15 +279,15 @@ def train_test_annotations(test_size):
 #!MAIN
 #!##
 if __name__ == '__main__':
-    path = '../Datasets/' + 'CalD3r' #MenD3s #CalD3r
+    path = '../Datasets/' + 'MenD3s' #MenD3s   #CalD3r   #C:/Users/studente/Documents/GitHub/Documenti/Github/Datasets/   #../Datasets/
     
-    ##!#example load of images and depth map for 1 sample
-    images, d_maps = load_2d_and_3d(path, gender='M', subjectid='007', emotion='surprise') #choose example gender, subj_id and emotion
+    #!#example load of images and depth map for 1 sample
+    images, d_maps = load_2d_and_3d(path, gender='F', subjectid='09', emotion='anger') #choose example gender, subj_id and emotion
     ##show
     show(images[0], d_maps[0])
     
     #!generate annotation files for each dataset, TEST and TRAIN
-    #train_test_annotations(test_size=0.2) #20% test, 80% train
+    train_test_annotations(test_size=0.1) #10% test, 90% train
     
     #!check annotation files 
     df = pd.read_pickle(path + '/annotations_train.pkl') 
@@ -295,7 +296,8 @@ if __name__ == '__main__':
     print(df.shape)
     print(df.columns)  
     
-
+    
+   
     
         
     

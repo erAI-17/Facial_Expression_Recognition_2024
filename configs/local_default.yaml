@@ -1,9 +1,8 @@
 action: train # train or test
 name: training # name of the experiment needed for the logs
 modality: ['RGB', 'DEPTH'] #["RGB","DEPTH"] #['VOXEL'] #['MESH']
-total_batch: 32
+total_batch: 128
 batch_size: 32 # batch size for the forward
-gpus: null # gpus adopted
 wandb_name: null # needed for wandb logging
 resume_from: null # checkpoint directory
 logname: null # name of the logs
@@ -11,21 +10,21 @@ models_dir: null # directory containing all the models
 fusion_modalities: True
 
 train:
-  num_iter: 3
-  lr_steps: 2
-  eval_freq: 1
+  num_iter: 5000
+  lr_steps: 2500 #use cosine-annealing instead
+  eval_freq: 250
   
 test:
   
 dataset:
   name: CalD3r_MenD3s #Bosphorus 
-  annotations_path: /Documenti/Github/Datasets #..\Datasets  #/Documenti/Github/Datasets
+  annotations_path: ..\Datasets #..\Datasets  
   workers: 4 
   resolution: 224 
   RGB:
-    data_path:  /Documenti/Github/Datasets #..\Datasets  #/Documenti/Github/Datasets
+    data_path:  ..\Datasets #..\Datasets  
   DEPTH:
-    data_path: /Documenti/Github/Datasets #..\Datasets  #/Documenti/Github/Datasets
+    data_path: ..\Datasets #..\Datasets  
 
 models:
   RGB:
@@ -43,7 +42,7 @@ models:
     sgd_momentum: 0.9
     weight_decay: 1e-7
   FUSION:
-    model: feat_fusion #feat_fusion #att_sel_dusion #ViT
+    model: ViT #feat_fusion #att_sel_dusion #ViT
     kwargs: {}
     lr_steps: 3000
     lr: 0.01

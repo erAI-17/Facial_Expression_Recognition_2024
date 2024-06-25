@@ -20,17 +20,17 @@ from utils.transforms import RGB_transf, DEPTH_transf
 training_iterations = 0
 np.random.seed(13696641)
 torch.manual_seed(13696641)
+
+#!gpus setting up: commands in terminal
+#   nvidia-smi     to see all available gpus
+#   set CUDA_VISIBLE_DEVICES=0   to set the first gpu as the one where to run
+#   echo $CUDA_VISIBLE_DEVICES    to check if gpu is set up properly
     
 def init_operations():
     """
     parse all the arguments, generate the logger, check gpus to be used and wandb
     """
     logger.info("Running with parameters: " + pformat_dict(args, indent=1))
-
-    # this is needed for multi-GPUs systems where you just want to use a predefined set of GPUs
-    if args.gpus is not None:
-        logger.debug('Using only these GPUs: {}'.format(args.gpus))
-        os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpus)
 
     # wanbd logging configuration
     if args.wandb_name is not None:
@@ -46,7 +46,9 @@ def main():
     # recover num_classes, valid paths, domains, 
     num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
     
-    # device where training is run
+    #!check gpu
+    #check0 = os.environ['CUDA_VISIBLE_DEVICES'] 
+    check = torch.cuda.is_available()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     #!TRANSFORMATIONS and AUGMENTATION for TRAINING samples, 
