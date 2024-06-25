@@ -12,7 +12,7 @@ fusion_modalities: True
 train:
   num_iter: 2500
   lr_steps: 1000 #use cosine-annealing instead
-  eval_freq: 250
+  eval_freq: 100
   
 test:
   
@@ -28,21 +28,21 @@ dataset:
 
 models:
   RGB:
-    model: RGB_ResNet18
+    model: RGB_ResNet50
     kwargs: {}
     lr_steps: 3000
     lr: 0.01
     sgd_momentum: 0.9
     weight_decay: 1e-7
   DEPTH:
-    model: DEPTH_ResNet18
+    model: DEPTH_ResNet50
     kwargs: {}
     lr_steps: 3000
     lr: 0.01
     sgd_momentum: 0.9
     weight_decay: 1e-7
   FUSION:
-    model: ViT #feat_fusion #att_sel_dusion #ViT
+    model: feat_fusion #feat_fusion #att_sel_fusion #ViT
     kwargs: {}
     lr_steps: 3000
     lr: 0.01

@@ -47,7 +47,7 @@ class RGB_ResNet50(nn.Module):
             if 'layer3' in name or 'layer4' in name:
                 param.requires_grad = True
             else:
-                param.requires_grad = False
+                param.requires_grad = True
 
     def forward(self, x):
         x = self.model.conv1(x)

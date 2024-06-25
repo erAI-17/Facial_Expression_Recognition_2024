@@ -38,9 +38,10 @@ class feat_fusion(nn.Module):
             self.bn1 = nn.BatchNorm2d(2048)
 
             # Fully connected layers
-            self.fc1 = nn.Linear(2048 * 14 * 14 + 2048 *2, 1024)  
-            self.fc2 = nn.Linear(1024, 512)
-            self.fc3 = nn.Linear(512, num_classes) 
+            self.fc1 = nn.Linear(2048 * 14 * 14 + 2048 *2,(2048 * 14 * 14 + 2048 *2)/8) 
+            self.fc2 = nn.Linear((2048 * 14 * 14 + 2048 *2)/8, (2048 * 14 * 14 + 2048 *2)/16) 
+            self.fc3 = nn.Linear((2048 * 14 * 14 + 2048 *2)/16, (2048 * 14 * 14 + 2048 *2)/32)
+            self.fc4 = nn.Linear((2048 * 14 * 14 + 2048 *2)/132, num_classes) 
 
     def forward(self, data):
         rgb_output, rgb_feat  = self.rgb_model(data['RGB'])
@@ -62,8 +63,7 @@ class feat_fusion(nn.Module):
 
         # Apply additional convolutions on mid-level features
         x = F.relu(self.bn1(self.conv1(mid_combined)))
-        if hasattr(self, 'conv2'):
-            x = F.relu(self.bn2(self.conv2(x)))
+        x = F.relu(self.bn2(self.conv2(x)))
 
         # Flatten mid-level features
         x = torch.flatten(x, 1)
@@ -79,7 +79,8 @@ class feat_fusion(nn.Module):
         # Apply fully connected layers
         x = F.relu(self.fc1(combined_features))
         x = F.relu(self.fc2(x))
-        x = self.fc3(x)
+        x = F.relu(self.fc3(x))
+        x = self.fc4(x)
 
         return x, {}
     
