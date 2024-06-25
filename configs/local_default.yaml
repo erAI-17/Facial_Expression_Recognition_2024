@@ -19,15 +19,13 @@ test:
   
 dataset:
   name: CalD3r_MenD3s #Bosphorus 
-  annotations_path: ..\Datasets  
+  annotations_path: /Documenti/Github/Datasets #..\Datasets  #/Documenti/Github/Datasets
   workers: 4 
   resolution: 224 
   RGB:
-    data_path:  ..\Datasets
+    data_path:  /Documenti/Github/Datasets #..\Datasets  #/Documenti/Github/Datasets
   DEPTH:
-    data_path: ..\Datasets
-  MESH:
-    data_path: ..\Datasets
+    data_path: /Documenti/Github/Datasets #..\Datasets  #/Documenti/Github/Datasets
 
 models:
   RGB:

@@ -26,8 +26,6 @@ dataset:
     data_path: ???
   DEPTH:
     data_path: ???
-  MESH:
-   data_path: ???
 
 models:
   RGB:
