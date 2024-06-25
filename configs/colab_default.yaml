@@ -10,9 +10,9 @@ models_dir: null
 fusion_modalities: ???
 
 train:
-  num_iter: 5000 
+  num_iter: 10000 
   lr_steps: 2500 
-  eval_freq: 500 
+  eval_freq: 100 
   
 test:
   

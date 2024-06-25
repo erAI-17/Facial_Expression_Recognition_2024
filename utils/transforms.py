@@ -27,7 +27,7 @@ class RGB_transf:
             self.transform = transforms.Compose([
                 transforms.RandomHorizontalFlip(),  # Randomly flip the image horizontally
                 transforms.RandomRotation(10),  # Randomly rotate the image by 10 degrees
-                transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
+                #transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
                 #transforms.RandomResizedCrop(224, scale=(0.8, 1.0)),  # Randomly crop and resize the image
                 transforms.ToTensor(),  # Converts the image to a tensor but doesn't normalize to [0,1]
                 ToFloat32(),  # Ensures the tensor is of type float32

@@ -10,8 +10,8 @@ models_dir: null # directory containing all the models
 fusion_modalities: True
 
 train:
-  num_iter: 5000
-  lr_steps: 2500 #use cosine-annealing instead
+  num_iter: 2500
+  lr_steps: 1000 #use cosine-annealing instead
   eval_freq: 250
   
 test:
