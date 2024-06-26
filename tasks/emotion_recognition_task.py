@@ -76,7 +76,7 @@ class EmotionRecognition(tasks.Task, ABC):
             self.optimizer[m] = torch.optim.Adam(optim_params[m], model_args[m].lr,
                                                 weight_decay=model_args[m].weight_decay)
             # Use a learning rate scheduler to decrease the learning rate over time
-            self.scheduler[m] = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer[m], T_max=args.train.num_iter, eta_min=0.00001)
+            self.scheduler[m] = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer[m], T_max=args.train.num_iter/5, eta_min=0.00001)
             
             #!SGD with momentum
             # self.optimizer[m] = torch.optim.SGD(optim_params[m], model_args[m].lr,

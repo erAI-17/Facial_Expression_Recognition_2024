@@ -59,7 +59,7 @@ class ViT(nn.Module):
         #?Concatenate RGB and depth images along the channel dimension
         #combined_input = torch.cat((x['RGB'], x['DEPTH']), dim=1)
         
-        rgb = x['RGB']
+        #rgb = x['RGB']
         # Replicate the single channel to create a 3-channel image (1s to leave inalterated those dimensions)
         #!depth  = x['DEPTH'].repeat(1, 3, 1, 1)
         
@@ -67,7 +67,7 @@ class ViT(nn.Module):
         #! depth = self._preprocessing_(depth)
         
         # Extract features
-        rgb_feat = self._extract_features_(rgb) # [32, 768]
+        rgb_feat = self._extract_features_(x) # [32, 768]
         #!depth_feat = self._extract_features_(depth) # [32, 768]
         
         # Concatenation fusion

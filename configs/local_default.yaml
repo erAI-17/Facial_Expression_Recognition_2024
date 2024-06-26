@@ -10,7 +10,7 @@ models_dir: null # directory containing all the models
 fusion_modalities: True
 
 train:
-  num_iter: 2500
+  num_iter: 10000
   lr_steps: 1000 #use cosine-annealing instead
   eval_freq: 100
   
@@ -42,9 +42,9 @@ models:
     sgd_momentum: 0.9
     weight_decay: 1e-7
   FUSION:
-    model: attention_fusion #feat_fusion #attention_fusion #att_sel_fusion #ViT
+    model: att_fusion1D #feat_fusion #att_fusion1D #att_sel_fusion #ViT
     kwargs: {}
     lr_steps: 3000
-    lr: 0.01
+    lr: 0.001
     sgd_momentum: 0.9
     weight_decay: 1e-7
