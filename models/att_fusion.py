@@ -115,9 +115,12 @@ class att_fusion1D(nn.Module):
       self.attention_rgb = attention1D(768, reduction_ratio=8) 
       self.attention_depth = attention1D(512, reduction_ratio=8) 
       
-      self.fc1 = nn.Linear(512+768, 512)   
+      self.fc1 = nn.Linear(512+768, 512) 
+      self.bn1 = nn.BatchNorm1d(512)  
       self.fc2 = nn.Linear(512, 256)  
+      self.bn2 = nn.BatchNorm1d(256)  
       self.fc3 = nn.Linear(256, 128)  
+      self.bn3 = nn.BatchNorm1d(128) 
       self.fc4 = nn.Linear(128, num_classes)  
 
    def forward(self, x):
@@ -137,9 +140,15 @@ class att_fusion1D(nn.Module):
       combined_feats = torch.cat((attended_rgb_feats, attended_depth_feats), dim=1) 
       
       # Pass through fully connected layers
+
+      #!no batch norms
       x = F.relu(self.fc1(combined_feats))
       x = F.relu(self.fc2(x))
       x = F.relu(self.fc3(x))
+      #!aggressive batchnorms
+      # x = F.relu(self.bn1(self.fc1(combined_feats)))
+      # x = F.relu(self.bn2(self.fc2(x)))
+      # x = F.relu(self.bn3(self.fc3(x)))
       x = self.fc4(x)
       
       return x, {}

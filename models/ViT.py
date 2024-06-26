@@ -23,24 +23,14 @@ class ViT(nn.Module):
         #? This preprocessing typically includes resizing, normalization, and converting images to tensors. 
         self.processor = AutoImageProcessor.from_pretrained("motheecreator/vit-Facial-Expression-Recognition")
 
-        # #? Freeze all layers except the classification head
-        # for param in self.model.vit.parameters():
-        #     param.requires_grad = False
+        #? Freeze all layers BUT LAST CLASSIFIER
+        for name, param in self.model.vit.parameters():
+            if 'classifier' not in name: 
+                param.requires_grad = False
         # #? Optionally, you can unfreeze some specific layers if needed
         # # for param in model.vit.encoder.layer[-1].parameters():
         # #     param.requires_grad = True
-        
-        #? Modify the input layer to accept 4 channels
-        # self.model.vit.embeddings.patch_embeddings.projection = nn.Conv2d(
-        #     in_channels=4, 
-        #     out_channels=self.model.vit.embeddings.patch_embeddings.projection.out_channels, 
-        #     kernel_size=self.model.vit.embeddings.patch_embeddings.projection.kernel_size, 
-        #     stride=self.model.vit.embeddings.patch_embeddings.projection.stride
-        # )
-        
-        #classification layer
-        self.fc = nn.Linear(768 *2, num_classes)  
-        
+                
     # Function to preprocess a single image
     def _preprocessing_(self, img):
         inputs = self.processor(images=img, return_tensors="pt")
@@ -56,25 +46,8 @@ class ViT(nn.Module):
 
     def forward(self, x):
         
-        #?Concatenate RGB and depth images along the channel dimension
-        #combined_input = torch.cat((x['RGB'], x['DEPTH']), dim=1)
-        
-        #rgb = x['RGB']
-        # Replicate the single channel to create a 3-channel image (1s to leave inalterated those dimensions)
-        #!depth  = x['DEPTH'].repeat(1, 3, 1, 1)
-        
-        # rgb = self._preprocessing_(rgb)
-        #! depth = self._preprocessing_(depth)
-        
         # Extract features
         rgb_feat = self._extract_features_(x) # [32, 768]
-        #!depth_feat = self._extract_features_(depth) # [32, 768]
-        
-        # Concatenation fusion
-        #!combined_feat = torch.cat((rgb_feat, depth_feat), dim=1)
-        
-        #! Classification
-        #!x = self.fc(combined_feat)
 
         return x, {'late_feat': rgb_feat}
 

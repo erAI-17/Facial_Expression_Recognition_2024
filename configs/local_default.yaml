@@ -31,14 +31,14 @@ models:
     model: ViT
     kwargs: {}
     lr_steps: 3000
-    lr: 0.01
+    lr: 0.001
     sgd_momentum: 0.9
     weight_decay: 1e-7
   DEPTH:
     model: DEPTH_ResNet18
     kwargs: {}
     lr_steps: 3000
-    lr: 0.01
+    lr: 0.001
     sgd_momentum: 0.9
     weight_decay: 1e-7
   FUSION:
