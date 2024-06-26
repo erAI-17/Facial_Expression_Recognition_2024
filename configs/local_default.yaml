@@ -28,7 +28,7 @@ dataset:
 
 models:
   RGB:
-    model: RGB_ResNet18
+    model: ViT
     kwargs: {}
     lr_steps: 3000
     lr: 0.01
@@ -42,7 +42,7 @@ models:
     sgd_momentum: 0.9
     weight_decay: 1e-7
   FUSION:
-    model: feat_fusion #feat_fusion #att_sel_fusion #ViT
+    model: attention_fusion #feat_fusion #attention_fusion #att_sel_fusion #ViT
     kwargs: {}
     lr_steps: 3000
     lr: 0.01

@@ -114,12 +114,12 @@ class att_sel_fusion(nn.Module):
       self.depth_model = getattr(model_list, args.models['DEPTH'].model)() 
       
       #!Resnet18
-      if args.models['RGB'].model == 'RGB_ResNet18' and args.models['DEPTH'].model == 'DEPTH_ResNet18':    
+      if args.models['RGB'].model == 'RGB_ResNet18' or args.models['DEPTH'].model == 'DEPTH_ResNet18':    
          feat_dim = 256        
          mid_feat_dim = 256
          late_feat_dim = 512
       #!Resnet50
-      elif args.models['RGB'].model == 'RGB_ResNet50' and args.models['DEPTH'].model == 'DEPTH_ResNet50':
+      elif args.models['RGB'].model == 'RGB_ResNet50' or args.models['DEPTH'].model == 'DEPTH_ResNet50':
          feat_dim = 1024    
          mid_feat_dim = 1024
          late_feat_dim = 2048

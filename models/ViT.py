@@ -61,19 +61,20 @@ class ViT(nn.Module):
         
         rgb = x['RGB']
         # Replicate the single channel to create a 3-channel image (1s to leave inalterated those dimensions)
-        depth  = x['DEPTH'].repeat(1, 3, 1, 1)
+        #!depth  = x['DEPTH'].repeat(1, 3, 1, 1)
         
         # rgb = self._preprocessing_(rgb)
-        # depth = self._preprocessing_(depth)
+        #! depth = self._preprocessing_(depth)
         
         # Extract features
         rgb_feat = self._extract_features_(rgb) # [32, 768]
-        depth_feat = self._extract_features_(depth) # [32, 768]
+        #!depth_feat = self._extract_features_(depth) # [32, 768]
         
         # Concatenation fusion
-        combined_feat = torch.cat((rgb_feat, depth_feat), dim=1)
+        #!combined_feat = torch.cat((rgb_feat, depth_feat), dim=1)
         
-        # Classification
-        x = self.fc(combined_feat)
-        return x, {}
+        #! Classification
+        #!x = self.fc(combined_feat)
+
+        return x, {'late_feat': rgb_feat}
 
