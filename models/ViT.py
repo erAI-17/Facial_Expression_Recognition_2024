@@ -24,9 +24,9 @@ class ViT(nn.Module):
         self.processor = AutoImageProcessor.from_pretrained("motheecreator/vit-Facial-Expression-Recognition")
 
         #? Freeze all layers BUT LAST CLASSIFIER
-        for name, param in self.model.named_parameters():
-            if 'classifier' not in name: 
-                param.requires_grad = False
+        # for name, param in self.model.named_parameters():
+        #     if 'classifier' not in name: 
+        #         param.requires_grad = False
         # #? Optionally, you can unfreeze some specific layers if needed
         # # for param in model.vit.encoder.layer[-1].parameters():
         # #     param.requires_grad = True
