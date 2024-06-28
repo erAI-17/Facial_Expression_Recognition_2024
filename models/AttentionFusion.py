@@ -10,10 +10,10 @@ from models.DEPTH_CNN import DEPTH_ResNet18, DEPTH_ResNet50
 
 
 class AttentionFusion1D_Module(nn.Module):
-   def __init__(self, feat_dim, d_model, nhead, d_ff):
+   def __init__(self, rgb_dim, depth_dim, d_model, nhead, d_ff):
       super(AttentionFusion1D_Module, self).__init__()
-      self.proj_rgb = nn.Linear(feat_dim['RGB'], d_model)
-      self.proj_depth = nn.BatchNorm1d(feat_dim['DEPTH'], d_model)
+      self.proj_rgb = nn.Linear(rgb_dim, d_model)
+      self.proj_depth = nn.BatchNorm1d(depth_dim, d_model)
       self.multihead_attn = nn.MultiheadAttention(embed_dim=d_model, num_heads=nhead)
       self.ffn = nn.Sequential(
          nn.Linear(d_model, d_ff),

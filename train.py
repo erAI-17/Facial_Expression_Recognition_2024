@@ -104,8 +104,8 @@ def main():
         logger.info('{} Net\tModality: {}'.format(args.models[m].model, m))
         models[m] = getattr(model_list, args.models[m].model)()
     
-    #?instanciate also the fusion network
-    logger.info('{} Net\tModality: {}'.format(args.models['FUSION'].model, m))
+    #?instanciate also the FUSION network
+    logger.info('{} Net\tModality: {}'.format(args.models['FUSION'].model, 'FUSION'))
     models['FUSION'] = getattr(model_list, args.models['FUSION'].model)(models['RGB'], models['DEPTH'])
         
     #!Create  EmotionRecognition  object that wraps all the models for each modality    
