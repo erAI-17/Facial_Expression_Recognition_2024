@@ -44,25 +44,23 @@ class AttentionFusion1D_Module(nn.Module):
 
 class AttentionFusion1D(nn.Module):
    def __init__(self, rgb_model, depth_model):
+      num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
       super(AttentionFusion1D, self).__init__()
       #?define RGB and Depth networks (from configuration file)
       self.rgb_model = rgb_model
       self.depth_model = depth_model
       
-      self.attention = None
-      self.fc = None
+      self.attention = AttentionFusion1D_Module(768, 512, d_model=512, nhead=8, d_ff=1024)
+      self.fc = nn.Linear(512, num_classes) 
 
    def forward(self, x):
-      num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
       _, rgb_feat  = self.rgb_model(x['RGB'])
       _, depth_feat = self.depth_model(x['DEPTH'])
       
       # Apply attention
-      self.attention = AttentionFusion1D_Module(rgb_feat['late_feat'].size(1), depth_feat['late_feat'].size(1) ,d_model=512, nhead=8, d_ff=1024)
       att_fused_feat = self.attention(rgb_feat['late_feat'], depth_feat['late_feat'])  
 
       #!no batch norms
-      self.fc = nn.Linear(att_fused_feat.size(1), num_classes) 
       x = self.fc(att_fused_feat)
 
       return x, {}
