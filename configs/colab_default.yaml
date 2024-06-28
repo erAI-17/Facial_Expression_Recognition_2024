@@ -12,7 +12,7 @@ fusion_modalities: ???
 train:
   num_iter: 10000 
   lr_steps: 2500 
-  eval_freq: 100 
+  eval_freq: 243 
   
 test:
   
