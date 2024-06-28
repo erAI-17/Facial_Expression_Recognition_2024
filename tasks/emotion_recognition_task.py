@@ -102,14 +102,14 @@ class EmotionRecognition(tasks.Task, ABC):
         logits = {}
         features = {}
         logits, feat = self.task_models['FUSION'](data, **kwargs) #logits [32,7]
-        #? return features to see which are more discriminative (try different loss functions)
-        # for i_m, m in enumerate(self.modalities):
-        #     if i_m == 0: #initially set up an empty dictionary for each modality to store corresponding features
-        #         for k in feat.keys():
-        #             features[k] = {} 
+        #? return features to PLOT which are more discriminative (try different loss functions)
+        for i_m, m in enumerate(self.modalities):
+            if i_m == 0: #initially set up an empty dictionary for each modality to store corresponding features
+                for k in feat.keys():
+                    features[k] = {} 
             
-        #     for k in feat.keys(): #for each level of feature extraction (early-mid-late), save the features extracted
-        #         features[k][m] = feat[k]
+            for k in feat.keys(): #for each level of feature extraction (early-mid-late), save the features extracted
+                features[k][m] = feat[k]
 
         return logits, features
 

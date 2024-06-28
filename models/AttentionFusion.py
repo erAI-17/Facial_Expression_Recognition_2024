@@ -5,8 +5,7 @@ import utils
 from utils.args import args
 import torchaudio.transforms as T
 import models as model_list
-from models.RGB_CNN import RGB_ResNet18, RGB_ResNet50
-from models.DEPTH_CNN import DEPTH_ResNet18, DEPTH_ResNet50
+
 
 
 class AttentionFusion1D_Module(nn.Module):
@@ -21,11 +20,12 @@ class AttentionFusion1D_Module(nn.Module):
          nn.Linear(d_ff, d_model)
       )
       self.layer_norm = nn.LayerNorm(d_model)
+      self.d_ff = d_ff
 
    def forward(self, rgb_feat, depth_feat):
       # Project features to common dimension
-      rgb_proj = self.proj_vit(rgb_feat)
-      depth_proj = self.proj_resnet(depth_feat)
+      rgb_proj = self.proj_rgb(rgb_feat)
+      depth_proj = self.proj_depth(depth_feat)
 
       # Concatenate the projected features
       combined_features = torch.cat((rgb_proj.unsqueeze(1), depth_proj.unsqueeze(1)), dim=1)
@@ -62,7 +62,7 @@ class AttentionFusion1D(nn.Module):
       att_fused_feat = self.attention(rgb_feat['late_feat'], depth_feat['late_feat'])  
 
       #!no batch norms
-      self.fc = nn.Linear(self.attention.d_ff, num_classes) 
-      x = self.fc1(att_fused_feat)
+      self.fc = nn.Linear(att_fused_feat.size(1), num_classes) 
+      x = self.fc(att_fused_feat)
 
       return x, {}

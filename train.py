@@ -133,7 +133,7 @@ def main():
         #* so total number of iterations done over the whole dataset (since we are using smaller batches BATCH_SIZE) is
         training_iterations = args.train.num_iter * (args.total_batch // args.batch_size)
             
-        train(emotion_classifier, train_loader, val_loader, device, num_classes)
+        train(emotion_classifier, train_loader, val_loader, device)
 
     #!TEST
     elif args.action == "test":
@@ -154,7 +154,7 @@ def main():
         validate(emotion_classifier, test_loader, device, emotion_classifier.current_iter)
 
 
-def train(emotion_classifier, train_loader, val_loader, device, num_classes):
+def train(emotion_classifier, train_loader, val_loader, device):
     """
     function to train 1 model for modality on the training set
     
