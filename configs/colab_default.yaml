@@ -31,20 +31,20 @@ models:
     model: ???
     kwargs: {}
     #lr_steps: 3000
-    #lr: 0.01
+    #lr: 1e-4
     sgd_momentum: 0.9
     weight_decay: 1e-7
   DEPTH:
     model: ???
     kwargs: {}
     #lr_steps: 3000
-    #lr: 0.01
+    #lr: 1e-4
     sgd_momentum: 0.9
     weight_decay: 1e-7
   FUSION:
     model: ???
     kwargs: {}
     #lr_steps: 3000
-    lr: 0.01
+    lr: ???
     sgd_momentum: 0.9
     weight_decay: 1e-7
