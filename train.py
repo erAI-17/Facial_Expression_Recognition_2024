@@ -99,8 +99,8 @@ def main():
     
     #?instanciate a different model per modality. 
     models = {}
+    logger.info("Instantiating models per modality")
     for m in args.modality:
-        logger.info("Instantiating models per modality")
         logger.info('{} Net\tModality: {}'.format(args.models[m].model, m))
         models[m] = getattr(model_list, args.models[m].model)()
     
@@ -184,9 +184,9 @@ def train(emotion_classifier, train_loader, val_loader, device):
         
         #?PLOT lr and weights for each model
         for m in emotion_classifier.modalities:
-            writer.add_scalar('LR for modality: {m}', emotion_classifier.optimizer[m].param_groups[-1]['lr'], int(real_iter))   
+            writer.add_scalar('LR for modality: {m}', emotion_classifier.optimizer[m].param_groups[-1]['lr'], real_iter)   
             for name, param in emotion_classifier.task_models[m].named_parameters(): 
-                writer.add_histogram(name, param, global_step=0)       
+                writer.add_histogram(name, param, real_iter)       
             
         #*we reason in terms of ITERATIONS on batches (of BATCH_SIZE) not EPOCHS!!
         #? If the  data_loader_source  iterator is exhausted (i.e., it has iterated over the entire dataset), a  StopIteration  exception is raised. 
@@ -214,17 +214,19 @@ def train(emotion_classifier, train_loader, val_loader, device):
                 
         #? update weights and zero gradients if TOTAL_BATCH is finished!!
         #? also print the training loss MEAN over the 4 32batches inside the TOTAL_BATCH
-        if real_iter.is_integer():             
-            emotion_classifier.check_grad()
-            emotion_classifier.step() #step() attribute calls BOTH  optimizer.step()  and, if implemented,  scheduler.step()
-            emotion_classifier.zero_grad()
-             
+        if real_iter.is_integer():  
             logger.info("[%d/%d]\tlast Verb loss: %.4f\tMean verb loss: %.4f\tAcc@1: %.2f%%\tAccMean@1: %.2f%%" %
                 (real_iter, args.train.num_iter, emotion_classifier.loss.val, emotion_classifier.loss.avg,
                     emotion_classifier.accuracy.val[1], emotion_classifier.accuracy.avg[1]))
             #? PLOT TRAINING LOSS
             writer.add_scalar('Loss/train', emotion_classifier.loss.avg, real_iter)
             writer.add_scalar('Accuracy/train', emotion_classifier.accuracy.avg[1], real_iter)
+                       
+            emotion_classifier.check_grad()
+            emotion_classifier.step() #step() attribute calls BOTH  optimizer.step()  and, if implemented,  scheduler.step()
+            emotion_classifier.zero_grad()
+             
+            
             
     
         #? every "eval_freq" iterations the validation is done
