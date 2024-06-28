@@ -18,13 +18,6 @@ class DEPTH_ResNet18(nn.Module):
         # Initialize the new conv1 layer with pretrained weights
         pretrained_weights = models.resnet18(weights=ResNet18_Weights.DEFAULT).conv1.weight
         self.model.conv1.weight.data = pretrained_weights.mean(dim=1, keepdim=True)
-        
-        #? Freeze all layers except the conv1, last two residual blocks, and the last fully connected layer
-        for name, param in self.model.named_parameters():
-            if 'layer4' in name:
-                param.requires_grad = True
-            else:
-                param.requires_grad = True
 
     def forward(self, x):
         x = self.model.conv1(x)
@@ -39,7 +32,7 @@ class DEPTH_ResNet18(nn.Module):
         late_feat = self.model.layer4(mid_feat)
         late_feat = self.model.avgpool(late_feat) #[batch_size, 512, 1, 1]
         
-        return x, {'mid_feat': mid_feat, 'late_feat': late_feat}
+        return x, {'mid_feat': mid_feat, 'late_feat': late_feat.squeeze()}
     
 
 #!PRETRAINED RESNET50
@@ -53,13 +46,6 @@ class DEPTH_ResNet50(nn.Module):
         # Initialize the new conv1 layer with pretrained weights
         pretrained_weights = models.resnet50(weights=ResNet50_Weights.DEFAULT).conv1.weight
         self.model.conv1.weight.data = pretrained_weights.mean(dim=1, keepdim=True)
-        
-        #? Freeze all layers except the last two residual blocks and the last fully connected layer
-        for name, param in self.model.named_parameters():
-            if 'layer3' in name or 'layer4' in name:
-                param.requires_grad = True
-            else:
-                param.requires_grad = True
 
     def forward(self, x):        
         x = self.model.conv1(x)
@@ -74,5 +60,5 @@ class DEPTH_ResNet50(nn.Module):
         late_feat = self.model.layer4(mid_feat)
         late_feat = self.model.avgpool(late_feat) #[batch_size, 2048, 1, 1] 
         
-        return x, {'mid_feat': mid_feat, 'late_feat': late_feat}
+        return x, {'mid_feat': mid_feat, 'late_feat': late_feat.squeeze()}
     

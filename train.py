@@ -97,22 +97,18 @@ def main():
     #!compute class weights for Weighted Cross Entropy Loss
     class_weights = compute_class_weights(train_loader).to(device)
     
-    #!Create  EmotionRecognition  object that wraps all the models for each modality
+    #?instanciate a different model per modality. 
+    models = {}
+    for m in args.modality:
+        logger.info("Instantiating models per modality")
+        logger.info('{} Net\tModality: {}'.format(args.models[m].model, m))
+        models[m] = getattr(model_list, args.models[m].model)()
     
-    #?if FUSING modalities, ONLY instanciate the fusion network. Else, instanciate a different model per modality and train them separately for logits fusion
-    if args.fusion_modalities == True:
-        logger.info("Instantiating model: %s", args.models['FUSION'].model)
+    #?instanciate also the fusion network
+    logger.info('{} Net\tModality: {}'.format(args.models['FUSION'].model, m))
+    models['FUSION'] = getattr(model_list, args.models['FUSION'].model)(models['RGB'], models['DEPTH'])
         
-        fusion_model = getattr(model_list, args.models['FUSION'].model)()
-        models = {'FUSION':fusion_model }
-    else:
-        models = {}
-        for m in args.modality:
-            logger.info("Instantiating models per modality")
-            logger.info('{} Net\tModality: {}'.format(args.models[m].model, m))
-            models[m] = getattr(model_list, args.models[m].model)()
-        
-
+    #!Create  EmotionRecognition  object that wraps all the models for each modality    
     emotion_classifier = tasks.EmotionRecognition("emotion-classifier", 
                                                  models, 
                                                  args.batch_size,
@@ -123,7 +119,7 @@ def main():
                                                  args=args)
     emotion_classifier.load_on_gpu(device)
     
-    #!handle TRAIN and TESTING
+    #!TRAIN and TESTING
     if args.action == "train":
         # resume_from argument is adopted in case of restoring from a checkpoint
         if args.resume_from is not None:
@@ -132,7 +128,6 @@ def main():
         #* USE GRADIENT ACCUMULATION (the batches are devided into smaller batches with gradient accumulation).
         #* RECALL that larger batch sizes lead to faster convergence because the estimated gradients are more accurate (more similar to the one that would be computed over the whole dataset)
         #* and less affected by noise. So we want large batch sizes BUT we may have some memory constraints, so we use GRADIENT ACCUMULATION
-      
         #* TOTAL_BATCH (128) -> 4* BATCH_SIZE (32)
         #* There are 4 BATCH_SIZE inside TOTAL_BATCH each of which must be iterated (forward+backward) "args.train.num_iter" times,
         #* so total number of iterations done over the whole dataset (since we are using smaller batches BATCH_SIZE) is
@@ -187,16 +182,9 @@ def train(emotion_classifier, train_loader, val_loader, device, num_classes):
     for i in range(iteration, training_iterations): #ITERATIONS on batches (of BATCH_SIZE) 
         real_iter = (i + 1) / (args.total_batch // args.batch_size)
         
-        
-        #? reduce learning rate from ad hoc function (deviding by 10) 
-        #if real_iter == args.train.lr_steps:
-        #    emotion_classifier.reduce_learning_rate() 
-        #?otherwise  it uses automatically the lr scheduler defined in task
-        
+        #?PLOT lr and weights for each model
         for m in emotion_classifier.modalities:
-            #?PLOT lr for each model
             writer.add_scalar('LR for modality: {m}', emotion_classifier.optimizer[m].param_groups[-1]['lr'], int(real_iter))   
-            #?PLOT weights for each model  
             for name, param in emotion_classifier.task_models[m].named_parameters(): 
                 writer.add_histogram(name, param, global_step=0)       
             
@@ -216,12 +204,8 @@ def train(emotion_classifier, train_loader, val_loader, device, num_classes):
 
         source_label = source_label.to(device) #?labels to GPU
         data = {}
-        #?if FUSING modalities, data dictionary contains RGB and DEPTH for FUSION network. 
-        if args.fusion_modalities == True:
-            data['FUSION'] = {m: source_data[m].to(device) for m in args.modality}
-        else: #? else data dictionary contains SEPARATE modality data for each modality (they will be passed into different models)
-            for m in args.modality:
-                data[m] = source_data[m].to(device) #? data to GPU
+        for m in args.modality:
+            data[m] = source_data[m].to(device) #? data to GPU
                 
         logits, _ = emotion_classifier.forward(data)
         emotion_classifier.compute_loss(logits, source_label, loss_weight=1)
@@ -230,19 +214,17 @@ def train(emotion_classifier, train_loader, val_loader, device, num_classes):
                 
         #? update weights and zero gradients if TOTAL_BATCH is finished!!
         #? also print the training loss MEAN over the 4 32batches inside the TOTAL_BATCH
-        if real_iter.is_integer(): 
-            logger.info("[%d/%d]\tlast Verb loss: %.4f\tMean verb loss: %.4f\tAcc@1: %.2f%%\tAccMean@1: %.2f%%" %
-                        (real_iter, args.train.num_iter, emotion_classifier.loss.val, emotion_classifier.loss.avg,
-                        emotion_classifier.accuracy.val[1], emotion_classifier.accuracy.avg[1]))
-
-            #? PLOT TRAINING LOSS
-            writer.add_scalar('Loss/train', emotion_classifier.loss.avg, real_iter)
-            writer.add_scalar('Accuracy/train', emotion_classifier.accuracy.avg[1], real_iter)
-            
-            
+        if real_iter.is_integer():             
             emotion_classifier.check_grad()
             emotion_classifier.step() #step() attribute calls BOTH  optimizer.step()  and, if implemented,  scheduler.step()
             emotion_classifier.zero_grad()
+             
+            logger.info("[%d/%d]\tlast Verb loss: %.4f\tMean verb loss: %.4f\tAcc@1: %.2f%%\tAccMean@1: %.2f%%" %
+                (real_iter, args.train.num_iter, emotion_classifier.loss.val, emotion_classifier.loss.avg,
+                    emotion_classifier.accuracy.val[1], emotion_classifier.accuracy.avg[1]))
+            #? PLOT TRAINING LOSS
+            writer.add_scalar('Loss/train', emotion_classifier.loss.avg, real_iter)
+            writer.add_scalar('Accuracy/train', emotion_classifier.accuracy.avg[1], real_iter)
             
     
         #? every "eval_freq" iterations the validation is done
@@ -281,12 +263,8 @@ def validate(model, val_loader, device, it):
         for i_val, (data, label) in enumerate(val_loader): #*for each batch in val loader
             
             label = label.to(device)
-            #?if FUSING modalities, data dictionary contains RGB and DEPTH for FUSION network. 
-            if args.fusion_modalities == True:
-                data['FUSION'] = {m: data[m].to(device) for m in args.modality} #a dictionary
-            else: #? else data dictionary contains SEPARATE modality data for each modality (they will be passed into different models)
-                for m in args.modality:
-                    data[m] = data[m].to(device) #? data to GPU
+            for m in args.modality:
+                data[m] = data[m].to(device) #? data to GPU
             
             logits, _ = model.forward(data)
             model.compute_accuracy(logits, label)

@@ -13,13 +13,6 @@ class RGB_ResNet18(nn.Module):
         super(RGB_ResNet18, self).__init__()
         self.model = models.resnet18(weights=ResNet18_Weights.DEFAULT)  #download pretrained weights? ==True, ResNet18_Weights.DEFAULT TO GET THE MOST UPDATED WEIGHTS
         
-        #? Freeze all layers except the last residual blocks and the last fully connected layer
-        for name, param in self.model.named_parameters():
-            if 'layer4' in name:
-                param.requires_grad = True
-            else:
-                param.requires_grad = True
-
     def forward(self, x):
         x = self.model.conv1(x)
         x = self.model.bn1(x) #batch normalization
@@ -33,7 +26,7 @@ class RGB_ResNet18(nn.Module):
         late_feat = self.model.layer4(mid_feat)
         late_feat = self.model.avgpool(late_feat) #[batch_size, 512, 1, 1]
         
-        return x, {'mid_feat': mid_feat, 'late_feat': late_feat}
+        return x, {'mid_feat': mid_feat, 'late_feat': late_feat.squeeze()}
     
 
 #!PRETRAINED RESNET50
@@ -42,13 +35,6 @@ class RGB_ResNet50(nn.Module):
         super(RGB_ResNet50, self).__init__()
         self.model = models.resnet50(weights=ResNet50_Weights.DEFAULT)  #download pretrained weights? ==True, ResNet18_Weights.DEFAULT TO GET THE MOST UPDATED WEIGHTS
         
-        #? Freeze all layers except the last two residual blocks and the last fully connected layer
-        for name, param in self.model.named_parameters():
-            if 'layer3' in name or 'layer4' in name:
-                param.requires_grad = True
-            else:
-                param.requires_grad = True
-
     def forward(self, x):
         x = self.model.conv1(x)
         x = self.model.bn1(x) #batch normalization
@@ -62,7 +48,7 @@ class RGB_ResNet50(nn.Module):
         late_feat = self.model.layer4(mid_feat)
         late_feat = self.model.avgpool(late_feat) #[batch_size, 2048, 1, 1]
         
-        return x, {'mid_feat': mid_feat, 'late_feat': late_feat}
+        return x, {'mid_feat': mid_feat, 'late_feat': late_feat.squeeze()}
     
 
 

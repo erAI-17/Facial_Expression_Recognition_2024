@@ -64,7 +64,7 @@ class EmotionRecognition(tasks.Task, ABC):
         optim_params = {}
         self.optimizer = {}
         self.scheduler = {}
-        for m in self.modalities:
+        for m in self.task_models:
             #?select only parameters of the model that have requires_grad == True. If they have requires_grad == False it means they should not be
             #? includeed in gradient computation and NOT be updated because of PRE-TRAINING FREEZING
             optim_params[m] = filter(lambda parameter: parameter.requires_grad, self.task_models[m].parameters())
@@ -98,85 +98,49 @@ class EmotionRecognition(tasks.Task, ABC):
         Tuple[Dict[str, torch.Tensor], Dict[str, torch.Tensor]]
             output logits and features
         """
+        #!train all modalities networks TOGETHER passing data to FUSION network
         logits = {}
         features = {}
-        for i_m, m in enumerate(self.modalities):
-            logits[m], feat = self.task_models[m](data[m], **kwargs) #logits [32,7]
+        logits, feat = self.task_models['FUSION'](data, **kwargs) #logits [32,7]
+        #? return features to see which are more discriminative (try different loss functions)
+        # for i_m, m in enumerate(self.modalities):
+        #     if i_m == 0: #initially set up an empty dictionary for each modality to store corresponding features
+        #         for k in feat.keys():
+        #             features[k] = {} 
             
-            if i_m == 0: #initially set up an empty dictionary for each modality to store corresponding features
-                for k in feat.keys():
-                    features[k] = {} 
-            
-            for k in feat.keys(): #for each level of feature extraction (early-mid-late), save the features extracted
-                features[k][m] = feat[k]
+        #     for k in feat.keys(): #for each level of feature extraction (early-mid-late), save the features extracted
+        #         features[k][m] = feat[k]
 
         return logits, features
 
 
     def compute_loss(self, logits: Dict[str, torch.Tensor], label: torch.Tensor, loss_weight: float=1.0):
-        """Fuse the logits from different modalities and compute the classification loss.
+        """Compute the classification loss.
 
         Parameters
         ----------
-        logits : Dict[str, torch.Tensor]
-            logits of the different modalities
+        logits : final logits
         label : torch.Tensor
             ground truth
         loss_weight : float, optional
             weight of the classification loss, by default 1.0
         """
-        #!modality logits fusion for loss 
-        fused_logits = reduce(lambda x, y: x + y, logits.values()) #?creates 1 array of logits by summing ALL arrays of logits from different modalities 
-        loss = self.criterion(fused_logits, label)  # [32]
+        loss = self.criterion(logits, label) 
         
         #? Update the loss value, weighting it by the ratio of the batch size to the total batch size (for gradient accumulation)
         self.loss.update(torch.mean(loss_weight * loss) / (self.total_batch / self.batch_size), self.batch_size)
 
 
     def compute_accuracy(self, logits: Dict[str, torch.Tensor], label: torch.Tensor):
-        """Fuse the logits from different modalities and compute the classification accuracy.
+        """Compute the classification accuracy.
 
         Parameters
         ----------
-        logits : Dict[str, torch.Tensor]
-            logits of the different modalities
+        logits : final logits
         label : torch.Tensor
             ground truth
         """
-        #!modality logits fusion for accuracy
-        fused_logits = reduce(lambda x, y: x + y, logits.values())
-        self.accuracy.update(fused_logits, label)
-
-
-    def reduce_learning_rate(self):
-        """Perform a learning rate step."""
-        for m in self.modalities:
-            prev_lr = self.optimizer[m].param_groups[-1]["lr"]
-            new_lr = self.optimizer[m].param_groups[-1]["lr"] / 10
-            self.optimizer[m].param_groups[-1]["lr"] = new_lr
-
-            logger.info(f"Reducing learning rate modality {m}: {prev_lr} --> {new_lr}")
-            
-        # #?gradually unfreeze layers of pretrained network
-        # def unfreeze_layers(emotion_classifier, layers_to_unfreeze):
-        #     for name, param in emotion_classifier.named_parameters():
-        #         if any(layer in name for layer in layers_to_unfreeze):
-        #             param.requires_grad = True
-        
-        
-        # initial_unfreeze_layers = [['layer4'], ['layer3']]
-        # additional_unfreeze_layers = [['layer2'], ['layer1'], ['conv1']]  # Adjust as needed
-        
-        # unfreeze_interval = 1500 # between 5 epochs (1078) and 10 epochs (2156)
-        # unfreeze_iter = set(range(0, args.train.num_iter, unfreeze_interval))  # Epochs at which to unfreeze layers
-        
-        # if real_iter in unfreeze_iter:
-        #     layers_to_unfreeze = initial_unfreeze_layers.pop(0) if initial_unfreeze_layers else additional_unfreeze_layers.pop(0)
-        #     unfreeze_layers(emotion_classifier, layers_to_unfreeze)
-        #     optimizer = optim.Adam(filter(lambda p: p.requires_grad, emotion_classifier.parameters()), emotion_classifier.lr) #take current learning rate 
-        #!###############################################    
-            
-            
+        self.accuracy.update(logits, label)
 
     def reset_loss(self):
         """Reset the classification loss.
