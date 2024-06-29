@@ -32,7 +32,7 @@ class ViT(nn.Module):
             if 'classifier' in name: 
                 param.requires_grad = True
                 
-        #? Optionally, you can unfreeze some specific layers if needed
+        #? Unfreeze some specific layers if needed
         for param in self.model.encoder.layer[-1].parameters():
             param.requires_grad = True
                 
@@ -50,6 +50,9 @@ class ViT(nn.Module):
         return features    
 
     def forward(self, x):
+        
+        #call processor
+        #x = self._preprocessing_(x)
         
         # Extract features
         rgb_feat = self._extract_features_(x) # [32, 768]

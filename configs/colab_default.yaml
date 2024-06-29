@@ -28,7 +28,7 @@ models:
   RGB:
     model: ???
     kwargs: {}
-    lr: 2e-5
+    lr: 1e-5
     sgd_momentum: 0.9
     weight_decay: 1e-7
   DEPTH:
