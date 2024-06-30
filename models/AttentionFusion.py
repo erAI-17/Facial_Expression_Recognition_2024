@@ -33,11 +33,11 @@ class AttentionFusion1D_Module(nn.Module):
       combined_features = torch.cat((rgb_proj.unsqueeze(1), depth_proj.unsqueeze(1)), dim=1)
 
       #! Apply multi-head attention
-      attn_output, _ = self.multihead_attn(combined_features, combined_features, combined_features)
-      attn_output = self.layer_norm(attn_output)
+      # attn_output, _ = self.multihead_attn(combined_features, combined_features, combined_features)
+      # attn_output = self.layer_norm(attn_output)
 
       # Aggregate attention output (e.g., take mean over the sequence)
-      fused_features = attn_output.mean(dim=1)
+      fused_features = combined_features.mean(dim=1) #attn_output
 
       # Apply feed-forward network
       output = self.ffn(fused_features)

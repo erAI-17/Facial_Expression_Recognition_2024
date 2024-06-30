@@ -16,6 +16,7 @@ class EmotionRecognition(tasks.Task, ABC):
                  batch_size: int, 
                  total_batch: int, 
                  models_dir: str, 
+                 scaler,
                  class_weights: torch.FloatTensor, 
                  model_args: Dict[str, float], 
                  args, **kwargs) -> None:
@@ -33,8 +34,10 @@ class EmotionRecognition(tasks.Task, ABC):
             batch size simulated via gradient accumulation
         models_dir : str
             directory where the models are stored when saved
-        num_classes : int
-            number of labels in the classification task
+        scaler : 
+            scaler object fro mixed precision
+        class_weights: float tensor
+            weights for each class to use for Weighted cross entropy loss
         model_args : Dict[str, float]
             model-specific arguments
         """
@@ -46,6 +49,8 @@ class EmotionRecognition(tasks.Task, ABC):
         self.accuracy = utils.Accuracy(topk=(1, 5))
         self.loss = utils.AverageMeter()
         
+        #!scaler for mixed precision 
+        self.scaler = scaler
         
         #! CrossEntropyLoss
         self.criterion = torch.nn.CrossEntropyLoss(weight=None, size_average=None, ignore_index=-100,
@@ -159,7 +164,11 @@ class EmotionRecognition(tasks.Task, ABC):
         This method performs an optimization step and resets both the loss
         and the accuracy.
         """
-        super().step() #?calls step method of the parents class, which refers to the step method of the optimizer for that modality network
+        for m in self.modalities:
+            self.scaler.step(self.optimizer[m])
+            if self.scheduler[m] is not None:  
+                self.scaler.step(self.scheduler[m])
+
         self.reset_loss()
         self.reset_acc()
 
@@ -174,7 +183,7 @@ class EmotionRecognition(tasks.Task, ABC):
         retain_graph : bool, optional
             whether the computational graph should be retained, by default False
         """
-        self.loss.val.backward(retain_graph=retain_graph)
+        self.scaler.scale(self.loss.val).backward(retain_graph=retain_graph)
 
     def wandb_log(self):
             """Log the current loss and top1/top5 accuracies to wandb."""

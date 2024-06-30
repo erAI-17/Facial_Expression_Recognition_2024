@@ -13,7 +13,8 @@ import os
 import models as model_list
 import tasks
 import wandb
-from torch.profiler import profile, record_function, ProfilerActivity
+from torch.profiler import profile, record_function, ProfilerActivity #profiler
+from torch.cuda.amp import autocast, GradScaler #automatic mixed precision 
 from utils.utils import compute_class_weights
 from utils.transforms import RGB_transf, DEPTH_transf
 from torch.utils.tensorboard import SummaryWriter
@@ -56,6 +57,9 @@ def main():
     #check = torch.cuda.is_available()
     #torch.zeros(1).cuda()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
+    #Mixed precision scaler
+    scaler = GradScaler()
 
     #!TRANSFORMATIONS and AUGMENTATION for TRAINING samples, 
     #!ONLY TRANSFORMATION (NO AUGMENTATION) for VALIDATION/TEST samples
@@ -115,6 +119,7 @@ def main():
                                                  args.batch_size,
                                                  args.total_batch, 
                                                  args.models_dir, 
+                                                 scaler, #mixed precision scaler
                                                  class_weights,
                                                  args.models, 
                                                  args=args)
@@ -178,81 +183,88 @@ def train(emotion_classifier, train_loader, val_loader, device):
     #*current_iter is just for restoring from a saved run. Otherwise iteration is set to 0.
     iteration = emotion_classifier.current_iter * (args.total_batch // args.batch_size)
 
-    #! profiler for CPU and GPU (automaticallly updating Tensorboard)
-    with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
-                    schedule=torch.profiler.schedule(wait=1, warmup=1, active=3, repeat=2),
-                    on_trace_ready=torch.profiler.tensorboard_trace_handler('./logs'),
-                    record_shapes=True,
-                    profile_memory=True,
-                    with_stack=True) as prof:  
-        #*iteration: forward and backward of 1 batch of BATCH_SIZE. Next iteration will be on next Batch of BATCH_SIZE!!
-        #*epoch: forward and backward of ALL DATASET (If dataset contains 1000 samples and batch size= 100, 1 epoch consists of 10 iterations)
-        for i in range(iteration, training_iterations): #ITERATIONS on batches (of BATCH_SIZE) 
-            real_iter = (i + 1) / (args.total_batch // args.batch_size)
-            
-            #?PLOT lr and weights for each model
-            for m in emotion_classifier.task_models:
-                writer.add_scalar(f'LR for modality/{m}', emotion_classifier.optimizer[m].param_groups[-1]['lr'], real_iter)   
-                for name, param in emotion_classifier.task_models[m].named_parameters(): 
-                    writer.add_histogram(f'{m}/{name}', param, real_iter)       
-                
-            #*we reason in terms of ITERATIONS on batches (of BATCH_SIZE) not EPOCHS!!
-            #? If the  data_loader_source  iterator is exhausted (i.e., it has iterated over the entire dataset), a  StopIteration  exception is raised. 
-            #? The  except StopIteration  block catches this exception and reinitializes the iterator with effectively starting the iteration from the beginning of the dataset again. 
-            start_t = datetime.now()
-            try:
-                source_data, source_label = next(data_loader_source) #*get the next batch of data with next()!
-            except StopIteration:
-                data_loader_source = iter(train_loader)
-                source_data, source_label = next(data_loader_source)
-            end_t = datetime.now()
 
-            logger.info(f"Iteration {i}/{training_iterations} batch retrieved! Elapsed time = "
-                        f"{(end_t - start_t).total_seconds() // 60} m {(end_t - start_t).total_seconds() % 60} s")
-
-            source_label = source_label.to(device) #?labels to GPU
-            data = {}
-            for m in args.modality:
-                data[m] = source_data[m].to(device) #? data to GPU
-                    
-            logits, _ = emotion_classifier.forward(data)
-            emotion_classifier.compute_loss(logits, source_label, loss_weight=1)
-            emotion_classifier.backward(retain_graph=False)
-            emotion_classifier.compute_accuracy(logits, source_label)
-            
-                    
-            #? update weights and zero gradients if TOTAL_BATCH is finished!!
-            #? also print the training loss MEAN over the 4 32batches inside the TOTAL_BATCH
-            if real_iter.is_integer():  
-                logger.info("[%d/%d]\tlast Verb loss: %.4f\tMean verb loss: %.4f\tAcc@1: %.2f%%\tAccMean@1: %.2f%%" %
-                    (real_iter, args.train.num_iter, emotion_classifier.loss.val, emotion_classifier.loss.avg,
-                        emotion_classifier.accuracy.val[1], emotion_classifier.accuracy.avg[1]))
-                #? PLOT TRAINING LOSS
-                writer.add_scalar('Loss/train', emotion_classifier.loss.avg, real_iter)
-                writer.add_scalar('Accuracy/train', emotion_classifier.accuracy.avg[1], real_iter)
-                        
-                emotion_classifier.check_grad()
-                emotion_classifier.step() #step() attribute calls BOTH  optimizer.step()  and, if implemented,  scheduler.step()
-                emotion_classifier.zero_grad()
-                prof.step() #!update profiler
-                
+    #*iteration: forward and backward of 1 batch of BATCH_SIZE. Next iteration will be on next Batch of BATCH_SIZE!!
+    #*epoch: forward and backward of ALL DATASET (If dataset contains 1000 samples and batch size= 100, 1 epoch consists of 10 iterations)
+    for i in range(iteration, training_iterations): #ITERATIONS on batches (of BATCH_SIZE) 
+        real_iter = (i + 1) / (args.total_batch // args.batch_size)
         
-            #! every "eval_freq" iterations the validation is done
-            if real_iter.is_integer() and real_iter % args.train.eval_freq == 0:
-                val_metrics = validate(emotion_classifier, val_loader, device, int(real_iter))
+        #?PLOT lr and weights for each model
+        for m in emotion_classifier.task_models:
+            writer.add_scalar(f'LR for modality/{m}', emotion_classifier.optimizer[m].param_groups[-1]['lr'], real_iter)   
+            for name, param in emotion_classifier.task_models[m].named_parameters(): 
+                writer.add_histogram(f'{m}/{name}', param, real_iter)       
+            
+        #*we reason in terms of ITERATIONS on batches (of BATCH_SIZE) not EPOCHS!!
+        #? If the  data_loader_source  iterator is exhausted (i.e., it has iterated over the entire dataset), a  StopIteration  exception is raised. 
+        #? The  except StopIteration  block catches this exception and reinitializes the iterator with effectively starting the iteration from the beginning of the dataset again. 
+        start_t = datetime.now()
+        try:
+            source_data, source_label = next(data_loader_source) #*get the next batch of data with next()!
+        except StopIteration:
+            data_loader_source = iter(train_loader)
+            source_data, source_label = next(data_loader_source)
+        end_t = datetime.now()
+
+        logger.info(f"Iteration {i}/{training_iterations} batch retrieved! Elapsed time = "
+                    f"{(end_t - start_t).total_seconds() // 60} m {(end_t - start_t).total_seconds() % 60} s")
+
+        source_label = source_label.to(device) #?labels to GPU
+        data = {}
+        for m in args.modality:
+            data[m] = source_data[m].to(device) #? data to GPU
+            
+        #! profiler for CPU and GPU (automaticallly updating Tensorboard). Only for the forward+backward passes and not keeping trak of memory alloc/dealloc
+        with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
+                        schedule=torch.profiler.schedule(wait=1, warmup=1, active=3, repeat=2),
+                        on_trace_ready=torch.profiler.tensorboard_trace_handler('./logs'),
+                        record_shapes=True,
+                        profile_memory=False,
+                        with_stack=True) as prof:      
+            
+            # Forward pass with automatic mixed precision 
+            with autocast():   #?The autocast() context manager allows PyTorch to automatically cast operations inside it to FP16, reducing memory usage and accelerating computations on compatible hardware.
+                logits, _ = emotion_classifier.forward(data)
+            
+            emotion_classifier.compute_loss(logits, source_label, loss_weight=1) #?internally, the scaler, scales the loss to avoid UNDERFLOW of teh gradient (too small gradients) since they will  be computed in FP16 (half precision)
+        emotion_classifier.backward(retain_graph=False) 
+        emotion_classifier.compute_accuracy(logits, source_label)
+        
                 
-                #?PLOT VALIDATION ACCURACIES
-                writer.add_scalar('Accuracy/validation', val_metrics['top1'], int(real_iter))
+        #? update weights and zero gradients if TOTAL_BATCH is finished!!
+        #? also print the training loss MEAN over the 4 32batches inside the TOTAL_BATCH
+        if real_iter.is_integer():  
+            logger.info("[%d/%d]\tlast Verb loss: %.4f\tMean verb loss: %.4f\tAcc@1: %.2f%%\tAccMean@1: %.2f%%" %
+                (real_iter, args.train.num_iter, emotion_classifier.loss.val, emotion_classifier.loss.avg,
+                    emotion_classifier.accuracy.val[1], emotion_classifier.accuracy.avg[1]))
+            #? PLOT TRAINING LOSS
+            writer.add_scalar('Loss/train', emotion_classifier.loss.avg, real_iter)
+            writer.add_scalar('Accuracy/train', emotion_classifier.accuracy.avg[1], real_iter)
+                    
+            emotion_classifier.check_grad()
+            emotion_classifier.step() #step() attribute calls BOTH  optimizer.step()  and, if implemented,  scheduler.step()
+            emotion_classifier.scaler.update()
+            emotion_classifier.zero_grad()
+            
+            prof.step() #!update profiler
+            
+    
+        #! every "eval_freq" iterations the validation is done
+        if real_iter.is_integer() and real_iter % args.train.eval_freq == 0:
+            val_metrics = validate(emotion_classifier, val_loader, device, int(real_iter))
+            
+            #?PLOT VALIDATION ACCURACIES
+            writer.add_scalar('Accuracy/validation', val_metrics['top1'], int(real_iter))
 
-                if val_metrics['top1'] <= emotion_classifier.best_iter_score:
-                    logger.info("OLD best accuracy {:.2f}% at iteration {}".format(emotion_classifier.best_iter_score, emotion_classifier.best_iter))
-                else:
-                    logger.info("NEW best accuracy {:.2f}%".format(val_metrics['top1']))
-                    emotion_classifier.best_iter = real_iter
-                    emotion_classifier.best_iter_score = val_metrics['top1']
+            if val_metrics['top1'] <= emotion_classifier.best_iter_score:
+                logger.info("OLD best accuracy {:.2f}% at iteration {}".format(emotion_classifier.best_iter_score, emotion_classifier.best_iter))
+            else:
+                logger.info("NEW best accuracy {:.2f}%".format(val_metrics['top1']))
+                emotion_classifier.best_iter = real_iter
+                emotion_classifier.best_iter_score = val_metrics['top1']
 
-                emotion_classifier.save_model(real_iter, val_metrics['top1'], prefix=None)
-                emotion_classifier.train(True)  
+            emotion_classifier.save_model(real_iter, val_metrics['top1'], prefix=None)
+            emotion_classifier.train(True)  
 
 
 def validate(model, val_loader, device, it):
@@ -276,7 +288,9 @@ def validate(model, val_loader, device, it):
             for m in args.modality:
                 data[m] = data[m].to(device) #? data to GPU
             
-            logits, _ = model.forward(data)
+            with autocast():   #?The autocast() context manager allows PyTorch to automatically cast operations inside it to FP16, reducing memory usage and accelerating computations on compatible hardware.
+                logits, _ = model.forward(data)
+            
             model.compute_accuracy(logits, label)
 
             #?print the validation accuracy at 5 steps: 20% - 40% - 60% - 80% - 100% of validation set

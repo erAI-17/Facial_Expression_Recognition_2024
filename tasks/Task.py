@@ -94,6 +94,11 @@ class Task(torch.nn.Module, metaclass=ABCMeta):
         """
         for modality, model in self.task_models.items():
             self.task_models[modality] = torch.nn.DataParallel(model).to(device)
+            
+    @abstractmethod
+    def step(self):
+        """Perform the optimization step once all the gradients of the gradient accumulation are accumulated."""
+        pass
 
     def __restore_checkpoint(self, m: str, path: str):
         """Restore a checkpoint from a saved model path.
@@ -262,13 +267,6 @@ class Task(torch.nn.Module, metaclass=ABCMeta):
         """Reset the gradient when gradient accumulation is finished."""
         for m in self.modalities:
             self.optimizer[m].zero_grad()
-
-    def step(self):
-        """Perform the optimization step once all the gradients of the gradient accumulation are accumulated."""
-        for m in self.modalities:
-            self.optimizer[m].step()
-            if self.scheduler[m] is not None:  
-                self.scheduler[m].step()
 
     def check_grad(self):
         """Check that the gradients of the model are not over a certain threshold.
