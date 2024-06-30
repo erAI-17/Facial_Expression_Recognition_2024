@@ -227,45 +227,46 @@ def train(emotion_classifier, train_loader, val_loader, device):
                 logits, _ = emotion_classifier.forward(data)
             
             emotion_classifier.compute_loss(logits, source_label, loss_weight=1) #?internally, the scaler, scales the loss to avoid UNDERFLOW of teh gradient (too small gradients) since they will  be computed in FP16 (half precision)
-        emotion_classifier.backward(retain_graph=False) 
-        emotion_classifier.compute_accuracy(logits, source_label)
-        
-                
-        #? update weights and zero gradients if TOTAL_BATCH is finished!!
-        #? also print the training loss MEAN over the 4 32batches inside the TOTAL_BATCH
-        if real_iter.is_integer():  
-            logger.info("[%d/%d]\tlast Verb loss: %.4f\tMean verb loss: %.4f\tAcc@1: %.2f%%\tAccMean@1: %.2f%%" %
-                (real_iter, args.train.num_iter, emotion_classifier.loss.val, emotion_classifier.loss.avg,
-                    emotion_classifier.accuracy.val[1], emotion_classifier.accuracy.avg[1]))
-            #? PLOT TRAINING LOSS
-            writer.add_scalar('Loss/train', emotion_classifier.loss.avg, real_iter)
-            writer.add_scalar('Accuracy/train', emotion_classifier.accuracy.avg[1], real_iter)
+            emotion_classifier.backward(retain_graph=False) 
+            emotion_classifier.compute_accuracy(logits, source_label)
+            
                     
-            emotion_classifier.check_grad()
-            emotion_classifier.step() #step() attribute calls BOTH  optimizer.step()  and, if implemented,  scheduler.step()
-            emotion_classifier.scaler.update()
-            emotion_classifier.zero_grad()
-            
-            prof.step() #!update profiler
-            
-    
-        #! every "eval_freq" iterations the validation is done
-        if real_iter.is_integer() and real_iter % args.train.eval_freq == 0:
-            val_metrics = validate(emotion_classifier, val_loader, device, int(real_iter))
-            
-            #?PLOT VALIDATION ACCURACIES
-            writer.add_scalar('Accuracy/validation', val_metrics['top1'], int(real_iter))
+            #? update weights and zero gradients if TOTAL_BATCH is finished!!
+            #? also print the training loss MEAN over the 4 32batches inside the TOTAL_BATCH
+            if real_iter.is_integer():  
+                logger.info("[%d/%d]\tlast Verb loss: %.4f\tMean verb loss: %.4f\tAcc@1: %.2f%%\tAccMean@1: %.2f%%" %
+                    (real_iter, args.train.num_iter, emotion_classifier.loss.val, emotion_classifier.loss.avg,
+                        emotion_classifier.accuracy.val[1], emotion_classifier.accuracy.avg[1]))
+                #? PLOT TRAINING LOSS
+                writer.add_scalar('Loss/train', emotion_classifier.loss.avg, real_iter)
+                writer.add_scalar('Accuracy/train', emotion_classifier.accuracy.avg[1], real_iter)
+                        
+                emotion_classifier.check_grad()
+                emotion_classifier.step() #step() attribute calls BOTH  optimizer.step()  and, if implemented,  scheduler.step()
+                emotion_classifier.scaler.update()
+                emotion_classifier.zero_grad()
+                
+                prof.step() #!update profiler
+                
+        
+            #! every "eval_freq" iterations the validation is done
+            if real_iter.is_integer() and real_iter % args.train.eval_freq == 0:
+                val_metrics = validate(emotion_classifier, val_loader, device, int(real_iter))
+                
+                #?PLOT VALIDATION ACCURACIES
+                writer.add_scalar('Accuracy/validation', val_metrics['top1'], int(real_iter))
 
-            if val_metrics['top1'] <= emotion_classifier.best_iter_score:
-                logger.info("OLD best accuracy {:.2f}% at iteration {}".format(emotion_classifier.best_iter_score, emotion_classifier.best_iter))
-            else:
-                logger.info("NEW best accuracy {:.2f}%".format(val_metrics['top1']))
-                emotion_classifier.best_iter = real_iter
-                emotion_classifier.best_iter_score = val_metrics['top1']
+                if val_metrics['top1'] <= emotion_classifier.best_iter_score:
+                    logger.info("OLD best accuracy {:.2f}% at iteration {}".format(emotion_classifier.best_iter_score, emotion_classifier.best_iter))
+                else:
+                    logger.info("NEW best accuracy {:.2f}%".format(val_metrics['top1']))
+                    emotion_classifier.best_iter = real_iter
+                    emotion_classifier.best_iter_score = val_metrics['top1']
 
-            emotion_classifier.save_model(real_iter, val_metrics['top1'], prefix=None)
-            emotion_classifier.train(True)  
-
+                emotion_classifier.save_model(real_iter, val_metrics['top1'], prefix=None)
+                emotion_classifier.train(True) 
+                 
+    writer.close()
 
 def validate(model, val_loader, device, it):
     """
