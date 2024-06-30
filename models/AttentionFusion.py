@@ -32,7 +32,7 @@ class AttentionFusion1D_Module(nn.Module):
       # Concatenate the projected features
       combined_features = torch.cat((rgb_proj.unsqueeze(1), depth_proj.unsqueeze(1)), dim=1)
 
-      # Apply multi-head attention
+      #! Apply multi-head attention
       attn_output, _ = self.multihead_attn(combined_features, combined_features, combined_features)
       attn_output = self.layer_norm(attn_output)
 

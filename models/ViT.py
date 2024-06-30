@@ -23,18 +23,18 @@ class ViT(nn.Module):
         #? This preprocessing typically includes resizing, normalization, and converting images to tensors. 
         self.processor = AutoImageProcessor.from_pretrained("motheecreator/vit-Facial-Expression-Recognition")
 
-        #? Freeze all parameters initially
-        for param in self.model.parameters():
-            param.requires_grad = False
+        # #? Freeze all parameters initially
+        # for param in self.model.parameters():
+        #     param.requires_grad = False
             
-        #?unfreeze last classifier    
-        for name, param in self.model.named_parameters():
-            if 'classifier' in name: 
-                param.requires_grad = True
+        # #?unfreeze last classifier    
+        # for name, param in self.model.named_parameters():
+        #     if 'classifier' in name: 
+        #         param.requires_grad = True
                 
-        #? Unfreeze some specific layers if needed
-        for param in self.model.encoder.layer[-1].parameters():
-            param.requires_grad = True
+        # #? Unfreeze some specific layers if needed
+        # for param in self.model.encoder.layer[-1].parameters():
+        #     param.requires_grad = True
                 
     # Function to preprocess a single image
     def _preprocessing_(self, img):
