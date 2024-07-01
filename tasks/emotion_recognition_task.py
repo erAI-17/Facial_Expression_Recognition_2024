@@ -167,7 +167,7 @@ class EmotionRecognition(tasks.Task, ABC):
         for m in self.modalities:
             self.scaler.step(self.optimizer[m])
             if self.scheduler[m] is not None:  
-                self.scaler.step(self.scheduler[m])
+                self.scheduler[m].step()
 
         self.reset_loss()
         self.reset_acc()
