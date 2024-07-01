@@ -10,7 +10,7 @@ import models as model_list
 
 class SIMPLER_AttentionFusion1D_Module(nn.Module):
    def __init__(self, rgb_dim, depth_dim, d_model, nhead, d_ff):
-      super(AttentionFusion1D_Module, self).__init__()
+      super(SIMPLER_AttentionFusion1D_Module, self).__init__()
       self.proj_rgb = nn.Linear(rgb_dim, d_model)
       self.proj_depth = nn.Linear(depth_dim, d_model)
       self.attention = nn.Linear(d_model * 2, 1)
@@ -92,7 +92,7 @@ class AttentionFusion1D(nn.Module):
       self.rgb_model = rgb_model
       self.depth_model = depth_model
       
-      self.attention = AttentionFusion1D_Module(768, 512, d_model=512, nhead=4, d_ff=1024) # SIMPLER_AttentionFusion1D_Module(768, 512, d_model=512, nhead=4, d_ff=1024)
+      self.attention = SIMPLER_AttentionFusion1D_Module(768, 512, d_model=512, nhead=4, d_ff=1024) # AttentionFusion1D_Module SIMPLER_AttentionFusion1D_Module
       self.fc = nn.Linear(512, num_classes) 
 
    def forward(self, x):
