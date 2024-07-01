@@ -216,10 +216,10 @@ def train(emotion_classifier, train_loader, val_loader, device):
         # Start profiling
         profiler.start()   
         #? Forward pass with automatic mixed precision 
-        with autocast():   #?The autocast() context manager allows PyTorch to automatically cast operations inside it to FP16, reducing memory usage and accelerating computations on compatible hardware.
+        with autocast(device_type='cuda', dtype=torch.float16):   #?The autocast() context manager allows PyTorch to automatically cast operations inside it to FP16, reducing memory usage and accelerating computations on compatible hardware.
             logits, _ = emotion_classifier.forward(data)
             emotion_classifier.compute_loss(logits, source_label, loss_weight=1) #?internally, the scaler, scales the loss to avoid UNDERFLOW of the gradient (too small gradients) since they will  be computed in FP16 (half precision)
-            profiler.step() #!update profiler  
+        profiler.step() #!update profiler  
         profiler.stop() #!stop profiler   
             
         emotion_classifier.backward(retain_graph=False) 

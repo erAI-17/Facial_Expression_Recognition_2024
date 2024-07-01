@@ -183,6 +183,11 @@ class EmotionRecognition(tasks.Task, ABC):
         retain_graph : bool, optional
             whether the computational graph should be retained, by default False
         """
+        # current_loss = self.loss.val
+        # scaled_loss = self.scaler.scale(self.loss.val)
+        # print('CURRENT LOSS',current_loss )
+        # print('SCALED LOSS', scaled_loss )
+        # self.scaler.scale(self.loss.val).backward(retain_graph=retain_graph)
         self.scaler.scale(self.loss.val).backward(retain_graph=retain_graph)
 
     def wandb_log(self):

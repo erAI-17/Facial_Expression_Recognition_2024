@@ -85,7 +85,7 @@ class Task(torch.nn.Module, metaclass=ABCMeta):
         pass
 
     def load_on_gpu(self, device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')):
-        """Load all the models on the GPU(s) using DataParallel.
+        """Load all the models on the GPU(s) using DataParallel for multi-GPU support.
 
         Parameters
         ----------

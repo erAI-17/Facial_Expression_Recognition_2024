@@ -59,8 +59,6 @@ class AttentionFusion1D_Module(nn.Module):
          nn.ReLU(),
          nn.Linear(d_ff, d_model)
       )
-      #?LayerNorm normalizes across the features for each individual sample.
-      #?BatchNorm normalizes across the batch for each feature.
       self.layer_norm = nn.LayerNorm(d_model)
       self.d_ff = d_ff
 
@@ -71,13 +69,19 @@ class AttentionFusion1D_Module(nn.Module):
 
       # Concatenate the projected features
       combined_features = torch.cat((rgb_proj.unsqueeze(1), depth_proj.unsqueeze(1)), dim=1)
+      
+      # Permutation because MultiheadAttention in PyTorch expects inputs of shape (seq_len, batch_size, embed_dim).
+      combined_features = combined_features.permute(1, 0, 2)  
 
       #! Apply multi-head attention
-      # attn_output, _ = self.multihead_attn(combined_features, combined_features, combined_features)
-      # attn_output = self.layer_norm(attn_output)
+      attn_output, _ = self.multihead_attn(combined_features, combined_features, combined_features)
+      
+      attn_output = attn_output.permute(1, 0, 2)  # Back to original shape
+      
+      attn_output = self.layer_norm(attn_output)
 
       # Aggregate attention output (e.g., take mean over the sequence)
-      fused_features = combined_features.mean(dim=1) #attn_output
+      fused_features = attn_output.mean(dim=1) 
 
       # Apply feed-forward network
       output = self.ffn(fused_features)
