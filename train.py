@@ -6,8 +6,6 @@ import torch
 from utils.loaders import CalD3R_MenD3s_Dataset
 from utils.args import args
 from utils.utils import pformat_dict
-import matplotlib.pyplot as plt
-import utils
 import numpy as np
 import os
 import models as model_list
@@ -49,16 +47,13 @@ def main():
     init_operations()
     args.modality = args.modality
 
-    # recover num_classes, valid paths, domains, 
-    num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
-    
     #!check gpu
     #check0 = os.environ['CUDA_VISIBLE_DEVICES'] 
     #check = torch.cuda.is_available()
     #torch.zeros(1).cuda()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    #Mixed precision scaler
+    #!Mixed precision scaler
     scaler = GradScaler()
 
     #!TRANSFORMATIONS and AUGMENTATION for TRAINING samples, 
@@ -71,9 +66,9 @@ def main():
             val_transf[m] = RGB_transf(augment=False)
         if m == 'DEPTH':
             train_transf[m] = DEPTH_transf(augment=True)
-            val_transf[m] = DEPTH_transf(augment=True)
+            val_transf[m] = DEPTH_transf(augment=False)
     #? augmentation is ONLINE: at each epoch, the model sees different augmented versions of the same samples. So it doesn't increase the number of training samples
-    #? If OFFLINE augmentation, instead, we multiply the number of trining samples by producing some augmented version of each samples.
+    #? If OFFLINE augmentation, instead, we multiply the number of training samples by producing some augmented version of each samples.
             
     train_loader = torch.utils.data.DataLoader(CalD3R_MenD3s_Dataset(args.dataset.name,
                                                                         args.modality,
@@ -162,13 +157,10 @@ def main():
 
 def train(emotion_classifier, train_loader, val_loader, device):
     """
-    function to train 1 model for modality on the training set
-    
-    emotion_classifier: Task containing the model to be trained for each modality
+    emotion_classifier: Task containing 1 model per modality
     train_loader: dataloader containing the training data
     val_loader: dataloader containing the validation data
     device: device to use (cpu, gpu)
-    num_classes: int, number of classes in the classification problem
     """
        
     global training_iterations
@@ -180,13 +172,12 @@ def train(emotion_classifier, train_loader, val_loader, device):
     emotion_classifier.train(True) #? set the model to training mode
     emotion_classifier.zero_grad() #?clear any existing gradient
     
-    #*current_iter is just for restoring from a saved run. Otherwise iteration is set to 0.
+    #?  current_iter  for restoring from a saved model. Otherwise iteration is set to 0.
     iteration = emotion_classifier.current_iter * (args.total_batch // args.batch_size)
 
-
-    #*iteration: forward and backward of 1 batch of BATCH_SIZE. Next iteration will be on next Batch of BATCH_SIZE!!
-    #*epoch: forward and backward of ALL DATASET (If dataset contains 1000 samples and batch size= 100, 1 epoch consists of 10 iterations)
-    for i in range(iteration, training_iterations): #ITERATIONS on batches (of BATCH_SIZE) 
+    #!iteration: forward+backward of 1 batch of BATCH_SIZE=32. Next iteration will be on next Batch of BATCH_SIZE!!
+    #!epoch: forward and backward of ALL DATASET (If dataset contains 1000 samples and batch size=100, 1 epoch consists of 10 iterations)
+    for i in range(iteration, training_iterations): 
         real_iter = (i + 1) / (args.total_batch // args.batch_size)
         
         #?PLOT lr and weights for each model
@@ -195,12 +186,11 @@ def train(emotion_classifier, train_loader, val_loader, device):
             for name, param in emotion_classifier.task_models[m].named_parameters(): 
                 writer.add_histogram(f'{m}/{name}', param, real_iter)       
             
-        #*we reason in terms of ITERATIONS on batches (of BATCH_SIZE) not EPOCHS!!
         #? If the  data_loader_source  iterator is exhausted (i.e., it has iterated over the entire dataset), a  StopIteration  exception is raised. 
         #? The  except StopIteration  block catches this exception and reinitializes the iterator with effectively starting the iteration from the beginning of the dataset again. 
         start_t = datetime.now()
         try:
-            source_data, source_label = next(data_loader_source) #*get the next batch of data with next()!
+            source_data, source_label = next(data_loader_source) #?get the next batch of data with next()
         except StopIteration:
             data_loader_source = iter(train_loader)
             source_data, source_label = next(data_loader_source)
@@ -209,12 +199,13 @@ def train(emotion_classifier, train_loader, val_loader, device):
         logger.info(f"Iteration {i}/{training_iterations} batch retrieved! Elapsed time = "
                     f"{(end_t - start_t).total_seconds() // 60} m {(end_t - start_t).total_seconds() % 60} s")
 
+        #!move data,labels to gpu
         source_label = source_label.to(device) #?labels to GPU
         data = {}
         for m in args.modality:
             data[m] = source_data[m].to(device) #? data to GPU
             
-        #! profiler for CPU and GPU (automaticallly updating Tensorboard). Only for the forward+backward passes and not keeping trak of memory alloc/dealloc
+        #? profiler for CPU and GPU (automaticallly updating Tensorboard). Only for the forward pass and not keeping trak of memory alloc/dealloc (profile_memory=false)
         with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
                         schedule=torch.profiler.schedule(wait=1, warmup=1, active=3, repeat=2),
                         on_trace_ready=torch.profiler.tensorboard_trace_handler('./logs'),
@@ -222,17 +213,15 @@ def train(emotion_classifier, train_loader, val_loader, device):
                         profile_memory=False,
                         with_stack=True) as prof:      
             
-            # Forward pass with automatic mixed precision 
+            #? Forward pass with automatic mixed precision 
             with autocast():   #?The autocast() context manager allows PyTorch to automatically cast operations inside it to FP16, reducing memory usage and accelerating computations on compatible hardware.
                 logits, _ = emotion_classifier.forward(data)
             
-            emotion_classifier.compute_loss(logits, source_label, loss_weight=1) #?internally, the scaler, scales the loss to avoid UNDERFLOW of teh gradient (too small gradients) since they will  be computed in FP16 (half precision)
+            emotion_classifier.compute_loss(logits, source_label, loss_weight=1) #?internally, the scaler, scales the loss to avoid UNDERFLOW of the gradient (too small gradients) since they will  be computed in FP16 (half precision)
             emotion_classifier.backward(retain_graph=False) 
             emotion_classifier.compute_accuracy(logits, source_label)
             
-                    
-            #? update weights and zero gradients if TOTAL_BATCH is finished!!
-            #? also print the training loss MEAN over the 4 32batches inside the TOTAL_BATCH
+            #! if TOTAL_BATCH is finished, update weights and zero gradients
             if real_iter.is_integer():  
                 logger.info("[%d/%d]\tlast Verb loss: %.4f\tMean verb loss: %.4f\tAcc@1: %.2f%%\tAccMean@1: %.2f%%" %
                     (real_iter, args.train.num_iter, emotion_classifier.loss.val, emotion_classifier.loss.avg,
@@ -287,15 +276,14 @@ def validate(model, val_loader, device, it):
             
             label = label.to(device)
             for m in args.modality:
-                data[m] = data[m].to(device) #? data to GPU
+                data[m] = data[m].to(device)
             
-            with autocast():   #?The autocast() context manager allows PyTorch to automatically cast operations inside it to FP16, reducing memory usage and accelerating computations on compatible hardware.
+            with autocast():  
                 logits, _ = model.forward(data)
             
             model.compute_accuracy(logits, label)
 
             #?print the validation accuracy at 5 steps: 20% - 40% - 60% - 80% - 100% of validation set
-            #? (only look at the last one if you're only interested on OVERALL validation accuracy on the whole validation set)
             if (i_val + 1) % (len(val_loader) // 5) == 0:
                 logger.info("[{}/{}] top1= {:.3f}% top5 = {:.3f}%".format(i_val + 1, len(val_loader),
                                                                           model.accuracy.avg[1], model.accuracy.avg[5]))
@@ -303,7 +291,7 @@ def validate(model, val_loader, device, it):
         #?at the end print OVERALL validation accuracy on the whole validation set)
         logger.info('Final accuracy: top1 = %.2f%%\ttop5 = %.2f%%' % (model.accuracy.avg[1],
                                                                       model.accuracy.avg[5]))
-        #? at the end print the PER-CLASS accuracy
+        #?print the PER-CLASS accuracy
         class_accuracies = [(x / y) * 100 for x, y in zip(model.accuracy.correct, model.accuracy.total)]
         for i_class, class_acc in enumerate(class_accuracies):
             logger.info('Class %d = [%d/%d] = %.2f%%' % (i_class,
@@ -316,6 +304,7 @@ def validate(model, val_loader, device, it):
     test_results = {'top1': model.accuracy.avg[1], 'top5': model.accuracy.avg[5],
                     'class_accuracies': np.array(class_accuracies)}
 
+    #?LOG validation results
     with open(os.path.join(args.log_dir, f'val_precision_{args.dataset.name}'), 'a+') as f:
         f.write("[%d/%d]\tAcc@top1: %.2f%%\n" % (it, args.train.num_iter, test_results['top1']))
 

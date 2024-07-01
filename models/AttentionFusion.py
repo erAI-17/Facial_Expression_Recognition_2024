@@ -8,6 +8,46 @@ import models as model_list
 
 
 
+class SIMPLER_AttentionFusion1D_Module(nn.Module):
+   def __init__(self, rgb_dim, depth_dim, d_model, nhead, d_ff):
+      super(AttentionFusion1D_Module, self).__init__()
+      self.proj_rgb = nn.Linear(rgb_dim, d_model)
+      self.proj_depth = nn.Linear(depth_dim, d_model)
+      self.attention = nn.Linear(d_model * 2, 1)
+      self.ffn = nn.Sequential(
+         nn.Linear(d_model, d_ff),
+         nn.ReLU(),
+         nn.Linear(d_ff, d_model)
+      )
+      #?LayerNorm normalizes across the features for each individual sample.
+      #?BatchNorm normalizes across the batch for each feature.
+      self.layer_norm = nn.LayerNorm(d_model)
+      self.d_ff = d_ff
+
+   def forward(self, rgb_feat, depth_feat):
+      # Project features to common dimension
+      rgb_proj = self.proj_rgb(rgb_feat)
+      depth_proj = self.proj_depth(depth_feat)
+
+      # Concatenate the projected features
+      combined_features = torch.cat((rgb_proj, depth_proj), dim=-1)
+
+      # Compute attention weights
+      attn_weights = F.softmax(self.attention(combined_features), dim=-1)
+
+      # Apply attention weights
+      weighted_rgb = attn_weights * rgb_proj
+      weighted_depth = (1 - attn_weights) * depth_proj
+
+      # Fuse features
+      fused_features = weighted_rgb + weighted_depth
+      fused_features = self.layer_norm(fused_features)
+
+      # Apply feed-forward network
+      output = self.ffn(fused_features)
+      return output
+   
+
 class AttentionFusion1D_Module(nn.Module):
    def __init__(self, rgb_dim, depth_dim, d_model, nhead, d_ff):
       super(AttentionFusion1D_Module, self).__init__()
@@ -52,7 +92,7 @@ class AttentionFusion1D(nn.Module):
       self.rgb_model = rgb_model
       self.depth_model = depth_model
       
-      self.attention = AttentionFusion1D_Module(768, 512, d_model=512, nhead=4, d_ff=1024)
+      self.attention = AttentionFusion1D_Module(768, 512, d_model=512, nhead=4, d_ff=1024) # SIMPLER_AttentionFusion1D_Module(768, 512, d_model=512, nhead=4, d_ff=1024)
       self.fc = nn.Linear(512, num_classes) 
 
    def forward(self, x):

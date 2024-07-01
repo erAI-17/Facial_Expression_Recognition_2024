@@ -10,7 +10,7 @@ models_dir: null
 
 train:
   num_iter: 10000 
-  eval_freq: 243 
+  eval_freq: 60 
   
 test:
   

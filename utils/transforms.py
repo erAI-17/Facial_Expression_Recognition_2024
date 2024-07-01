@@ -10,9 +10,6 @@ import cv2
 import matplotlib.pyplot as plt
 from utils.args import args
 
-#!###
-#! TRANFORMATIONS
-#!##
 class ToFloat32:
         def __call__(self, x):
             return x.to(torch.float32)
