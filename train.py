@@ -218,7 +218,7 @@ def train(emotion_classifier, train_loader, val_loader, device):
         #? Forward pass with automatic mixed precision 
         with autocast(): #device_type='cuda', dtype=torch.float16  #?The autocast() context manager allows PyTorch to automatically cast operations inside it to FP16, reducing memory usage and accelerating computations on compatible hardware.
             logits, _ = emotion_classifier.forward(data)
-            emotion_classifier.compute_loss(logits, source_label, loss_weight=1) #?internally, the scaler, scales the loss to avoid UNDERFLOW of the gradient (too small gradients) since they will  be computed in FP16 (half precision)
+            emotion_classifier.compute_loss(logits, source_label) #?internally, the scaler, scales the loss to avoid UNDERFLOW of the gradient (too small gradients) since they will  be computed in FP16 (half precision)
         profiler.step() #!update profiler  
         profiler.stop() #!stop profiler   
             
@@ -234,9 +234,9 @@ def train(emotion_classifier, train_loader, val_loader, device):
             writer.add_scalar('Loss/train', emotion_classifier.loss.avg, real_iter)
             writer.add_scalar('Accuracy/train', emotion_classifier.accuracy.avg[1], real_iter)
                     
-            emotion_classifier.check_grad()
+            emotion_classifier.check_grad() #function that checks norm2 of the gradient (evaluate whether to apply clipping if too large)
             emotion_classifier.step() #step() attribute calls BOTH  optimizer.step()  and, if implemented,  scheduler.step()
-            emotion_classifier.zero_grad()
+            emotion_classifier.zero_grad() #now zero the gradients to avoid accumulating them since this batch has finished
             
         #! every "eval_freq" iterations the validation is done
         if real_iter.is_integer() and real_iter % args.train.eval_freq == 0:

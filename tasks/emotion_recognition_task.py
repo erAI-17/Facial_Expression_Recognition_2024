@@ -119,7 +119,7 @@ class EmotionRecognition(tasks.Task, ABC):
         return logits, features
 
 
-    def compute_loss(self, logits: Dict[str, torch.Tensor], label: torch.Tensor, loss_weight: float=1.0):
+    def compute_loss(self, logits: torch.Tensor, label: torch.Tensor):
         """Compute the classification loss.
 
         Parameters
@@ -130,13 +130,14 @@ class EmotionRecognition(tasks.Task, ABC):
         loss_weight : float, optional
             weight of the classification loss, by default 1.0
         """
-        loss = self.criterion(logits, label) 
+        loss = self.criterion(logits, label) #?the criterion is defined with "reduction=None", so the loss function returns a tensor containing the loss for each individual sample in the batch,
+                                             #? rather than averaging or summing the losses. LATER, before backward pass, the loss is averaged over the batch size.
         
         #? Update the loss value, weighting it by the ratio of the batch size to the total batch size (for gradient accumulation)
-        self.loss.update(torch.mean(loss_weight * loss) / (self.total_batch / self.batch_size), self.batch_size)
+        self.loss.update(torch.mean(loss) / (self.total_batch / self.batch_size), self.batch_size)
 
 
-    def compute_accuracy(self, logits: Dict[str, torch.Tensor], label: torch.Tensor):
+    def compute_accuracy(self, logits: torch.Tensor, label: torch.Tensor):
         """Compute the classification accuracy.
 
         Parameters
@@ -166,7 +167,7 @@ class EmotionRecognition(tasks.Task, ABC):
         """
         for m in self.modalities:
             # Perform the step with the optimizer and scaler
-            self.scaler.step(self.optimizer[m])
+            self.scaler.step(self.optimizer[m]) #? instead of simple self.optimizer[m].step() , YOU NEED TO SCALE THE GRADIENTS BACK to FP32
             
             # Perform the step with the scheduler (if any)
             if self.scheduler[m] is not None:  
@@ -190,12 +191,13 @@ class EmotionRecognition(tasks.Task, ABC):
         retain_graph : bool, optional
             whether the computational graph should be retained, by default False
         """
-        current_loss = self.loss.val
-        scaled_loss = self.scaler.scale(self.loss.val)
-        print('CURRENT LOSS',current_loss )
-        print('SCALED LOSS', scaled_loss )
-        # self.scaler.scale(self.loss.val).backward(retain_graph=retain_graph)
-        scaled_loss.backward(retain_graph=retain_graph)
+        
+        print('CURRENT LOSS', self.loss.val )
+        print('SCALED LOSS', self.scaler.scale(self.loss.val) )
+        
+        #self.loss.val is the loss value over a mini-batch 32 (NOT the accumulated loss over the 4 32 batches inside effective batch 128)
+        self.scaler.scale(self.loss.val).backward(retain_graph=retain_graph)
+        
 
     def wandb_log(self):
             """Log the current loss and top1/top5 accuracies to wandb."""
