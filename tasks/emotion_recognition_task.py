@@ -195,7 +195,7 @@ class EmotionRecognition(tasks.Task, ABC):
         print('CURRENT LOSS',current_loss )
         print('SCALED LOSS', scaled_loss )
         # self.scaler.scale(self.loss.val).backward(retain_graph=retain_graph)
-        self.scaler.scale(self.loss.val).backward(retain_graph=retain_graph)
+        scaled_loss.backward(retain_graph=retain_graph)
 
     def wandb_log(self):
             """Log the current loss and top1/top5 accuracies to wandb."""

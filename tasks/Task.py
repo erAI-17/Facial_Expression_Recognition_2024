@@ -278,7 +278,9 @@ class Task(torch.nn.Module, metaclass=ABCMeta):
             for name, param in self.task_models[m].named_parameters(): #?named_parameters()  returns an iterator over the model's parameters, yielding both the name and the parameter itself
                 if param.requires_grad and param.grad is not None: #?For each parameter, it checks if the parameter requires gradients ( param.requires_grad ) and if the gradient is not  None. 
                                                                    #? This ensures that only parameters that are involved in the gradient computation are checked.
-                    if param.grad.norm(2).item() > 25:
+                    print(name)
+                    print(param.grad.norm(2).item())
+                    if param.grad.norm(2).item() > 50:
                         logger.info(f"Param {name} has a gradient whose L2 norm is over 25")
 
     def __str__(self) -> str:
