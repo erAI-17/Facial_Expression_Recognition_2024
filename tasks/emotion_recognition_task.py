@@ -165,10 +165,17 @@ class EmotionRecognition(tasks.Task, ABC):
         and the accuracy.
         """
         for m in self.modalities:
+            # Perform the step with the optimizer and scaler
             self.scaler.step(self.optimizer[m])
+            
+            # Perform the step with the scheduler (if any)
             if self.scheduler[m] is not None:  
                 self.scheduler[m].step()
-
+        
+        # Update the scaler for the next iteration        
+        self.scaler.update()
+        
+        # Reset loss and accuracy tracking
         self.reset_loss()
         self.reset_acc()
 

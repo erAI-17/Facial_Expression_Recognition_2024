@@ -236,7 +236,6 @@ def train(emotion_classifier, train_loader, val_loader, device):
                     
             emotion_classifier.check_grad()
             emotion_classifier.step() #step() attribute calls BOTH  optimizer.step()  and, if implemented,  scheduler.step()
-            emotion_classifier.scaler.update()
             emotion_classifier.zero_grad()
             
         #! every "eval_freq" iterations the validation is done
