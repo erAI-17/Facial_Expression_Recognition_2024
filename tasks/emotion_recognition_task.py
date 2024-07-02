@@ -176,17 +176,17 @@ class EmotionRecognition(tasks.Task, ABC):
         """Compute the gradients for the current value of the classification loss.
 
         Set retain_graph to true if you need to backpropagate multiple times over
-        the same computational graph.
+        the same computational graph (for example if using multiple different losses)
 
         Parameters
         ----------
         retain_graph : bool, optional
             whether the computational graph should be retained, by default False
         """
-        # current_loss = self.loss.val
-        # scaled_loss = self.scaler.scale(self.loss.val)
-        # print('CURRENT LOSS',current_loss )
-        # print('SCALED LOSS', scaled_loss )
+        current_loss = self.loss.val
+        scaled_loss = self.scaler.scale(self.loss.val)
+        print('CURRENT LOSS',current_loss )
+        print('SCALED LOSS', scaled_loss )
         # self.scaler.scale(self.loss.val).backward(retain_graph=retain_graph)
         self.scaler.scale(self.loss.val).backward(retain_graph=retain_graph)
 
