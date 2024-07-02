@@ -201,10 +201,7 @@ class EmotionRecognition(tasks.Task, ABC):
         retain_graph : bool, optional
             whether the computational graph should be retained, by default False
         """
-        
-        print('CURRENT LOSS', self.loss.val )
-        print('SCALED LOSS', self.scaler.scale(self.loss.val) )
-        
+
         #!if using mixed precision autocast() in training
         #self.loss.val is the loss value over a mini-batch 32 (NOT the accumulated loss over the 4 32 batches inside effective batch 128)
         
