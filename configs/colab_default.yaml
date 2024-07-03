@@ -1,7 +1,7 @@
 action: ???
 name: ???
 modality: ???
-total_batch: 256 
+total_batch: 128 
 batch_size: 32 
 wandb_name: null 
 resume_from: null 
