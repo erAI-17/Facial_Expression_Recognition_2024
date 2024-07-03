@@ -88,9 +88,15 @@ class EmotionRecognition(tasks.Task, ABC):
             #Use a learning rate scheduler to decrease the learning rate over time
             
             #!LR schedulers
-            self.scheduler[m] = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer[m], T_max=args.train.num_iter, eta_min=1e-6)
+            #debugging schedule
+            # Define a lambda function that returns the constant learning rate
+            lambda_lr = lambda : model_args[m].lr
+            scheduler =  torch.optim.lr_scheduler.LambdaLR(self.optimizer[m],  lambda_lr)
             
-            # CosineAnnealingWarmRestarts scheduler
+            #?
+            #self.scheduler[m] = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer[m], T_max=args.train.num_iter, eta_min=1e-6)
+            
+            #? CosineAnnealingWarmRestarts scheduler
             #self.scheduler[m] = CosineAnnealingWarmRestarts(self.optimizer[m], T_0=10, T_mult=2, eta_min=1e-6) #T_0= every 10 epochs, then every 20 epochs, 40 ...
 
     def forward(self, data: Dict[str, torch.Tensor], **kwargs) -> Tuple[Dict[str, torch.Tensor], Dict[str, torch.Tensor]]:
