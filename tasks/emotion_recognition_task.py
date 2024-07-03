@@ -1,11 +1,10 @@
 from abc import ABC
 import torch
 from utils import utils
-from functools import reduce
 import wandb
 import tasks
-from utils.logger import logger
 from typing import Dict, Tuple
+from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 from utils.Losses import FocalLoss, CenterLoss
 
 
@@ -78,17 +77,21 @@ class EmotionRecognition(tasks.Task, ABC):
             #? model_args[m].lr : Initial learning rate for the optimizer
             #? weight_decay : The weight decay (L2 penalty) for the optimizer. 
             #!ADAM
-            self.optimizer[m] = torch.optim.Adam(optim_params[m], model_args[m].lr,
-                                                weight_decay=model_args[m].weight_decay)
-            # Use a learning rate scheduler to decrease the learning rate over time
-            self.scheduler[m] = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer[m], T_max=args.train.num_iter, eta_min=1e-6)
+            # self.optimizer[m] = torch.optim.Adam(optim_params[m], model_args[m].lr,
+            #                                     weight_decay=model_args[m].weight_decay)
+            # # Use a learning rate scheduler to decrease the learning rate over time
             
             #!SGD with momentum
-            # self.optimizer[m] = torch.optim.SGD(optim_params[m], model_args[m].lr,
-            #                                     weight_decay=model_args[m].weight_decay,
-            #                                     momentum=model_args[m].sgd_momentum)
-            # #Use a learning rate scheduler to decrease the learning rate over time
-            # self.scheduler[m] = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer[m], T_max=args.train.num_iter, eta_min=1e-6)
+            self.optimizer[m] = torch.optim.SGD(optim_params[m], model_args[m].lr,
+                                                weight_decay=model_args[m].weight_decay,
+                                                momentum=model_args[m].sgd_momentum)
+            #Use a learning rate scheduler to decrease the learning rate over time
+            
+            #!LR schedulers
+            self.scheduler[m] = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer[m], T_max=args.train.num_iter, eta_min=1e-6)
+            
+            # CosineAnnealingWarmRestarts scheduler
+            #self.scheduler[m] = CosineAnnealingWarmRestarts(self.optimizer[m], T_0=10, T_mult=2, eta_min=1e-6) #T_0= every 10 epochs, then every 20 epochs, 40 ...
 
     def forward(self, data: Dict[str, torch.Tensor], **kwargs) -> Tuple[Dict[str, torch.Tensor], Dict[str, torch.Tensor]]:
         """Forward step of the task

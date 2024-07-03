@@ -183,7 +183,8 @@ def train(emotion_classifier, train_loader, val_loader, device):
     #?  current_iter  for restoring from a saved model. Otherwise iteration is set to 0.
     iteration = emotion_classifier.current_iter * (args.total_batch // args.batch_size)
     
-    #!iteration: forward+backward of 1 batch of BATCH_SIZE=32. Next iteration will be on next Batch of BATCH_SIZE!!
+    #!i: forward+backward of 1 batch of BATCH_SIZE=32. Next iteration will be on next Batch of BATCH_SIZE!!
+    #!real_iter: forward+backward of 1 batch of TOTAL_BATCH_SIZE=128 or 256.
     #!epoch: forward and backward of ALL DATASET (If dataset contains 1000 samples and batch size=100, 1 epoch consists of 10 iterations)
     for i in range(iteration, training_iterations): 
         real_iter = (i + 1) / (args.total_batch // args.batch_size)
@@ -239,7 +240,7 @@ def train(emotion_classifier, train_loader, val_loader, device):
             emotion_classifier.zero_grad() #now zero the gradients to avoid accumulating them since this batch has finished
             
         #! every "eval_freq" iterations the validation is done
-        if real_iter.is_integer() and real_iter % args.train.eval_freq == 0:
+        if real_iter.is_integer() and real_iter % args.train.eval_freq == 0: 
             val_metrics = validate(emotion_classifier, val_loader, device, int(real_iter))
             
             #?PLOT VALIDATION ACCURACIES

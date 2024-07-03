@@ -1,7 +1,7 @@
 action: ???
 name: ???
 modality: ???
-total_batch: 128 
+total_batch: 256 
 batch_size: 32 
 wandb_name: null 
 resume_from: null 
@@ -9,8 +9,8 @@ logname: null
 models_dir: null 
 
 train:
-  num_iter: 10000 
-  eval_freq: 60 
+  num_iter: 62  #if total_batch of 256.  7793/256=30.44 ->1 epoch
+  eval_freq: 3  #every 10% of an epoch
   
 test:
   
@@ -28,7 +28,7 @@ models:
   RGB:
     model: ???
     kwargs: {}
-    lr: 1e-5
+    lr: 5e-4
     sgd_momentum: 0.9
     weight_decay: 1e-4
   DEPTH:

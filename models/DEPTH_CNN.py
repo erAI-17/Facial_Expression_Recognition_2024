@@ -6,6 +6,7 @@ from utils.args import args
 import torchaudio.transforms as T
 from torchvision import models
 from torchvision.models import ResNet18_Weights, ResNet50_Weights
+from transformers import AutoImageProcessor, AutoModel, AutoModelForImageClassification
 
 #!PRETRAINED RESNET-18
 class DEPTH_ResNet18(nn.Module):
@@ -39,9 +40,20 @@ class DEPTH_ResNet18(nn.Module):
 class DEPTH_ResNet50(nn.Module):
     def __init__(self):
         super(DEPTH_ResNet50, self).__init__()
-        self.model = models.resnet50(weights=ResNet50_Weights.DEFAULT)  #download pretrained weights? ==True, ResNet18_Weights.DEFAULT TO GET THE MOST UPDATED WEIGHTS
-               
-        # Modify the first convolutional layer to accept grayscale images (1 channel instead of 3)
+        
+        outer_model = AutoModelForImageClassification.from_pretrained("KhaldiAbderrhmane/resnet50-facial-emotion-recognition", trust_remote_code=True) 
+        self.model = outer_model.resnet
+        
+        #self.model = models.resnet50(weights=ResNet50_Weights.DEFAULT)  #download pretrained weights? ==True, ResNet18_Weights.DEFAULT TO GET THE MOST UPDATED WEIGHTS
+        
+        # check the weights
+        # with open('IMAGENETresnet50_weights.txt', 'w') as f:
+        #     for name, param in self.model.named_parameters():
+        #         if param.requires_grad:
+        #             f.write(f'Layer Name: {name}\n')
+        #             f.write(f'Weights:\n{param.data}\n\n')
+        
+        #?Modify the first convolutional layer to accept grayscale images (1 channel instead of 3)
         self.model.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
         # Initialize the new conv1 layer with pretrained weights
         pretrained_weights = models.resnet50(weights=ResNet50_Weights.DEFAULT).conv1.weight

@@ -4,25 +4,33 @@ import torch.nn.functional as F
 import utils
 from utils.args import args
 import torchaudio.transforms as T
-from transformers import AutoImageProcessor, AutoModel
+from transformers import AutoImageProcessor, AutoModel, AutoModelForImageClassification
 
 
 
 class ViT(nn.Module):
-    """This model is a fine-tuned version of:
-        google/vit-base-patch16-224-in21k 
-    on the FER 2013, MMI Facial Expression Database, and AffectNet dataset datasets.
-    """
     def __init__(self):
-        num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
         super(ViT, self).__init__()
         #? Load pre-trained ViT model
-        self.model = AutoModel.from_pretrained("motheecreator/vit-Facial-Expression-Recognition")
+        
+        #!1 FER 2013,MMI Facial Expression Database, and AffectNet Accuracy: 0.8434 - Loss: 0.4503 (454d)
+        # self.model = AutoModel.from_pretrained("motheecreator/vit-Facial-Expression-Recognition")
+        # self.processor = AutoImageProcessor.from_pretrained("motheecreator/vit-Facial-Expression-Recognition")
+        
+        #!2 FER2013 Accuracy - 0.922 Loss - 0.213 (11d)
+        outer_model = AutoModelForImageClassification.from_pretrained("HardlyHumans/Facial-expression-detection")
+        self.model = outer_model.vit
+        self.processor = AutoImageProcessor.from_pretrained("HardlyHumans/Facial-expression-detection")
+        
+        print(self.model)
+        
+        #!3 FER2013 Accuracy: 0.7113 (412,838d)
+        # self.processor = AutoImageProcessor.from_pretrained("trpakov/vit-face-expression")
+        # self.model = AutoModelForImageClassification.from_pretrained("trpakov/vit-face-expression")
         
         #?The  AutoImageProcessor  is used to preprocess input images so that they are in the correct format for the Vision Transformer (ViT) model. 
-        #? This preprocessing typically includes resizing, normalization, and converting images to tensors. 
-        self.processor = AutoImageProcessor.from_pretrained("motheecreator/vit-Facial-Expression-Recognition")
-
+        #? This preprocessing typically includes resizing, normalization, and converting images to tensors.
+    
         # #? Freeze all parameters initially
         # for param in self.model.parameters():
         #     param.requires_grad = False
@@ -43,8 +51,7 @@ class ViT(nn.Module):
 
     # Function to extract features from the [CLS] token of the last hidden state.
     def _extract_features_(self, inputs):
-        with torch.no_grad():
-            outputs = self.model(inputs)
+        outputs = self.model(inputs)
         # Extract features from the [CLS] token
         features = outputs.last_hidden_state[:, 0, :] #[batch_size, 768]
         return features    
