@@ -18,15 +18,15 @@ class ViT(nn.Module):
         # self.processor = AutoImageProcessor.from_pretrained("motheecreator/vit-Facial-Expression-Recognition")
         
         #!2 FER2013 Accuracy - 0.922 Loss - 0.213 (11d)
-        outer_model = AutoModelForImageClassification.from_pretrained("HardlyHumans/Facial-expression-detection")
-        self.model = outer_model.vit
-        self.processor = AutoImageProcessor.from_pretrained("HardlyHumans/Facial-expression-detection")
-        
-        print(self.model)
+        # outer_model = AutoModelForImageClassification.from_pretrained("HardlyHumans/Facial-expression-detection")
+        # self.model = outer_model.vit
+        # self.processor = AutoImageProcessor.from_pretrained("HardlyHumans/Facial-expression-detection")
         
         #!3 FER2013 Accuracy: 0.7113 (412,838d)
-        # self.processor = AutoImageProcessor.from_pretrained("trpakov/vit-face-expression")
-        # self.model = AutoModelForImageClassification.from_pretrained("trpakov/vit-face-expression")
+        outer_model = AutoModelForImageClassification.from_pretrained("trpakov/vit-face-expression")
+        self.model = outer_model.vit
+        self.processor = AutoImageProcessor.from_pretrained("trpakov/vit-face-expression")
+        
         
         #?The  AutoImageProcessor  is used to preprocess input images so that they are in the correct format for the Vision Transformer (ViT) model. 
         #? This preprocessing typically includes resizing, normalization, and converting images to tensors.

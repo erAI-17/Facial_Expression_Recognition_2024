@@ -90,8 +90,8 @@ class EmotionRecognition(tasks.Task, ABC):
             #!LR schedulers
             #debugging schedule
             # Define a lambda function that returns the constant learning rate
-            lambda_lr = lambda : model_args[m].lr
-            scheduler =  torch.optim.lr_scheduler.LambdaLR(self.optimizer[m],  lambda_lr)
+            lambda_lr = lambda epoch: model_args[m].lr
+            self.scheduler[m] =  torch.optim.lr_scheduler.LambdaLR(self.optimizer[m],  lambda_lr)
             
             #?
             #self.scheduler[m] = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer[m], T_max=args.train.num_iter, eta_min=1e-6)
