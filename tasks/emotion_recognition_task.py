@@ -5,7 +5,7 @@ import wandb
 import tasks
 from typing import Dict, Tuple
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
-from utils.Losses import FocalLoss, CenterLoss
+#from utils.Losses import FocalLoss, CenterLoss
 
 
 class EmotionRecognition(tasks.Task, ABC):
@@ -86,8 +86,7 @@ class EmotionRecognition(tasks.Task, ABC):
             #                                     momentum=model_args[m].sgd_momentum)
             
             #!LR schedulers
-            #debugging schedule
-            # Define a lambda function that returns the constant learning rate
+            #? debugging lr schedule (constant lr for few epochs)
             lambda_lr = lambda epoch: 1
             self.scheduler[m] =  torch.optim.lr_scheduler.LambdaLR(self.optimizer[m],  lambda_lr)
             

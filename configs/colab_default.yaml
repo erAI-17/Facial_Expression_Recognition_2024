@@ -9,8 +9,8 @@ logname: null
 models_dir: null 
 
 train:
-  num_iter: 62  #if total_batch of 256.  7793/256=30.44 ->1 epoch
-  eval_freq: 15  #every 50% of an epoch
+  num_iter: 61  #if total_batch of 128.  7793/128=60.88 ->1 epoch
+  eval_freq: 15  #every 25% of an epoch
   
 test:
   
@@ -34,12 +34,12 @@ models:
   DEPTH:
     model: ???
     kwargs: {}
-    lr: 5e-3
+    lr: 1e-3
     sgd_momentum: 0.9
     weight_decay: 1e-4
   FUSION:
     model: ???
     kwargs: {}
-    lr: 5e-3
+    lr: 1e-3
     sgd_momentum: 0.9
     weight_decay: 1e-4
