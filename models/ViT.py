@@ -13,9 +13,9 @@ class ViT(nn.Module):
         super(ViT, self).__init__()
         #? Load pre-trained ViT model
         
-        #!1 FER 2013,MMI Facial Expression Database, and AffectNet Accuracy: 0.8434 - Loss: 0.4503 (454d)
-        # self.model = AutoModel.from_pretrained("motheecreator/vit-Facial-Expression-Recognition")
-        # self.processor = AutoImageProcessor.from_pretrained("motheecreator/vit-Facial-Expression-Recognition")
+        #!1 FER2013,MMI Facial Expression Database, and AffectNet Accuracy: 0.8434 - Loss: 0.4503 (454d)
+        self.model = AutoModel.from_pretrained("motheecreator/vit-Facial-Expression-Recognition")
+        self.processor = AutoImageProcessor.from_pretrained("motheecreator/vit-Facial-Expression-Recognition")
         
         #!2 FER2013 Accuracy - 0.922 Loss - 0.213 (11d)
         # outer_model = AutoModelForImageClassification.from_pretrained("HardlyHumans/Facial-expression-detection")
@@ -23,9 +23,9 @@ class ViT(nn.Module):
         # self.processor = AutoImageProcessor.from_pretrained("HardlyHumans/Facial-expression-detection")
         
         #!3 FER2013 Accuracy: 0.7113 (412,838d)
-        outer_model = AutoModelForImageClassification.from_pretrained("trpakov/vit-face-expression")
-        self.model = outer_model.vit
-        self.processor = AutoImageProcessor.from_pretrained("trpakov/vit-face-expression")
+        # outer_model = AutoModelForImageClassification.from_pretrained("trpakov/vit-face-expression")
+        # self.model = outer_model.vit
+        # self.processor = AutoImageProcessor.from_pretrained("trpakov/vit-face-expression")
         
         
         #?The  AutoImageProcessor  is used to preprocess input images so that they are in the correct format for the Vision Transformer (ViT) model. 

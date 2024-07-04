@@ -41,10 +41,10 @@ class DEPTH_ResNet50(nn.Module):
     def __init__(self):
         super(DEPTH_ResNet50, self).__init__()
         
-        # outer_model = AutoModelForImageClassification.from_pretrained("KhaldiAbderrhmane/resnet50-facial-emotion-recognition", trust_remote_code=True) 
-        # self.model = outer_model.resnet
+        outer_model = AutoModelForImageClassification.from_pretrained("KhaldiAbderrhmane/resnet50-facial-emotion-recognition", trust_remote_code=True) 
+        self.model = outer_model.resnet
         
-        self.model = models.resnet50(weights=ResNet50_Weights.DEFAULT)  #download pretrained weights? ==True, ResNet18_Weights.DEFAULT TO GET THE MOST UPDATED WEIGHTS
+        #self.model = models.resnet50(weights=ResNet50_Weights.DEFAULT)  #download pretrained weights? ==True, ResNet18_Weights.DEFAULT TO GET THE MOST UPDATED WEIGHTS
         
         # check the weights
         # with open('IMAGENETresnet50_weights.txt', 'w') as f:
