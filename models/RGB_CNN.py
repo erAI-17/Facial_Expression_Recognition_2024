@@ -25,7 +25,7 @@ class RGB_ResNet18(nn.Module):
         x = self.model.layer1(x)
         x = self.model.layer2(x)
         x = self.model.layer3(x) 
-        feat = self.model.layer4(feat) #[batch_size, 512, 7, 7]
+        feat = self.model.layer4(x) #[batch_size, 512, 7, 7]
         
         return x, {'feat': feat}
     
@@ -48,7 +48,7 @@ class RGB_ResNet50(nn.Module):
         x = self.model.layer1(x)
         x = self.model.layer2(x)
         x = self.model.layer3(x) 
-        feat = self.model.layer4(feat) #[batch_size, 2048, 7, 7]
+        feat = self.model.layer4(x) #[batch_size, 2048, 7, 7]
         
         return x, {'feat': feat}
     

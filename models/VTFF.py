@@ -87,16 +87,11 @@ class VTFF(nn.Module):
    """Visual Transformer Feature Fusion with Attention Selective fusion.
       Combines multiple Transformer encoder layers for classification
    """
-
-   Cp = 768
-   nhead  = 8
-   num_layers = 4
-   mlp_dim = 3072 #?MLP dimension INTERNAL to each transformer layer
-   def __init__(self, Cp, nhead , num_layers, mlp_dim):
+   def __init__(self, rgb_model, depth_model):
       num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
       super(VTFF, self).__init__()
       #? attentional selective fusion module producing X_fused [batch_size, Cf=256 x Hd=14 x Wd=14]
-      self.AttentionSelectiveFusion_Module = AttentionSelectiveFusion_Module()
+      self.AttentionSelectiveFusion_Module = AttentionSelectiveFusion_Module(rgb_model, depth_model)
       
       #!Resnet18
       if args.models['RGB'].model == 'RGB_ResNet18' and args.models['DEPTH'].model == 'DEPTH_ResNet18':
@@ -104,19 +99,23 @@ class VTFF(nn.Module):
       #!Resnet50
       elif args.models['RGB'].model == 'RGB_ResNet50' or args.models['DEPTH'].model == 'DEPTH_ResNet50':
          self.Cf = 2048 #?channel dimension from resnet
-      
+         
+      self.Cp = 768
+      self.nhead  = 8
+      self.num_layers = 4
+      self.mlp_dim = 3072 #?MLP dimension INTERNAL to each transformer layer
       self.h = 7 #?height and width dimension of feature (equal for Resnet18 and Resnet50)
       self.seq_len = self.h**2
       
-      self.cls_token = nn.Parameter(torch.zeros(1, 1, Cp))
+      self.cls_token = nn.Parameter(torch.zeros(1, 1,  self.Cp))
       nn.init.normal_(self.cls_token, std=0.02)  # Initialize with small random values to break symmetry
-      self.pos_embed = nn.Parameter(torch.zeros(1, self.seq_len + 1, Cp))
+      self.pos_embed = nn.Parameter(torch.zeros(1, self.seq_len + 1,  self.Cp))
       nn.init.normal_(self.pos_embed, std=0.02)  # Initialize with small random values to break symmetry
       
       
-      self.linear_proj = nn.Linear(self.Cf, Cp)
-      self.trans_encoder_layer = nn.TransformerEncoderLayer(Cp, nhead=nhead, dim_feedforward=mlp_dim, activation='gelu', batch_first=True)
-      self.tranformer_encoder = nn.TransformerEncoder(self.trans_encoder_layer, num_layers=num_layers)
+      self.linear_proj = nn.Linear(self.Cf,  self.Cp)
+      self.trans_encoder_layer = nn.TransformerEncoderLayer(self.Cp, nhead=self.nhead, dim_feedforward=self.mlp_dim, activation='gelu', batch_first=True)
+      self.tranformer_encoder = nn.TransformerEncoder(self.trans_encoder_layer, num_layers=self.num_layers)
       
       #otherwise, pre-trained encoder
       #bert_model = BertModel.from_pretrained('bert-base-uncased')
@@ -125,7 +124,7 @@ class VTFF(nn.Module):
       #? final classification
       self.relu = nn.ReLU()
       self.dropout = nn.Dropout(0.5)
-      self.fc = nn.Linear(Cp, num_classes)
+      self.fc = nn.Linear(self.Cp, num_classes)
 
    def forward(self, x):
       #?extract X_fused from attentional selective fusion module: X_fused [batch_size, Cf=2048 x H=7 x W=7]
