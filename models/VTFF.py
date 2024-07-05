@@ -52,6 +52,9 @@ class AttentionSelectiveFusion_Module(nn.Module):
       self.fc2 = nn.Linear(1024, 512)
       self.fc3 = nn.Linear(512, num_classes)
       
+      self.relu = nn.ReLU()
+      self.sigmoid = nn.Sigmoid()
+      
       
    def forward(self, data):
       _, rgb_feat  = self.rgb_model(data['RGB'])
@@ -63,10 +66,10 @@ class AttentionSelectiveFusion_Module(nn.Module):
       U = self.W_RGB(rgb_feat['feat']) + self.W_D(depth_feat['feat']) # [batch_size, 256, 14, 14]
       
       # Global context working on channels
-      G = nn.Sigmoid(self.bnG2(self.conv2G(nn.ReLU(self.bnG1(self.conv1G(F.adaptive_avg_pool2d(U, (1,1)))))))) #[batch_size, C, 1, 1]
+      G = self.sigmoid(self.bnG2(self.conv2G(self.relu(self.bnG1(self.conv1G(F.adaptive_avg_pool2d(U, (1,1)))))))) #[batch_size, C, 1, 1]
       
       # Local context
-      L = nn.Sigmoid(self.bnL2(self.conv2L(nn.ReLU(self.bnL1(self.conv1L(U)))))) #[batch_size, 1, H, W]
+      L = self.sigmoid(self.bnL2(self.conv2L(self.relu(self.bnL1(self.conv1L(U)))))) #[batch_size, 1, H, W]
       
       # Combine global and local contexts
       GL = G + L #[batch_size, C,H,W]
@@ -119,7 +122,8 @@ class VTFF(nn.Module):
       self.tranformer_encoder = nn.TransformerEncoder(self.trans_encoder_layer, num_layers=num_layers)
       
       #? final classification
-      self.droput = nn.Dropout(0.5)
+      self.relu = nn.ReLU()
+      self.dropout = nn.Dropout(0.5)
       self.fc = nn.Linear(Cp, num_classes)
 
    def forward(self, x):
@@ -143,7 +147,6 @@ class VTFF(nn.Module):
       
       #?classification
       cls_output = x[:, 0]  #?Extract [cls] token's output
-      x = nn.ReLU(cls_output)
       x = self.dropout(x)
       logits = self.fc(cls_output)
       

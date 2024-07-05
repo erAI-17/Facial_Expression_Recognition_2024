@@ -9,7 +9,7 @@ logname: null
 models_dir: null 
 
 train:
-  num_iter: 61  #if total_batch of 128.  7793/128=60.88 ->1 epoch
+  num_iter: 61*5  #if total_batch of 128.  7793/128=60.88 ->1 epoch
   eval_freq: 15  #every 25% of an epoch
   
 test:
