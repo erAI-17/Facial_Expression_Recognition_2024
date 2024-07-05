@@ -24,13 +24,14 @@ class RGB_ResNet18(nn.Module):
         #?layers 1,2,3,4 are residual blocks of the ResNet model, each consisting of multiple convolutional layers and skip connections. 
         x = self.model.layer1(x)
         x = self.model.layer2(x)
-        mid_feat = self.model.layer3(x) #[batch_size, 256, 14, 14]
-        late_feat = self.model.layer4(mid_feat)
-        late_feat = self.model.avgpool(late_feat) #[batch_size, 512, 1, 1]
+       #?4 stages
+        x = self.model.layer1(x)
+        x = self.model.layer2(x)
+        x = self.model.layer3(x) 
+        feat = self.model.layer4(feat) #[batch_size, 512, 7, 7]
         
-        return x, {'mid_feat': mid_feat, 'late_feat': late_feat.squeeze()}
+        return x, {'feat': feat}
     
-
 #!PRETRAINED RESNET50
 class RGB_ResNet50(nn.Module):
     def __init__(self):
@@ -46,15 +47,13 @@ class RGB_ResNet50(nn.Module):
         x = self.model.bn1(x) #batch normalization
         x = self.model.relu(x)
         x = self.model.maxpool(x)
-        
-        #?layers 1,2,3,4 are residual blocks of the ResNet model, each consisting of multiple convolutional layers and skip connections. 
+        #?4 stages
         x = self.model.layer1(x)
         x = self.model.layer2(x)
-        mid_feat = self.model.layer3(x) #[batch_size, 1024, 1, 1]
-        late_feat = self.model.layer4(mid_feat)
-        late_feat = self.model.avgpool(late_feat) #[batch_size, 2048, 1, 1]
+        x = self.model.layer3(x) 
+        feat = self.model.layer4(feat) #[batch_size, 2048, 7, 7]
         
-        return x, {'mid_feat': mid_feat, 'late_feat': late_feat.squeeze()}
+        return x, {'feat': feat}
     
 
 

@@ -13,27 +13,23 @@ class DEPTH_ResNet18(nn.Module):
     def __init__(self):
         super(DEPTH_ResNet18, self).__init__()
         self.model = models.resnet18(weights=ResNet18_Weights.DEFAULT) 
-        
-        # Modify the first convolutional layer to accept grayscale images
-        self.model.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
-        # Initialize the new conv1 layer with pretrained weights
-        pretrained_weights = models.resnet18(weights=ResNet18_Weights.DEFAULT).conv1.weight
-        self.model.conv1.weight.data = pretrained_weights.mean(dim=1, keepdim=True)
 
     def forward(self, x):
+        #stack the image to have 3 channel instead of 1
+        x = torch.cat([x, x, x], dim=1)
+        
         x = self.model.conv1(x)
         x = self.model.bn1(x) #?batch normalization
         x = self.model.relu(x)
         x = self.model.maxpool(x)
         
-        #?layers 1,2,3,4 are residual blocks of the ResNet model, each consisting of multiple convolutional layers and skip connections. 
+        #?4 stages
         x = self.model.layer1(x)
         x = self.model.layer2(x)
-        mid_feat = self.model.layer3(x) #[batch_size, 256, 14, 14]
-        late_feat = self.model.layer4(mid_feat)
-        late_feat = self.model.avgpool(late_feat) #[batch_size, 512, 1, 1]
+        x = self.model.layer3(x) 
+        feat = self.model.layer4(feat) #[batch_size, 512, 7, 7]
         
-        return x, {'mid_feat': mid_feat, 'late_feat': late_feat.squeeze()}
+        return x, {'feat': feat}
     
 
 #!PRETRAINED RESNET50
@@ -52,25 +48,21 @@ class DEPTH_ResNet50(nn.Module):
         #         if param.requires_grad:
         #             f.write(f'Layer Name: {name}\n')
         #             f.write(f'Weights:\n{param.data}\n\n')
-        
-        #?Modify the first convolutional layer to accept grayscale images (1 channel instead of 3)
-        self.model.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
-        # Initialize the new conv1 layer with pretrained weights
-        pretrained_weights = models.resnet50(weights=ResNet50_Weights.DEFAULT).conv1.weight
-        self.model.conv1.weight.data = pretrained_weights.mean(dim=1, keepdim=True)
 
     def forward(self, x):        
+        #stack the image to have 3 channel instead of 1
+        x = torch.cat([x, x, x], dim=1)
+        
         x = self.model.conv1(x)
         x = self.model.bn1(x) #batch normalization
         x = self.model.relu(x)
         x = self.model.maxpool(x)
         
-        #?layers 1,2,3,4 are residual blocks of the ResNet model, each consisting of multiple convolutional layers and skip connections. 
+        #?4 stages
         x = self.model.layer1(x)
         x = self.model.layer2(x)
-        mid_feat = self.model.layer3(x)  #[batch_size, 1024, 14, 14]
-        late_feat = self.model.layer4(mid_feat)
-        late_feat = self.model.avgpool(late_feat) #[batch_size, 2048, 1, 1] 
+        x = self.model.layer3(x) 
+        feat = self.model.layer4(feat) #[batch_size, 2048, 7, 7]
         
-        return x, {'mid_feat': mid_feat, 'late_feat': late_feat.squeeze()}
+        return x, {'feat': feat}
     
