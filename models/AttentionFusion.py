@@ -4,7 +4,6 @@ import torch.nn.functional as F
 import utils
 from utils.args import args
 import torchaudio.transforms as T
-import models as model_list
 
 class SIMPLER_AttentionFusion1D_Module(nn.Module):
    def __init__(self, rgb_dim, depth_dim, d_model, nhead, d_ff):

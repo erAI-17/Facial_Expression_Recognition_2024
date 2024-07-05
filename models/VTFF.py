@@ -3,10 +3,7 @@ from torch import nn
 import torch.nn.functional as F
 import utils
 from utils.args import args
-import torchaudio.transforms as T
-import models as model_list
-from models.RGB_CNN import RGB_ResNet18, RGB_ResNet50
-from models.DEPTH_CNN import DEPTH_ResNet18, DEPTH_ResNet50
+from transformers import BertModel
 
 
 class AttentionSelectiveFusion_Module(nn.Module):
@@ -120,6 +117,10 @@ class VTFF(nn.Module):
       self.linear_proj = nn.Linear(self.Cf, Cp)
       self.trans_encoder_layer = nn.TransformerEncoderLayer(Cp, nhead=nhead, dim_feedforward=mlp_dim, activation='gelu', batch_first=True)
       self.tranformer_encoder = nn.TransformerEncoder(self.trans_encoder_layer, num_layers=num_layers)
+      
+      #otherwise, pre-trained encoder
+      #bert_model = BertModel.from_pretrained('bert-base-uncased')
+      #self.tranformer_encoder = bert_model.encoder
       
       #? final classification
       self.relu = nn.ReLU()

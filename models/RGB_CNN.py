@@ -1,9 +1,6 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
-import utils
-from utils.args import args
-import torchaudio.transforms as T
 from torchvision import models
 from torchvision.models import ResNet18_Weights, ResNet50_Weights
 from transformers import AutoImageProcessor, AutoModel, AutoModelForImageClassification
