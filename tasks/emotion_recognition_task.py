@@ -5,7 +5,7 @@ import wandb
 import tasks
 from typing import Dict, Tuple
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
-#from utils.Losses import FocalLoss, CenterLoss
+from utils.Losses import FocalLoss #, CenterLoss
 
 
 class EmotionRecognition(tasks.Task, ABC):
@@ -51,18 +51,17 @@ class EmotionRecognition(tasks.Task, ABC):
         #!scaler for mixed precision 
         self.scaler = scaler
         
-        #! CrossEntropyLoss
-        self.criterion = torch.nn.CrossEntropyLoss(weight=None, size_average=None, ignore_index=-100,
-                                                    reduce=None, reduction='none')
+        #! CrossEntropyLoss (already reduce the loss over batch samples)
+        #self.criterion = torch.nn.CrossEntropyLoss(weight=None, size_average=None, ignore_index=-100, reduce=None, reduction='sum')
+        
         #!Weighted CEL
-        #self.criterion = torch.nn.CrossEntropyLoss(weight=class_weights, size_average=None, ignore_index=-100,
-        #                                           reduce=None, reduction='none')
+        #self.criterion = torch.nn.CrossEntropyLoss(weight=class_weights, size_average=None, ignore_index=-100, reduce=None, reduction='sum')
         
         #!Focal Loss #dynamically scales the loss for each sample based on the prediction confidence.
-        #self.criterion = FocalLoss(alpha=1, gamma=2, reduction='mean')
+        self.criterion = FocalLoss(alpha=1, gamma=2, reduction='sum')
         
         #!CEL+Center Loss 
-        #self.criterion = CEL_CL_Loss(alpha=1, gamma=2, reduction='mean')
+        #self.criterion = CEL_CL_Loss(alpha=1, gamma=2, reduction='sum')
         
         # Initialize the model parameters and the optimizer
         optim_params = {}
@@ -136,11 +135,11 @@ class EmotionRecognition(tasks.Task, ABC):
         loss_weight : float, optional
             weight of the classification loss, by default 1.0
         """
-        loss = self.criterion(logits, label) #?the criterion is defined with "reduction=None", so the loss function returns a tensor containing the loss for each individual sample in the batch,
+        loss = self.criterion(logits, label) #? IF the criterion is defined with "reduction=None", so the loss function returns a tensor containing the loss for each individual sample in the batch,
                                              #? rather than averaging or summing the losses. LATER, before backward pass, the loss is averaged over the batch size.
         
         #? Update the loss value, weighting it by the ratio of the batch size to the total batch size (for gradient accumulation)
-        self.loss.update(torch.mean(loss) / (self.total_batch / self.batch_size), self.batch_size)
+        self.loss.update(loss / (self.total_batch / self.batch_size), self.batch_size)
 
 
     def compute_accuracy(self, logits: torch.Tensor, label: torch.Tensor):

@@ -96,7 +96,7 @@ class AttentionFusion1D(nn.Module):
       self.rgb_model = rgb_model
       self.depth_model = depth_model
       
-      self.attention = AttentionFusion1D_Module(2048, 2048, d_model=512, nhead=4, d_ff=1024) # AttentionFusion1D_Module SIMPLER_AttentionFusion1D_Module
+      self.attention = SIMPLER_AttentionFusion1D_Module(2048, 2048, d_model=512, nhead=4, d_ff=1024) # AttentionFusion1D_Module SIMPLER_AttentionFusion1D_Module
       
       #final classifier
       self.fc = nn.Linear(512, num_classes) 

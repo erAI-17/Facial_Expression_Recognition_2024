@@ -6,6 +6,8 @@ from utils.args import args
 import torchaudio.transforms as T
 from torchvision import models
 from torchvision.models import ResNet18_Weights, ResNet50_Weights
+from transformers import AutoImageProcessor, AutoModel, AutoModelForImageClassification
+
 
 #!PRETRAINED RESNET-18
 class RGB_ResNet18(nn.Module):
@@ -33,7 +35,11 @@ class RGB_ResNet18(nn.Module):
 class RGB_ResNet50(nn.Module):
     def __init__(self):
         super(RGB_ResNet50, self).__init__()
-        self.model = models.resnet50(weights=ResNet50_Weights.DEFAULT)  #download pretrained weights? ==True, ResNet18_Weights.DEFAULT TO GET THE MOST UPDATED WEIGHTS
+        
+        outer_model = AutoModelForImageClassification.from_pretrained("KhaldiAbderrhmane/resnet50-facial-emotion-recognition", trust_remote_code=True) 
+        self.model = outer_model.resnet
+        
+        #self.model = models.resnet50(weights=ResNet50_Weights.DEFAULT)  #download pretrained weights? ==True, ResNet18_Weights.DEFAULT TO GET THE MOST UPDATED WEIGHTS
         
     def forward(self, x):
         x = self.model.conv1(x)
