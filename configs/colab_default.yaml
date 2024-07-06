@@ -29,18 +29,18 @@ models:
   RGB:
     model: ???
     kwargs: {}
-    lr: 5e-4
+    lr: ???
     sgd_momentum: 0.9
     weight_decay: 1e-4
   DEPTH:
     model: ???
     kwargs: {}
-    lr: 1e-3
+    lr: ???
     sgd_momentum: 0.9
     weight_decay: 1e-4
   FUSION:
     model: ???
     kwargs: {}
-    lr: 1e-3
+    lr: ???
     sgd_momentum: 0.9
     weight_decay: 1e-4
