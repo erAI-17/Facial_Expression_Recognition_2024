@@ -10,7 +10,7 @@ import models as model_list
 class FocalLoss(nn.Module):
     def __init__(self,
                  alpha = 1,
-                 gamma= 2,
+                 gamma = 2,
                  reduction= 'sum'):
         """Constructor.
 
@@ -25,27 +25,17 @@ class FocalLoss(nn.Module):
         self.reduction = reduction
 
     def forward(self, logits, labels):
-        """_summary_
-
-        Args:
-            logits (_type_): _description_
-            labels (_type_): _description_
-
-        Returns:
-            reduced loss
-        """
-        p_t = F.softmax(logits, dim=-1)  #softmax, then logarithm
+        p_t = F.softmax(logits, dim=-1)  
         
         num_classes = logits.size(1)
-        labels = F.one_hot(labels, num_classes=num_classes)
+        labels_one_hot = F.one_hot(labels, num_classes=num_classes)
         
-        ce = (torch.log(p_t) * labels * self.alpha).sum(dim=1)
+        p_t = (self.alpha * p_t * labels_one_hot).sum(dim=1)
+        ce = -torch.log(p_t)
 
-        #focal term: (1 - pt)^gamma
-        focal_term = (1 - (p_t * labels).sum(dim=1))**self.gamma
+        focal_term = (1 - p_t)**self.gamma
 
-        # full loss: -alpha * ((1 - pt)^gamma) * log(pt)
-        loss = -focal_term * ce
+        loss = focal_term * ce #?-alpha * ((1 - pt)^gamma) * log(pt)
         
         if self.reduction == 'mean':
             loss = loss.mean()

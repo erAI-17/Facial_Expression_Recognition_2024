@@ -43,6 +43,7 @@ class EmotionRecognition(tasks.Task, ABC):
         
         super().__init__(name, task_models, batch_size, total_batch, models_dir, args, **kwargs)
         self.model_args = model_args
+        self.class_weights = class_weights
         
         #!self.accuracy and self.loss track the evolution of the accuracy and the training loss
         self.accuracy = utils.Accuracy(topk=(1, 5))
@@ -55,10 +56,10 @@ class EmotionRecognition(tasks.Task, ABC):
         #self.criterion = torch.nn.CrossEntropyLoss(weight=None, size_average=None, ignore_index=-100, reduce=None, reduction='mean')
         
         #!Weighted CEL
-        #self.criterion = torch.nn.CrossEntropyLoss(weight=class_weights, size_average=None, ignore_index=-100, reduce=None, reduction='mean')
+        self.criterion = torch.nn.CrossEntropyLoss(weight=self.class_weights, size_average=None, ignore_index=-100, reduce=None, reduction='mean')
         
         #!Focal Loss #dynamically scales the loss for each sample based on the prediction confidence.
-        self.criterion = FocalLoss(alpha=1, gamma=2, reduction='mean')
+        self.criterion = FocalLoss(alpha=self.class_weights, gamma=2, reduction='mean')
         
         #!CEL+Center Loss 
         #self.criterion = CEL_CL_Loss(alpha=1, gamma=2, reduction='mean')
