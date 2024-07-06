@@ -7,10 +7,11 @@ wandb_name: null
 resume_from: null 
 logname: null 
 models_dir: null 
+amp: ???
 
 train:
-  num_iter: 61*5  #if total_batch of 128.  7793/128=60.88 ->1 epoch
-  eval_freq: 15  #every 25% of an epoch
+  num_iter: ???  #if total_batch of 128.  7793/128=60.88 ->1 epoch
+  eval_freq: ???  #every 25% of an epoch
   
 test:
   

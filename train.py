@@ -12,7 +12,6 @@ import models as model_list
 import tasks
 import wandb
 from torch.profiler import profile, record_function, ProfilerActivity #profiler
-from torch.cuda.amp import autocast, GradScaler #automatic mixed precision 
 from utils.utils import compute_class_weights
 from utils.transforms import RGB_transf, DEPTH_transf
 from torch.utils.tensorboard import SummaryWriter
@@ -54,7 +53,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     #!Mixed precision scaler
-    scaler = GradScaler()
+    scaler = torch.amp.GradScaler()
 
     #!TRANSFORMATIONS and AUGMENTATION for TRAINING samples, 
     #!ONLY TRANSFORMATION (NO AUGMENTATION) for VALIDATION/TEST samples
@@ -216,10 +215,13 @@ def train(emotion_classifier, train_loader, val_loader, device):
         
         # Start profiling
         profiler.start()   
-        #? Forward pass with automatic mixed precision 
-        #with autocast(): #device_type='cuda', dtype=torch.float16  #?The autocast() context manager allows PyTorch to automatically cast operations inside it to FP16, reducing memory usage and accelerating computations on compatible hardware.
-        logits, _ = emotion_classifier.forward(data)
-        emotion_classifier.compute_loss(logits, source_label) #?internally, the scaler, scales the loss to avoid UNDERFLOW of the gradient (too small gradients) since they will  be computed in FP16 (half precision)
+        #? The autocast() context manager allows PyTorch to automatically cast operations inside it to FP16, reducing memory usage and accelerating computations on compatible hardware.
+        #? ONLY for forward and loss computation. Backward is automatically done in same precision as forward!!
+        with torch.autocast(device_type= ("cuda" if torch.cuda.is_available() else "cpu"), 
+                            dtype=torch.float16,
+                            enabled=args.amp): 
+            logits, _ = emotion_classifier.forward(data)
+            emotion_classifier.compute_loss(logits, source_label) #?internally, the scaler, scales the loss to avoid UNDERFLOW of the gradient (too small gradients) since they will  be computed in FP16 (half precision)
         profiler.step() #!update profiler  
         profiler.stop() #!stop profiler   
             
@@ -279,8 +281,10 @@ def validate(model, val_loader, device, it):
             for m in args.modality:
                 data[m] = data[m].to(device)
             
-            #with autocast():  
-            logits, _ = model.forward(data)
+            with torch.autocast(device_type= ("cuda" if torch.cuda.is_available() else "cpu"), 
+                            dtype=torch.float16,
+                            enabled=args.amp): 
+                logits, _ = model.forward(data)
             
             model.compute_accuracy(logits, label)
 

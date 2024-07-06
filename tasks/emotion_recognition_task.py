@@ -6,7 +6,7 @@ import tasks
 from typing import Dict, Tuple
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 from utils.Losses import FocalLoss #, CenterLoss
-
+from utils.args import args
 
 class EmotionRecognition(tasks.Task, ABC):
     def __init__(self, 
@@ -171,32 +171,21 @@ class EmotionRecognition(tasks.Task, ABC):
         self.accuracy.reset()
 
     def step(self):
-        """Perform an optimization step.
-
-        This method performs an optimization step and resets both the loss
-        and the accuracy.
+        """This method performs an optimization step and resets both the loss and the accuracy.
         """
-        #!!if using mixed precision autocast() in training
-        # for m in self.modalities:
-        #     # Perform the step with the optimizer and scaler
-        #     self.scaler.step(self.optimizer[m]) #? instead of simple self.optimizer[m].step() , YOU NEED TO SCALE THE GRADIENTS BACK to FP32
-            
-        #     # Perform the step with the scheduler (if any)
-        #     if self.scheduler[m] is not None:  
-        #         self.scheduler[m].step()
-        
-        # # Update the scaler for the next iteration        
-        # self.scaler.update()
-        
-         #!!if using mixed precision autocast() in training
         for m in self.modalities:
-            # Perform the step with the optimizer and scaler
-            self.optimizer[m].step() #? instead of simple self.optimizer[m].step() , YOU NEED TO SCALE THE GRADIENTS BACK to FP32
-            
+            if args.amp:  #!!if using mixed precision autocast() in training
+                # Perform the step with the optimizer and scaler
+                self.scaler.step(self.optimizer[m]) #? instead of simple self.optimizer[m].step() , YOU NEED TO SCALE THE GRADIENTS BACK TO THE ORIGINAL VALUES before updating the model parameters
+            else:
+                self.optimizer[m].step()
             # Perform the step with the scheduler (if any)
             if self.scheduler[m] is not None:  
                 self.scheduler[m].step()
-                
+            
+        if args.amp: #! Update the scaler for the next iteration        
+            self.scaler.update()
+                    
         # Reset loss and accuracy tracking
         self.reset_loss()
         self.reset_acc()
@@ -206,18 +195,13 @@ class EmotionRecognition(tasks.Task, ABC):
 
         Set retain_graph to true if you need to backpropagate multiple times over
         the same computational graph (for example if using multiple different losses)
-
-        Parameters
-        ----------
-        retain_graph : bool, optional
-            whether the computational graph should be retained, by default False
         """
-
-        #!if using mixed precision autocast() in training
-        #self.loss.val is the loss value over a mini-batch 32 (NOT the accumulated loss over the 4 32 batches inside effective batch 128)
-        
-        #!if NOT using mixed precision:
-        self.loss.val.backward(retain_graph=retain_graph)
+        if args.amp: #!if using mixed precision autocast() in training
+            print("LOSS: ", self.loss.val)
+            print("scaled LOSS: ", self.scaler.scale(self.loss.val))
+            self.scaler.scale(self.loss.val).backward(retain_graph=retain_graph)
+        else:
+            self.loss.val.backward(retain_graph=retain_graph)
         
     def wandb_log(self):
             """Log the current loss and top1/top5 accuracies to wandb."""
