@@ -1,13 +1,13 @@
 action: ???
 name: ???
 modality: ???
-total_batch: 128 
-batch_size: 32 
+total_batch: ??? 
+batch_size: ???
 wandb_name: null 
 resume_from: null 
 logname: null 
 models_dir: null 
-amp: ???
+amp: ???  #automatic mixed precision
 
 train:
   num_iter: ???  #if total_batch of 128.  7793/128=60.88 ->1 epoch
