@@ -237,7 +237,7 @@ def train(emotion_classifier, train_loader, val_loader, device):
             writer.add_scalar('Loss/train', emotion_classifier.loss.avg, real_iter)
             writer.add_scalar('Accuracy/train', emotion_classifier.accuracy.avg[1], real_iter)
                     
-            emotion_classifier.check_grad() #function that checks norm2 of the gradient (evaluate whether to apply clipping if too large)
+            #emotion_classifier.check_grad() #function that checks norm2 of the gradient (evaluate whether to apply clipping if too large)
             emotion_classifier.step() #step() attribute calls BOTH  optimizer.step()  and, if implemented,  scheduler.step()
             emotion_classifier.zero_grad() #now zero the gradients to avoid accumulating them since this batch has finished
             
