@@ -2,7 +2,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 from torchvision import models
-from torchvision.models import ResNet18_Weights, ResNet50_Weights
+from torchvision.models import ResNet18_Weights, ResNet50_Weights, EfficientNet_B0_Weights, EfficientNet_B3_Weights
 from transformers import AutoImageProcessor, AutoModel, AutoModelForImageClassification
 
 
@@ -35,11 +35,11 @@ class RGB_ResNet50(nn.Module):
         super(RGB_ResNet50, self).__init__()
         
         #?PRETRAINED FER2013 RESNET-50
-        outer_model = AutoModelForImageClassification.from_pretrained("KhaldiAbderrhmane/resnet50-facial-emotion-recognition", trust_remote_code=True) 
-        self.model = outer_model.resnet
+        #outer_model = AutoModelForImageClassification.from_pretrained("KhaldiAbderrhmane/resnet50-facial-emotion-recognition", trust_remote_code=True) 
+        #self.model = outer_model.resnet
         
         #?PRETRAINED IMAGENET RESNET-50
-        #self.model = models.resnet50(weights=ResNet50_Weights.DEFAULT)  #download pretrained weights? = ResNet18_Weights.DEFAULT TO GET THE MOST UPDATED WEIGHTS
+        self.model = models.resnet50(weights=ResNet50_Weights.DEFAULT)  #download pretrained weights? = ResNet18_Weights.DEFAULT TO GET THE MOST UPDATED WEIGHTS
         
     def forward(self, x):
         x = self.model.conv1(x)
@@ -58,12 +58,13 @@ class RGB_EFFICIENTNET_B0(nn.Module):
     def __init__(self):
         super(RGB_EFFICIENTNET_B0, self).__init__()
         
-        self.processor = AutoImageProcessor.from_pretrained("google/efficientnet-b0")
-        self.model = AutoModelForImageClassification.from_pretrained("google/efficientnet-b0")
+        self.model = models.efficientnet_b0(weights=EfficientNet_B0_Weights.DEFAULT) 
         
+        #self.processor = AutoImageProcessor.from_pretrained("google/efficientnet-b0")
+        #self.model = AutoModelForImageClassification.from_pretrained("google/efficientnet-b0")
         
     def forward(self, x):  
-        x = self.processor(x)
+        #x = self.processor(x)
         x = self.model(x)
         return x, {'feat': x}
     
@@ -71,11 +72,12 @@ class RGB_EFFICIENTNET_B3(nn.Module):
     def __init__(self):
         super(RGB_EFFICIENTNET_B3, self).__init__()
         
-        self.processor = AutoImageProcessor.from_pretrained("google/efficientnet-b3")
-        self.model = AutoModelForImageClassification.from_pretrained("google/efficientnet-b3")
+        self.model = models.efficientnet_b3(weights=EfficientNet_B3_Weights.DEFAULT)
+        #self.processor = AutoImageProcessor.from_pretrained("google/efficientnet-b3")
+        #self.model = AutoModelForImageClassification.from_pretrained("google/efficientnet-b3")
         
     def forward(self, x):
-        x = self.processor(x)
+        #x = self.processor(x)
         x = self.model(x)
         
         return x, {'feat': x}

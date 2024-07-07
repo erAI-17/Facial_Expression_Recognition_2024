@@ -5,7 +5,7 @@ import wandb
 import tasks
 from typing import Dict, Tuple
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
-from utils.Losses import FocalLoss #, CenterLoss
+from utils.losses import FocalLoss #, CenterLoss
 from utils.args import args
 
 class EmotionRecognition(tasks.Task, ABC):
@@ -112,7 +112,7 @@ class EmotionRecognition(tasks.Task, ABC):
         #!train all modalities networks TOGETHER passing data to FUSION network
         logits = {}
         features = {}
-        logits, feat = self.models['FUSION'](data, **kwargs) #logits [32,7]
+        logits, feat = self.models['FUSION'](data['RGB'],data['DEPTH'], **kwargs) #logits [32,7]
         #? return features to PLOT which are more discriminative (try different loss functions)
         for i_m, m in enumerate(self.modalities):
             if i_m == 0: #initially set up an empty dictionary for each modality to store corresponding features
@@ -197,6 +197,11 @@ class EmotionRecognition(tasks.Task, ABC):
             self.scaler.scale(self.loss.val).backward(retain_graph=retain_graph)
         else:
             self.loss.val.backward(retain_graph=retain_graph)
+    
+    def zero_grad(self):
+        """Reset the gradient when gradient accumulation is finished."""
+        for m in self.modalities:
+            self.optimizer[m].zero_grad(set_to_none=True)
             
     def grad_clip(self):
         """Clip the gradients to avoid exploding gradients."""
@@ -204,9 +209,8 @@ class EmotionRecognition(tasks.Task, ABC):
             torch.nn.utils.clip_grad_norm_(self.models[m].parameters(), args.train.max_grad_norm)
             
     def script(self):
-        """Script the model."""
-        for m in self.modalities:
-            self.models[m] = torch.jit.script(self.models[m])
+        """Script ONLY the FUSION model containing the feature extraction models"""
+        self.models['FUSION'] = torch.jit.script(self.models['FUSION'])
         
     def wandb_log(self):
             """Log the current loss and top1/top5 accuracies to wandb."""

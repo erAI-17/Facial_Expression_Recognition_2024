@@ -1,2 +1,2 @@
 from utils.args import args
-from utils.Losses import FocalLoss #, CEL_CL_Loss
+from utils.losses import FocalLoss #, CEL_CL_Loss

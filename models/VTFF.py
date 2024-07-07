@@ -53,9 +53,9 @@ class AttentionSelectiveFusion_Module(nn.Module):
       self.sigmoid = nn.Sigmoid()
       
       
-   def forward(self, data):
-      _, rgb_feat  = self.rgb_model(data['RGB'])
-      _, depth_feat = self.depth_model(data['DEPTH'])
+   def forward(self, rgb_input, depth_input):
+      _, rgb_feat  = self.rgb_model(rgb_input)
+      _, depth_feat = self.depth_model(depth_input)
       
       #resnet18: #[batch_size, 512, 7, 7] 
       #resnet50: #[batch_size, 2048, 7, 7]
@@ -126,9 +126,9 @@ class VTFF(nn.Module):
       self.dropout = nn.Dropout(0.5)
       self.fc = nn.Linear(self.Cp, num_classes)
 
-   def forward(self, x):
+   def forward(self, rgb_input, depth_input):
       #?extract X_fused from attentional selective fusion module: X_fused [batch_size, Cf=2048 x H=7 x W=7]
-      _, X_fused = self.AttentionSelectiveFusion_Module(x)
+      _, X_fused = self.AttentionSelectiveFusion_Module(rgb_input, depth_input)
       x = X_fused['X_fused']
       
       #? Flat and Project linealry to Cp channels [batch_size, Cf=2048 x H*W=7*7] ->  [batch_size, Cp=768 x H*W=7*7]

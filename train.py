@@ -242,7 +242,7 @@ def train(emotion_classifier, train_loader, val_loader, device):
                     
             #emotion_classifier.check_grad() #function that checks norm2 of the gradient (evaluate whether to apply clipping if too large)
             emotion_classifier.step() #step() attribute calls BOTH  optimizer.step()  and, if implemented,  scheduler.step()
-            emotion_classifier.zero_grad(set_to_none=True) #now zero the gradients to avoid accumulating them since this batch has finished
+            emotion_classifier.zero_grad() #now zero the gradients to avoid accumulating them since this batch has finished
             
         #! every "eval_freq" iterations the validation is done
         if real_iter.is_integer() and real_iter % args.train.eval_freq == 0: 

@@ -35,7 +35,7 @@ class Task(torch.nn.Module, metaclass=ABCMeta):
     def __init__(
         self,
         name: str,
-        task_models: Dict[str, torch.nn.Module],
+        models: Dict[str, torch.nn.Module],
         batch_size: int,
         total_batch: int,
         models_dir: str,
@@ -48,7 +48,7 @@ class Task(torch.nn.Module, metaclass=ABCMeta):
         ----------
         name : str
             name of the task e.g. action_classifier, domain_classifier...
-        task_models : Dict[str, torch.nn.module]
+        models : Dict[str, torch.nn.module]
             torch models, one for each different modality adopted by the task. DICTIONARY : {modality (str), model (nn.module)}
         batch_size : int
             actual batch size in the forward
@@ -61,8 +61,8 @@ class Task(torch.nn.Module, metaclass=ABCMeta):
         super().__init__() #? the  super().__init__()  call is used to invoke the constructor of its parent class
                            #? in this case the constructor of the parent class doesn't take any parameter. 
         self.name = name
-        self.task_models = task_models
-        self.modalities = list(self.task_models.keys())
+        self.models = models
+        self.modalities = list(self.models.keys())
         self.batch_size = batch_size
         self.total_batch = total_batch
         self.models_dir = models_dir
@@ -92,8 +92,8 @@ class Task(torch.nn.Module, metaclass=ABCMeta):
         device : torch.device, optional
             the device to move the models on, by default torch.device('cuda')
         """
-        for modality, model in self.task_models.items():
-            self.task_models[modality] = torch.nn.DataParallel(model).to(device, non_blocking=False)
+        for modality, model in self.models.items():
+            self.models[modality] = torch.nn.DataParallel(model).to(device, non_blocking=False)
             
     @abstractmethod
     def step(self):
@@ -121,7 +121,7 @@ class Task(torch.nn.Module, metaclass=ABCMeta):
         self.last_iter_acc = checkpoint["acc_mean"]
 
         # Restore the model parameters
-        self.task_models[m].load_state_dict(checkpoint["model_state_dict"], strict=True)
+        self.models[m].load_state_dict(checkpoint["model_state_dict"], strict=True)
         # Restore the optimizer parameters
         self.optimizer[m].load_state_dict(checkpoint["optimizer_state_dict"])
 
@@ -237,7 +237,7 @@ class Task(torch.nn.Module, metaclass=ABCMeta):
                         "best_iter_score": self.best_iter_score,
                         "acc_mean": last_iter_acc,
                         "loss_mean": self.loss.acc,
-                        "model_state_dict": self.task_models[m].state_dict(),
+                        "model_state_dict": self.models[m].state_dict(),
                         "optimizer_state_dict": self.optimizer[m].state_dict(),
                         "last_model_count_saved": self.model_count,
                     },
@@ -260,13 +260,8 @@ class Task(torch.nn.Module, metaclass=ABCMeta):
         mode : bool, optional
             train mode, by default True
         """
-        for model in self.task_models.values():
+        for model in self.models.values():
             model.train(mode)
-
-    def zero_grad(self):
-        """Reset the gradient when gradient accumulation is finished."""
-        for m in self.modalities:
-            self.optimizer[m].zero_grad()
 
     def check_grad(self):
         """Check that the gradients of the model are not over a certain threshold.
@@ -275,7 +270,7 @@ class Task(torch.nn.Module, metaclass=ABCMeta):
         By using the  check_grad  method, you can identify which parameters have large gradients and take appropriate actions,
         such as gradient clipping or adjusting the learning rate. """
         for m in self.modalities:
-            for name, param in self.task_models[m].named_parameters(): #?named_parameters()  returns an iterator over the model's parameters, yielding both the name and the parameter itself
+            for name, param in self.models[m].named_parameters(): #?named_parameters()  returns an iterator over the model's parameters, yielding both the name and the parameter itself
                 if param.requires_grad and param.grad is not None: #?For each parameter, it checks if the parameter requires gradients ( param.requires_grad ) and if the gradient is not  None. 
                                                                    #? This ensures that only parameters that are involved in the gradient computation are checked.
                     #print(name)

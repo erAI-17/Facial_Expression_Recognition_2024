@@ -2,7 +2,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 from torchvision import models
-from torchvision.models import ResNet18_Weights, ResNet50_Weights
+from torchvision.models import ResNet18_Weights, ResNet50_Weights, EfficientNet_B0_Weights,EfficientNet_B3_Weights
 from transformers import AutoImageProcessor, AutoModel, AutoModelForImageClassification
 
 #!PRETRAINED RESNET-18
@@ -12,9 +12,6 @@ class DEPTH_ResNet18(nn.Module):
         self.model = models.resnet18(weights=ResNet18_Weights.DEFAULT) 
 
     def forward(self, x):
-        #stack the image to have 3 channel instead of 1
-        x = torch.cat([x, x, x], dim=1)
-        
         x = self.model.conv1(x)
         x = self.model.bn1(x) 
         x = self.model.relu(x)
@@ -49,9 +46,6 @@ class DEPTH_ResNet50(nn.Module):
         #             f.write(f'Weights:\n{param.data}\n\n')
 
     def forward(self, x):        
-        #stack the image to have 3 channel instead of 1
-        x = torch.cat([x, x, x], dim=1)
-        
         x = self.model.conv1(x)
         x = self.model.bn1(x) 
         x = self.model.relu(x)
@@ -70,15 +64,12 @@ class DEPTH_EFFICIENTNET_B0(nn.Module):
     def __init__(self):
         super(DEPTH_EFFICIENTNET_B0, self).__init__()
         
-        self.processor = AutoImageProcessor.from_pretrained("google/efficientnet-b0")
-        self.model = AutoModelForImageClassification.from_pretrained("google/efficientnet-b0")
+        self.model = models.efficientnet_b0(weights=EfficientNet_B0_Weights.DEFAULT) 
+        #self.processor = AutoImageProcessor.from_pretrained("google/efficientnet-b0")
+        #self.model = AutoModelForImageClassification.from_pretrained("google/efficientnet-b0")
         
-    def forward(self, x):
-        #stack the image to have 3 channel instead of 1
-        x = torch.cat([x, x, x], dim=1)
-        
-        x = self.processor(x)
-        
+    def forward(self, x):        
+        #x = self.processor(x)       
         x = self.model(x)
         
         return x, {'feat': x}
@@ -87,14 +78,11 @@ class DEPTH_EFFICIENTNET_B3(nn.Module):
     def __init__(self):
         super(DEPTH_EFFICIENTNET_B3, self).__init__()
         
-        self.processor = AutoImageProcessor.from_pretrained("google/efficientnet-b3")
-        self.model = AutoModelForImageClassification.from_pretrained("google/efficientnet-b3")
+        self.model = models.efficientnet_b3(weights=EfficientNet_B3_Weights.DEFAULT) 
+        #self.processor = AutoImageProcessor.from_pretrained("google/efficientnet-b3")
+        #self.model = AutoModelForImageClassification.from_pretrained("google/efficientnet-b3")
         
     def forward(self, x):
-        #stack the image to have 3 channel instead of 1
-        x = torch.cat([x, x, x], dim=1)
-        
-        x = self.processor(x)
-        
+        #x = self.processor(x)
         x = self.model(x)
         return x, {'feat': x}
