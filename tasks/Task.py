@@ -93,7 +93,7 @@ class Task(torch.nn.Module, metaclass=ABCMeta):
             the device to move the models on, by default torch.device('cuda')
         """
         for modality, model in self.task_models.items():
-            self.task_models[modality] = torch.nn.DataParallel(model).to(device)
+            self.task_models[modality] = torch.nn.DataParallel(model).to(device, non_blocking=False)
             
     @abstractmethod
     def step(self):

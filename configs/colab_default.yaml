@@ -12,6 +12,7 @@ amp: ???  #automatic mixed precision
 train:
   num_iter: ???  #on total_batch of 128.  7793/128=60.88 ->1 epoch
   eval_freq: ???  #every 25% of an epoch
+  max_grad_norm: ???
   
 test:
   

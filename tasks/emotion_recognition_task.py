@@ -11,7 +11,7 @@ from utils.args import args
 class EmotionRecognition(tasks.Task, ABC):
     def __init__(self, 
                  name: str, 
-                 task_models: Dict[str, torch.nn.Module], 
+                 models: Dict[str, torch.nn.Module], 
                  batch_size: int, 
                  total_batch: int, 
                  models_dir: str, 
@@ -25,7 +25,7 @@ class EmotionRecognition(tasks.Task, ABC):
         ----------
         name : str
             name of the task e.g. emotion_classifier, domain_classifier...
-        task_models : Dict[str, torch.nn.Module]
+        models : Dict[str, torch.nn.Module]
             torch models, one for each different modality adopted by the task
         batch_size : int
             actual batch size in the forward
@@ -41,7 +41,7 @@ class EmotionRecognition(tasks.Task, ABC):
             model-specific arguments
         """
         
-        super().__init__(name, task_models, batch_size, total_batch, models_dir, args, **kwargs)
+        super().__init__(name, models, batch_size, total_batch, models_dir, args, **kwargs)
         self.model_args = model_args
         self.class_weights = class_weights
         
@@ -68,22 +68,16 @@ class EmotionRecognition(tasks.Task, ABC):
         optim_params = {}
         self.optimizer = {}
         self.scheduler = {}
-        for m in self.task_models:
+        for m in self.models:
             #?select only parameters of the model that have requires_grad == True. If they have requires_grad == False it means they should not be
             #? includeed in gradient computation and NOT be updated because of PRE-TRAINING FREEZING
-            optim_params[m] = filter(lambda parameter: parameter.requires_grad, self.task_models[m].parameters())
+            optim_params[m] = filter(lambda parameter: parameter.requires_grad, self.models[m].parameters())
             
             #? optim_params[m] : The parameters of the model  m  that require gradients. 
             #? model_args[m].lr : Initial learning rate for the optimizer
             #? weight_decay : The weight decay (L2 penalty) for the optimizer. 
             #!ADAM
-            self.optimizer[m] = torch.optim.Adam(optim_params[m], model_args[m].lr,
-                                                weight_decay=model_args[m].weight_decay)
-            
-            #!SGD with momentum
-            # self.optimizer[m] = torch.optim.SGD(optim_params[m], model_args[m].lr,
-            #                                     weight_decay=model_args[m].weight_decay,
-            #                                     momentum=model_args[m].sgd_momentum)
+            self.optimizer[m] = torch.optim.Adam(optim_params[m], model_args[m].lr, weight_decay=model_args[m].weight_decay)
             
             #!LR schedulers
             #?warm up schedule
@@ -118,7 +112,7 @@ class EmotionRecognition(tasks.Task, ABC):
         #!train all modalities networks TOGETHER passing data to FUSION network
         logits = {}
         features = {}
-        logits, feat = self.task_models['FUSION'](data, **kwargs) #logits [32,7]
+        logits, feat = self.models['FUSION'](data, **kwargs) #logits [32,7]
         #? return features to PLOT which are more discriminative (try different loss functions)
         for i_m, m in enumerate(self.modalities):
             if i_m == 0: #initially set up an empty dictionary for each modality to store corresponding features
@@ -203,6 +197,16 @@ class EmotionRecognition(tasks.Task, ABC):
             self.scaler.scale(self.loss.val).backward(retain_graph=retain_graph)
         else:
             self.loss.val.backward(retain_graph=retain_graph)
+            
+    def grad_clip(self):
+        """Clip the gradients to avoid exploding gradients."""
+        for m in self.modalities:
+            torch.nn.utils.clip_grad_norm_(self.models[m].parameters(), args.train.max_grad_norm)
+            
+    def script(self):
+        """Script the model."""
+        for m in self.modalities:
+            self.models[m] = torch.jit.script(self.models[m])
         
     def wandb_log(self):
             """Log the current loss and top1/top5 accuracies to wandb."""

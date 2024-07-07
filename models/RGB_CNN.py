@@ -67,7 +67,7 @@ class RGB_EFFICIENTNET_B0(nn.Module):
         x = self.model(x)
         return x, {'feat': x}
     
-class RGB_EFFICIENTNET_B3(nn.Module):
+class RGB_EFFICIENTNET_B3(nn.Module): 
     def __init__(self):
         super(RGB_EFFICIENTNET_B3, self).__init__()
         

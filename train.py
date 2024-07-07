@@ -16,7 +16,7 @@ from utils.utils import compute_class_weights
 from utils.transforms import RGB_transf, DEPTH_transf
 from torch.utils.tensorboard import SummaryWriter
 
-# global variables among training functions
+#!global variables
 training_iterations = 0
 np.random.seed(13696641)
 torch.manual_seed(13696641)
@@ -30,11 +30,10 @@ torch.manual_seed(13696641)
 #   tensorboard --logdir=logs
     
 def init_operations():
-    """
-    parse all the arguments, generate the logger, check gpus to be used and wandb
-    """
     logger.info("Running with parameters: " + pformat_dict(args, indent=1))
 
+    torch.backends.cudnn.benchmark = True
+    
     # wanbd logging configuration
     if args.wandb_name is not None:
         wandb.init(group=args.wandb_name, dir=args.wandb_dir)
@@ -94,7 +93,7 @@ def main():
                                                 drop_last=False)
     
     #!compute class weights for Weighted Cross Entropy Loss
-    class_weights = compute_class_weights(train_loader).to(device)
+    class_weights = compute_class_weights(train_loader).to(device, non_blocking=False)
     
     #?instanciate a different model per modality. 
     models = {}
@@ -117,6 +116,10 @@ def main():
                                                  class_weights,
                                                  args.models, 
                                                  args=args)
+    
+    emotion_classifier.grad_clip() #?gradient clipping is applied to the whole model (all the models for each modality)
+    emotion_classifier.script() #? script each model per modality
+    
     emotion_classifier.load_on_gpu(device)
     
     #!TRAIN and TESTING
@@ -189,9 +192,9 @@ def train(emotion_classifier, train_loader, val_loader, device):
         real_iter = (i + 1) / (args.total_batch // args.batch_size)
         
         #?PLOT lr and weights for each model
-        for m in emotion_classifier.task_models:
+        for m in emotion_classifier.models:
             writer.add_scalar(f'LR for modality/{m}', emotion_classifier.optimizer[m].param_groups[-1]['lr'], real_iter)   
-            for name, param in emotion_classifier.task_models[m].named_parameters(): 
+            for name, param in emotion_classifier.models[m].named_parameters(): 
                 writer.add_histogram(f'{m}/{name}', param, real_iter)       
             
         #? If the  data_loader_source  iterator is exhausted (i.e., it has iterated over the entire dataset), a  StopIteration  exception is raised. 
@@ -208,10 +211,10 @@ def train(emotion_classifier, train_loader, val_loader, device):
                     f"{(end_t - start_t).total_seconds() // 60} m {(end_t - start_t).total_seconds() % 60} s")
 
         #!move data,labels to gpu
-        source_label = source_label.to(device) #?labels to GPU
+        source_label = source_label.to(device, non_blocking=False) #?labels to GPU
         data = {}
         for m in args.modality:
-            data[m] = source_data[m].to(device) #? data to GPU
+            data[m] = source_data[m].to(device, non_blocking=False) #? data to GPU
         
         # Start profiling
         profiler.start()   
@@ -239,7 +242,7 @@ def train(emotion_classifier, train_loader, val_loader, device):
                     
             #emotion_classifier.check_grad() #function that checks norm2 of the gradient (evaluate whether to apply clipping if too large)
             emotion_classifier.step() #step() attribute calls BOTH  optimizer.step()  and, if implemented,  scheduler.step()
-            emotion_classifier.zero_grad() #now zero the gradients to avoid accumulating them since this batch has finished
+            emotion_classifier.zero_grad(set_to_none=True) #now zero the gradients to avoid accumulating them since this batch has finished
             
         #! every "eval_freq" iterations the validation is done
         if real_iter.is_integer() and real_iter % args.train.eval_freq == 0: 
@@ -260,7 +263,7 @@ def train(emotion_classifier, train_loader, val_loader, device):
                       
     writer.close()
 
-def validate(model, val_loader, device, it):
+def validate(emotion_classifier, val_loader, device, it):
     """
     function to validate the model on the test set
     
@@ -270,43 +273,43 @@ def validate(model, val_loader, device, it):
     it: int, iteration among the training num_iter at which the model is tested
     """
 
-    model.reset_acc()
-    model.train(False)
+    emotion_classifier.reset_acc()
+    emotion_classifier.train(False)
     
     logits = {}
     with torch.no_grad():
         for i_val, (data, label) in enumerate(val_loader): #*for each batch in val loader
             
-            label = label.to(device)
+            label = label.to(device, non_blocking=False)
             for m in args.modality:
-                data[m] = data[m].to(device)
+                data[m] = data[m].to(device, non_blocking=False)
             
             with torch.autocast(device_type= ("cuda" if torch.cuda.is_available() else "cpu"), 
                             dtype=torch.float16,
                             enabled=args.amp): 
-                logits, _ = model.forward(data)
+                logits, _ = emotion_classifier.forward(data)
             
-            model.compute_accuracy(logits, label)
+            emotion_classifier.compute_accuracy(logits, label)
 
             #?print the validation accuracy at 5 steps: 20% - 40% - 60% - 80% - 100% of validation set
             if (i_val + 1) % (len(val_loader) // 5) == 0:
                 logger.info("[{}/{}] top1= {:.3f}% top5 = {:.3f}%".format(i_val + 1, len(val_loader),
-                                                                          model.accuracy.avg[1], model.accuracy.avg[5]))
+                                                                          emotion_classifier.accuracy.avg[1], emotion_classifier.accuracy.avg[5]))
 
         #?at the end print OVERALL validation accuracy on the whole validation set)
-        logger.info('Final accuracy: top1 = %.2f%%\ttop5 = %.2f%%' % (model.accuracy.avg[1],
-                                                                      model.accuracy.avg[5]))
+        logger.info('Final accuracy: top1 = %.2f%%\ttop5 = %.2f%%' % (emotion_classifier.accuracy.avg[1],
+                                                                      emotion_classifier.accuracy.avg[5]))
         #?print the PER-CLASS accuracy
-        class_accuracies = [(x / y) * 100 for x, y in zip(model.accuracy.correct, model.accuracy.total)]
+        class_accuracies = [(x / y) * 100 for x, y in zip(emotion_classifier.accuracy.correct, emotion_classifier.accuracy.total)]
         for i_class, class_acc in enumerate(class_accuracies):
             logger.info('Class %d = [%d/%d] = %.2f%%' % (i_class,
-                                                         int(model.accuracy.correct[i_class]),
-                                                         int(model.accuracy.total[i_class]),
+                                                         int(emotion_classifier.accuracy.correct[i_class]),
+                                                         int(emotion_classifier.accuracy.total[i_class]),
                                                          class_acc))
 
     logger.info('Accuracy by averaging class accuracies (same weight for each class): {}%'
                 .format(np.array(class_accuracies).mean(axis=0)))
-    test_results = {'top1': model.accuracy.avg[1], 'top5': model.accuracy.avg[5],
+    test_results = {'top1': emotion_classifier.accuracy.avg[1], 'top5': emotion_classifier.accuracy.avg[5],
                     'class_accuracies': np.array(class_accuracies)}
 
     #?LOG validation results
