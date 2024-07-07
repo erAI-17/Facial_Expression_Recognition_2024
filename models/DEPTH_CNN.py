@@ -16,7 +16,7 @@ class DEPTH_ResNet18(nn.Module):
         x = torch.cat([x, x, x], dim=1)
         
         x = self.model.conv1(x)
-        x = self.model.bn1(x) #?batch normalization
+        x = self.model.bn1(x) 
         x = self.model.relu(x)
         x = self.model.maxpool(x)
         
@@ -24,9 +24,9 @@ class DEPTH_ResNet18(nn.Module):
         x = self.model.layer1(x)
         x = self.model.layer2(x)
         x = self.model.layer3(x) 
-        feat = self.model.layer4(feat) #[batch_size, 512, 7, 7]
+        feat = self.model.layer4(x) #[batch_size, 512, 7, 7]
         
-        return x, {'feat': x}
+        return x, {'feat': feat}
     
 
 #!PRETRAINED RESNET50
@@ -34,9 +34,11 @@ class DEPTH_ResNet50(nn.Module):
     def __init__(self):
         super(DEPTH_ResNet50, self).__init__()
         
+        #?PRETRAINED FER2013 RESNET-50
         outer_model = AutoModelForImageClassification.from_pretrained("KhaldiAbderrhmane/resnet50-facial-emotion-recognition", trust_remote_code=True) 
         self.model = outer_model.resnet
         
+        #?PRETRAINED IMAGENET RESNET-50
         #self.model = models.resnet50(weights=ResNet50_Weights.DEFAULT)  #download pretrained weights? ==True, ResNet18_Weights.DEFAULT TO GET THE MOST UPDATED WEIGHTS
         
         # check the weights
@@ -51,7 +53,7 @@ class DEPTH_ResNet50(nn.Module):
         x = torch.cat([x, x, x], dim=1)
         
         x = self.model.conv1(x)
-        x = self.model.bn1(x) #batch normalization
+        x = self.model.bn1(x) 
         x = self.model.relu(x)
         x = self.model.maxpool(x)
         
@@ -62,4 +64,37 @@ class DEPTH_ResNet50(nn.Module):
         feat = self.model.layer4(x) #[batch_size, 2048, 7, 7]
         
         return x, {'feat': feat}
+
+#!EFFICIENTNET
+class DEPTH_EFFICIENTNET_B0(nn.Module):
+    def __init__(self):
+        super(DEPTH_EFFICIENTNET_B0, self).__init__()
+        
+        self.processor = AutoImageProcessor.from_pretrained("google/efficientnet-b0")
+        self.model = AutoModelForImageClassification.from_pretrained("google/efficientnet-b0")
+        
+    def forward(self, x):
+        #stack the image to have 3 channel instead of 1
+        x = torch.cat([x, x, x], dim=1)
+        
+        x = self.processor(x)
+        
+        x = self.model(x)
+        
+        return x, {'feat': x}
     
+class DEPTH_EFFICIENTNET_B3(nn.Module):
+    def __init__(self):
+        super(DEPTH_EFFICIENTNET_B3, self).__init__()
+        
+        self.processor = AutoImageProcessor.from_pretrained("google/efficientnet-b3")
+        self.model = AutoModelForImageClassification.from_pretrained("google/efficientnet-b3")
+        
+    def forward(self, x):
+        #stack the image to have 3 channel instead of 1
+        x = torch.cat([x, x, x], dim=1)
+        
+        x = self.processor(x)
+        
+        x = self.model(x)
+        return x, {'feat': x}
