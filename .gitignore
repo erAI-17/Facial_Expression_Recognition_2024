@@ -1,4 +1,5 @@
 *.log
+*.txt
 saved_models/
 sandbox_loss.py
 sandbox_transforms.py

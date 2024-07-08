@@ -19,9 +19,9 @@ class StackChannels():
 class RGB_transf:
     def __init__(self, augment=False):
         transformations = [
-             transforms.ToTensor(),  # Converts the image to a tensor but doesn't normalize to [0,1]
-                ScaleToUnitInterval(),  # Scale to [0,1]
-                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Normalize the tensor to [-1,1]
+            transforms.ToTensor(),  # Converts the image to a tensor but doesn't normalize to [0,1]
+            ScaleToUnitInterval(),  # Scale to [0,1]
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Normalize the tensor to [-1,1]
         ]
         if augment:
             augmentations = [
@@ -30,7 +30,7 @@ class RGB_transf:
             ]
             transformations = augmentations + transformations
             
-        if args.models['RGB'].model == 'RGB_EFFICIENTNET_B3':
+        if args.models['RGB'].model == 'RGB_efficientnet_b3':
             resizing = [transforms.Resize((300, 300), interpolation=transforms.InterpolationMode.BICUBIC)]
             transformations = resizing + transformations
             
@@ -60,7 +60,7 @@ class DEPTH_transf:
             ]
             transformations = augmentations + transformations
             
-        if args.models['DEPTH'].model == 'DEPTH_EFFICIENTNET_B3':
+        if args.models['DEPTH'].model == 'DEPTH_efficientnet_b3':
             resizing = [transforms.Resize((300, 300), interpolation=transforms.InterpolationMode.BICUBIC)]
             transformations = resizing + transformations
         

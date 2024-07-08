@@ -60,29 +60,29 @@ class DEPTH_ResNet50(nn.Module):
         return x, {'feat': feat}
 
 #!EFFICIENTNET
-class DEPTH_EFFICIENTNET_B0(nn.Module):
+class DEPTH_efficientnet_b0(nn.Module):
     def __init__(self):
-        super(DEPTH_EFFICIENTNET_B0, self).__init__()
+        super(DEPTH_efficientnet_b0, self).__init__()
         
         self.model = models.efficientnet_b0(weights=EfficientNet_B0_Weights.DEFAULT) 
-        #self.processor = AutoImageProcessor.from_pretrained("google/efficientnet-b0")
-        #self.model = AutoModelForImageClassification.from_pretrained("google/efficientnet-b0")
-        
-    def forward(self, x):        
-        #x = self.processor(x)       
-        x = self.model(x)
-        
-        return x, {'feat': x}
+        self.feature_extractor = nn.Sequential(*list(self.model.children())[:-2]) #remove [avgpool layer, fc layer]
+        # with open('FULL_b0.txt', 'w') as f:
+        #     f.write(str(self.model))
+        # with open('FEAT_b0.txt', 'w') as f:
+        #     f.write(str(self.feature_extractor))
+
+    def forward(self, x):              
+        feat = self.feature_extractor(x)
+        return x, {'feat': feat}
     
-class DEPTH_EFFICIENTNET_B3(nn.Module):
+    
+class DEPTH_efficientnet_b3(nn.Module):
     def __init__(self):
-        super(DEPTH_EFFICIENTNET_B3, self).__init__()
+        super(DEPTH_efficientnet_b3, self).__init__()
         
         self.model = models.efficientnet_b3(weights=EfficientNet_B3_Weights.DEFAULT) 
-        #self.processor = AutoImageProcessor.from_pretrained("google/efficientnet-b3")
-        #self.model = AutoModelForImageClassification.from_pretrained("google/efficientnet-b3")
-        
+        self.feature_extractor = nn.Sequential(*list(self.model.children())[:-2]) #remove [avgpool layer, fc layer]
+
     def forward(self, x):
-        #x = self.processor(x)
-        x = self.model(x)
-        return x, {'feat': x}
+        feat = self.feature_extractor(x)
+        return x, {'feat': feat}

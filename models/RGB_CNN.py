@@ -54,31 +54,25 @@ class RGB_ResNet50(nn.Module):
         
         return x, {'feat': feat}
     
-class RGB_EFFICIENTNET_B0(nn.Module):
+class RGB_efficientnet_b0(nn.Module):
     def __init__(self):
-        super(RGB_EFFICIENTNET_B0, self).__init__()
+        super(RGB_efficientnet_b0, self).__init__()
         
         self.model = models.efficientnet_b0(weights=EfficientNet_B0_Weights.DEFAULT) 
-        
-        #self.processor = AutoImageProcessor.from_pretrained("google/efficientnet-b0")
-        #self.model = AutoModelForImageClassification.from_pretrained("google/efficientnet-b0")
+        self.feature_extractor = nn.Sequential(*list(self.model.children())[:-2]) #remove [avgpool layer, fc layer]
         
     def forward(self, x):  
-        #x = self.processor(x)
-        x = self.model(x)
-        return x, {'feat': x}
+        feat = self.feature_extractor(x)
+        return x, {'feat': feat}
     
-class RGB_EFFICIENTNET_B3(nn.Module): 
+class RGB_efficientnet_b3(nn.Module): 
     def __init__(self):
-        super(RGB_EFFICIENTNET_B3, self).__init__()
+        super(RGB_efficientnet_b3, self).__init__()
         
         self.model = models.efficientnet_b3(weights=EfficientNet_B3_Weights.DEFAULT)
-        #self.processor = AutoImageProcessor.from_pretrained("google/efficientnet-b3")
-        #self.model = AutoModelForImageClassification.from_pretrained("google/efficientnet-b3")
+        self.feature_extractor = nn.Sequential(*list(self.model.children())[:-2]) #remove [avgpool layer, fc layer]
         
     def forward(self, x):
-        #x = self.processor(x)
-        x = self.model(x)
-        
-        return x, {'feat': x}
+        feat = self.feature_extractor(x)
+        return x, {'feat': feat}
 

@@ -22,30 +22,40 @@ class AttentionSelectiveFusion_Module(nn.Module):
       
       #!Resnet18
       if args.models['RGB'].model == 'RGB_ResNet18' or args.models['DEPTH'].model == 'DEPTH_ResNet18':    
-         C = 512        
+         self.C = 512        
+         self.HW = 7
       #!Resnet50
       elif args.models['RGB'].model == 'RGB_ResNet50' or args.models['DEPTH'].model == 'DEPTH_ResNet50':
-         C = 2048    
+         self.C = 2048    
+         self.HW = 7
+      #!EfficientNetB0
+      elif args.models['RGB'].model == 'RGB_efficientnet_b0' or args.models['DEPTH'].model == 'DEPTH_efficientnet_b0':
+         self.C = 1280
+         self.HW = 7
+      #!EfficientNetB3
+      elif args.models['RGB'].model == 'RGB_efficientnet_b3' or args.models['DEPTH'].model == 'DEPTH_efficientnet_b3':
+         self.C = 1536
+         self.HW = 7
          
       #? W_RGB  and  W_D  are defined as 1x1 convolutional layers. 
       #? They act as learnable weight matrices that can adaptively adjust the importance of features during fusion. 
-      self.W_RGB = nn.Conv2d(C, C, kernel_size=1, bias=False)
-      self.W_D = nn.Conv2d(C, C, kernel_size=1, bias=False)  
+      self.W_RGB = nn.Conv2d(self.C, self.C, kernel_size=1, bias=False)
+      self.W_D = nn.Conv2d(self.C, self.C, kernel_size=1, bias=False)  
       
       #? GLOBAL context layers
-      self.conv1G = nn.Conv2d(C, C // reduction_ratio, kernel_size=1, padding=0)
-      self.conv2G = nn.Conv2d(C // reduction_ratio, C, kernel_size=1, padding=0)
-      self.bnG1 = nn.BatchNorm2d(C // reduction_ratio)
-      self.bnG2 = nn.BatchNorm2d(C)
+      self.conv1G = nn.Conv2d(self.C, self.C // reduction_ratio, kernel_size=1, padding=0)
+      self.conv2G = nn.Conv2d(self.C // reduction_ratio, self.C, kernel_size=1, padding=0)
+      self.bnG1 = nn.BatchNorm2d(self.C // reduction_ratio)
+      self.bnG2 = nn.BatchNorm2d(self.C)
       
       #? LOCAL context layers
-      self.conv1L = nn.Conv2d(C, C // reduction_ratio, kernel_size=1, padding=0)
-      self.conv2L = nn.Conv2d(C // reduction_ratio, 1, kernel_size=1, padding=0)
-      self.bnL1 = nn.BatchNorm2d(C // reduction_ratio)
+      self.conv1L = nn.Conv2d(self.C, self.C // reduction_ratio, kernel_size=1, padding=0)
+      self.conv2L = nn.Conv2d(self.C // reduction_ratio, 1, kernel_size=1, padding=0)
+      self.bnL1 = nn.BatchNorm2d(self.C // reduction_ratio)
       self.bnL2 = nn.BatchNorm2d(1)
 
       #?classification (for ablation study: not using transformer)
-      self.fc1 = nn.Linear(C*7*7, 1024)
+      self.fc1 = nn.Linear(self.C*self.HW*self.HW, 1024)
       self.fc2 = nn.Linear(1024, 512)
       self.fc3 = nn.Linear(512, num_classes)
       
@@ -59,20 +69,22 @@ class AttentionSelectiveFusion_Module(nn.Module):
       
       #resnet18: #[batch_size, 512, 7, 7] 
       #resnet50: #[batch_size, 2048, 7, 7]
+      #efficientnet_b0: #[batch_size, 1280, 7, 7]
+      #efficientnet_b3: #[batch_size, 1536, 7, 7]
       
-      U = self.W_RGB(rgb_feat['feat']) + self.W_D(depth_feat['feat']) # [batch_size, 2048, 7, 7]
+      U = self.W_RGB(rgb_feat['feat']) + self.W_D(depth_feat['feat']) # [batch_size, C, H, W]
       
       # Global context working on C
-      G = self.sigmoid(self.bnG2(self.conv2G(self.relu(self.bnG1(self.conv1G(F.adaptive_avg_pool2d(U, (1,1)))))))) #[batch_size, C=2048, 1, 1]
+      G = self.sigmoid(self.bnG2(self.conv2G(self.relu(self.bnG1(self.conv1G(F.adaptive_avg_pool2d(U, (1,1)))))))) #[batch_size, C, 1, 1]
       
       # Local context
-      L = self.sigmoid(self.bnL2(self.conv2L(self.relu(self.bnL1(self.conv1L(U)))))) #[batch_size, 1, H=7, W=7]
+      L = self.sigmoid(self.bnL2(self.conv2L(self.relu(self.bnL1(self.conv1L(U)))))) #[batch_size, 1, H, W]
       
       # Combine global and local contexts
       GL = G + L #[batch_size, C,H,W]
       
       # Fused feature map
-      X_fused = rgb_feat['feat'] * GL + depth_feat['feat'] * (1 - GL)  #?[batch_size, C=2048 x H=7 x W=7]
+      X_fused = rgb_feat['feat'] * GL + depth_feat['feat'] * (1 - GL)  #?[batch_size, C, H, W]
       
       #?classification (for ablation study: not using transformer)
          #?Flatten the input feature matrix
@@ -80,8 +92,9 @@ class AttentionSelectiveFusion_Module(nn.Module):
       # x = F.relu(self.fc1(x))
       # x = F.relu(self.fc2(x))
       # x = self.fc3(x)
-
       return _, {'X_fused': X_fused}
+   
+   
 
 class VTFF(nn.Module):
    """Visual Transformer Feature Fusion with Attention Selective fusion.
@@ -95,17 +108,26 @@ class VTFF(nn.Module):
       
       #!Resnet18
       if args.models['RGB'].model == 'RGB_ResNet18' and args.models['DEPTH'].model == 'DEPTH_ResNet18':
-         self.Cf = 512 #?channel dimension from resnet
+         self.Cf = 512 
+         self.HW = 7
       #!Resnet50
       elif args.models['RGB'].model == 'RGB_ResNet50' or args.models['DEPTH'].model == 'DEPTH_ResNet50':
-         self.Cf = 2048 #?channel dimension from resnet
+         self.Cf = 2048 
+         self.HW = 7
+      #!EfficientNetB0
+      elif args.models['RGB'].model == 'RGB_efficientnet_b0' or args.models['DEPTH'].model == 'DEPTH_efficientnet_b0':
+         self.Cf = 1280
+         self.HW = 7
+      #!EfficientNetB3
+      elif args.models['RGB'].model == 'RGB_efficientnet_b3' or args.models['DEPTH'].model == 'DEPTH_efficientnet_b3':
+         self.Cf = 1536
+         self.HW = 7
          
       self.Cp = 768
       self.nhead  = 8
       self.num_layers = 4
       self.mlp_dim = 3072 #?MLP dimension INTERNAL to each transformer layer
-      self.h = 7 #?height and width dimension of feature (equal for Resnet18 and Resnet50)
-      self.seq_len = self.h**2
+      self.seq_len = self.HW**2
       
       self.cls_token = nn.Parameter(torch.zeros(1, 1,  self.Cp))
       nn.init.normal_(self.cls_token, std=0.02)  # Initialize with small random values to break symmetry
