@@ -93,7 +93,7 @@ def main():
                                                 drop_last=False)
     
     #!compute class weights for Weighted Cross Entropy Loss
-    class_weights = compute_class_weights(train_loader).to(device, non_blocking=False)
+    class_weights = compute_class_weights(train_loader).to(device, non_blocking=True)
     
     #?instanciate a different model per modality. 
     models = {}
@@ -176,7 +176,8 @@ def train(emotion_classifier, train_loader, val_loader, device):
                         on_trace_ready=torch.profiler.tensorboard_trace_handler('./logs'),
                         record_shapes=False,
                         profile_memory=False,
-                        with_stack=True) 
+                        with_stack=True
+                    ) if args.profile else None
 
     data_loader_source = iter(train_loader)
     emotion_classifier.train(True) #? set the model to training mode
@@ -191,12 +192,10 @@ def train(emotion_classifier, train_loader, val_loader, device):
     for i in range(iteration, training_iterations): 
         real_iter = (i + 1) / (args.total_batch // args.batch_size)
         
-        #?PLOT lr and weights for each model
-        for m in emotion_classifier.models:
-            writer.add_scalar(f'LR for modality/{m}', emotion_classifier.optimizer[m].param_groups[-1]['lr'], real_iter)   
-            for name, param in emotion_classifier.models[m].named_parameters(): 
-                writer.add_histogram(f'{m}/{name}', param, real_iter)       
-            
+        #?PLOT lr and weights for each model (scheduler step is at each BATCH_SIZE iteration)
+        # for m in emotion_classifier.models:
+        #     writer.add_scalar(f'LR for modality/{m}', emotion_classifier.optimizer[m].param_groups[-1]['lr'], real_iter)   
+               
         #? If the  data_loader_source  iterator is exhausted (i.e., it has iterated over the entire dataset), a  StopIteration  exception is raised. 
         #? The  except StopIteration  block catches this exception and reinitializes the iterator with effectively starting the iteration from the beginning of the dataset again. 
         start_t = datetime.now()
@@ -211,13 +210,14 @@ def train(emotion_classifier, train_loader, val_loader, device):
                     f"{(end_t - start_t).total_seconds() // 60} m {(end_t - start_t).total_seconds() % 60} s")
 
         #!move data,labels to gpu
-        source_label = source_label.to(device, non_blocking=False) #?labels to GPU
+        source_label = source_label.to(device, non_blocking=True) #?labels to GPU
         data = {}
         for m in args.modality:
-            data[m] = source_data[m].to(device, non_blocking=False) #? data to GPU
+            data[m] = source_data[m].to(device, non_blocking=True) #? data to GPU
         
         # Start profiling
-        profiler.start()   
+        if profiler:
+            profiler.start()   
         #? The autocast() context manager allows PyTorch to automatically cast operations inside it to FP16, reducing memory usage and accelerating computations on compatible hardware.
         #? ONLY for forward and loss computation. Backward is automatically done in same precision as forward!!
         with torch.autocast(device_type= ("cuda" if torch.cuda.is_available() else "cpu"), 
@@ -225,8 +225,9 @@ def train(emotion_classifier, train_loader, val_loader, device):
                             enabled=args.amp): 
             logits, _ = emotion_classifier.forward(data)
             emotion_classifier.compute_loss(logits, source_label) #?internally, the scaler, scales the loss to avoid UNDERFLOW of the gradient (too small gradients) since they will  be computed in FP16 (half precision)
-        profiler.step() #!update profiler  
-        profiler.stop() #!stop profiler   
+        if profiler:
+            profiler.step() #!update profiler  
+            profiler.stop() #!stop profiler   
             
         emotion_classifier.backward(retain_graph=False) 
         emotion_classifier.compute_accuracy(logits, source_label)
@@ -236,9 +237,14 @@ def train(emotion_classifier, train_loader, val_loader, device):
             logger.info("[%d/%d]\tlast Verb loss: %.4f\tMean verb loss: %.4f\tAcc@1: %.2f%%\tAccMean@1: %.2f%%" %
                 (real_iter, args.train.num_iter, emotion_classifier.loss.val, emotion_classifier.loss.avg,
                     emotion_classifier.accuracy.val[1], emotion_classifier.accuracy.avg[1]))
+            
             #? PLOT TRAINING LOSS
             writer.add_scalar('Loss/train', emotion_classifier.loss.avg, real_iter)
             writer.add_scalar('Accuracy/train', emotion_classifier.accuracy.avg[1], real_iter)
+            # #? PLOT WEIGHTS (optimizer step is at TOTAL_BATCH)
+            # for m in emotion_classifier.models:
+            #     for name, param in emotion_classifier.models[m].named_parameters(): 
+            #         writer.add_histogram(f'{m}/{name}', param, real_iter)    
                     
             #emotion_classifier.check_grad() #function that checks norm2 of the gradient (evaluate whether to apply clipping if too large)
             emotion_classifier.step() #step() attribute calls BOTH  optimizer.step()  and, if implemented,  scheduler.step()
@@ -280,9 +286,9 @@ def validate(emotion_classifier, val_loader, device, it):
     with torch.no_grad():
         for i_val, (data, label) in enumerate(val_loader): #*for each batch in val loader
             
-            label = label.to(device, non_blocking=False)
+            label = label.to(device, non_blocking=True)
             for m in args.modality:
-                data[m] = data[m].to(device, non_blocking=False)
+                data[m] = data[m].to(device, non_blocking=True)
             
             with torch.autocast(device_type= ("cuda" if torch.cuda.is_available() else "cpu"), 
                             dtype=torch.float16,

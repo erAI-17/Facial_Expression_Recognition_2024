@@ -77,7 +77,8 @@ class EmotionRecognition(tasks.Task, ABC):
             #? model_args[m].lr : Initial learning rate for the optimizer
             #? weight_decay : The weight decay (L2 penalty) for the optimizer. 
             #!ADAM
-            self.optimizer[m] = torch.optim.Adam(optim_params[m], model_args[m].lr, weight_decay=model_args[m].weight_decay)
+            #self.optimizer[m] = torch.optim.Adam(optim_params[m], model_args[m].lr, weight_decay=model_args[m].weight_decay)
+            self.optimizer[m] = torch.optim.AdamW(optim_params[m], model_args[m].lr, weight_decay=model_args[m].weight_decay)
             
             #!LR schedulers
             #?warm up schedule
@@ -97,14 +98,14 @@ class EmotionRecognition(tasks.Task, ABC):
             #self.scheduler[m] = torch.optim.lr_scheduler.SequentialLR(self.optimizer[m], schedulers=[self.Warmup_scheduler, self.CosineAnnealing], milestones=[warmup_iters])
 
             #?OneCycleLR scheduler
-            self.scheduler[m] = OneCycleLR(self.optimizer[m], max_lr=model_args[m].lr, total_steps=args.train.num_iter, anneal_strategy='cos')
+            self.scheduler[m] = OneCycleLR(self.optimizer[m], max_lr=model_args[m].lr*10, total_steps=args.train.num_iter, anneal_strategy='cos')
             
     def forward(self, data: Dict[str, torch.Tensor], **kwargs) -> Tuple[Dict[str, torch.Tensor], Dict[str, torch.Tensor]]:
         """Forward step of the task
 
         Parameters
         ----------
-        data : Dict[str, torch.Tensor] ->{'RGB':tensor[32, 3, 224,224], 'DEPTH':tensor[32, 1, 224,224] } #* [BATCH_SIZE, C , H, W]
+        data : Dict[str, torch.Tensor] ->{'RGB':tensor[32, 3, 224,224], 'DEPTH':tensor[32, 1, 224,224] }
             a dictionary that stores the input data for each modality. 
 
         Returns

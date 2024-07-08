@@ -54,7 +54,7 @@ class FocalLoss(nn.Module):
 #         self.device = device
         
 #         # Initialize the centers
-#         self.centers = nn.Parameter(torch.randn(num_classes, feat_dim).to(device, non_blocking=False))
+#         self.centers = nn.Parameter(torch.randn(num_classes, feat_dim).to(device, non_blocking=True))
     
 #     def forward(self, features, labels):
 #         # Get the centers corresponding to the labels
