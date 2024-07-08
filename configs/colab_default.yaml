@@ -19,7 +19,7 @@ test:
 dataset:
   name: ???
   annotations_path: ???
-  workers: 4 
+  workers: ??? 
   resolution: 224 
   RGB:
     data_path: ???
