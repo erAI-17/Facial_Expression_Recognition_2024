@@ -6,10 +6,10 @@ from utils.args import args
 import torchaudio.transforms as T
 
 class SIMPLER_AttentionFusion1D_Module(nn.Module):
-   def __init__(self, rgb_dim, depth_dim, d_model, nhead, d_ff):
+   def __init__(self, C, d_model, nhead, d_ff):
       super(SIMPLER_AttentionFusion1D_Module, self).__init__()
-      self.proj_rgb = nn.Linear(rgb_dim, d_model)
-      self.proj_depth = nn.Linear(depth_dim, d_model)
+      self.proj_rgb = nn.Linear(C, d_model)
+      self.proj_depth = nn.Linear(C, d_model)
       self.attention = nn.Linear(d_model * 2, 1)
       self.ffn = nn.Sequential(
          nn.Linear(d_model, d_ff),
@@ -22,19 +22,15 @@ class SIMPLER_AttentionFusion1D_Module(nn.Module):
       self.d_ff = d_ff
 
    def forward(self, rgb_feat, depth_feat):
-      # Project features to common dimension
-      rgb_proj = self.proj_rgb(rgb_feat)
-      depth_proj = self.proj_depth(depth_feat)
-
       # Concatenate the projected features
-      combined_features = torch.cat((rgb_proj, depth_proj), dim=-1)
+      combined_features = torch.cat((rgb_feat, depth_feat), dim=-1)
 
       # Compute attention weights
       attn_weights = F.softmax(self.attention(combined_features), dim=-1)
 
       # Apply attention weights
-      weighted_rgb = attn_weights * rgb_proj
-      weighted_depth = (1 - attn_weights) * depth_proj
+      weighted_rgb = attn_weights * rgb_feat
+      weighted_depth = (1 - attn_weights) * depth_feat
 
       # Fuse features
       fused_features = weighted_rgb + weighted_depth
@@ -46,11 +42,11 @@ class SIMPLER_AttentionFusion1D_Module(nn.Module):
    
 
 class AttentionFusion1D_Module(nn.Module):
-   def __init__(self, rgb_dim, depth_dim, d_model, nhead, d_ff):
+   def __init__(self, C, d_model, nhead, d_ff):
       super(AttentionFusion1D_Module, self).__init__()
-      self.proj_rgb = nn.Linear(rgb_dim, d_model)
-      self.proj_depth = nn.Linear(depth_dim, d_model)
-      self.multihead_attn = nn.MultiheadAttention(embed_dim=d_model, num_heads=nhead)
+      self.proj_rgb = nn.Linear(C, d_model)
+      self.proj_depth = nn.Linear(C, d_model)
+      self.multihead_attn = nn.MultiheadAttention(embed_dim=d_model, num_heads=nhead,  batch_first=True)
       self.ffn = nn.Sequential(
          nn.Linear(d_model, d_ff),
          nn.ReLU(),
@@ -60,18 +56,11 @@ class AttentionFusion1D_Module(nn.Module):
       self.d_ff = d_ff
 
    def forward(self, rgb_feat, depth_feat):
-      # Project features to common dimension
-      rgb_proj = self.proj_rgb(rgb_feat)
-      depth_proj = self.proj_depth(depth_feat)
-
-      # Concatenate the projected features
-      combined_features = torch.cat((rgb_proj.unsqueeze(1), depth_proj.unsqueeze(1)), dim=1)
+      # Concatenate the features
+      combined_features = torch.cat((rgb_feat.unsqueeze(1), depth_feat.unsqueeze(1)), dim=1)
       
-      # Permutation because MultiheadAttention in PyTorch expects inputs of shape (seq_len, batch_size, embed_dim).
-      combined_features = combined_features.permute(1, 0, 2)  
-
       #! Apply multi-head attention
-      attn_output, _ = self.multihead_attn(combined_features, combined_features, combined_features)
+      attn_output, _ = self.multihead_attn(combined_features, combined_features, combined_features) #expects input: #? [batch_size, sequence_length= H*W+1, dimension=Cp]
       
       attn_output = attn_output.permute(1, 0, 2)  # Back to original shape
       
@@ -87,20 +76,40 @@ class AttentionFusion1D_Module(nn.Module):
 
 class AttentionFusion1D(nn.Module):
    def __init__(self, rgb_model, depth_model):
-      num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
       super(AttentionFusion1D, self).__init__()
       #?define RGB and Depth networks (from configuration file)
+      num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
+      
       self.rgb_model = rgb_model
       self.depth_model = depth_model
       
-      self.attention = SIMPLER_AttentionFusion1D_Module(2048, 2048, d_model=512, nhead=4, d_ff=1024) # AttentionFusion1D_Module SIMPLER_AttentionFusion1D_Module
+      #!EfficientNetB0
+      if args.models['RGB'].model == 'efficientnet_b0' and args.models['DEPTH'].model == 'efficientnet_b0':
+         self.C = 1280
+      #!EfficientNetB3
+      elif args.models['RGB'].model == 'efficientnet_b3' and args.models['DEPTH'].model == 'efficientnet_b3':
+         self.C = 1536
+      #!ViT
+      elif args.models['RGB'].model == 'ViT':
+         if args.models['DEPTH'].model == 'efficientnet_b0':
+            self.C = 768
+            self.project_depth = nn.Linear(1280, 768)
+         elif args.models['DEPTH'].model == 'efficientnet_b3':
+            self.C = 768
+            self.project_depth = nn.Linear(1536, 768)
+      
+      self.attention = SIMPLER_AttentionFusion1D_Module(rgb_dim=self.C, d_model=512, nhead=4, d_ff=1024) # AttentionFusion1D_Module SIMPLER_AttentionFusion1D_Module
       
       #final classifier
       self.fc = nn.Linear(512, num_classes) 
 
-   def forward(self, x):
-      _, rgb_feat  = self.rgb_model(x['RGB'])
-      _, depth_feat = self.depth_model(x['DEPTH'])
+   def forward(self, rgb_input, depth_input):
+      _, rgb_feat  = self.rgb_model(rgb_input)
+      _, depth_feat = self.depth_model(depth_input)
+      
+      #project to common dimension
+      if self.project_depth is not None:
+         depth_feat['late_feat'] = self.project_depth(depth_feat['late_feat'])
       
       # Apply attention
       att_fused_feat = self.attention(rgb_feat['late_feat'], depth_feat['late_feat'])  
