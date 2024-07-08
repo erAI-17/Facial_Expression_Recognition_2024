@@ -8,7 +8,7 @@ resume_from: null
 logname: null 
 models_dir: null 
 amp: ???  #automatic mixed precision
-args.profile: ??? # profile the training
+profile: ??? # profile the training
 
 train:
   num_iter: ???  #on total_batch of 128.  7793/128=60.88 ->1 epoch
