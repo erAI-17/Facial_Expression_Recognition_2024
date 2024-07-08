@@ -97,7 +97,7 @@ class EmotionRecognition(tasks.Task, ABC):
             #self.scheduler[m] = torch.optim.lr_scheduler.SequentialLR(self.optimizer[m], schedulers=[self.Warmup_scheduler, self.CosineAnnealing], milestones=[warmup_iters])
 
             #?OneCycleLR scheduler
-            #self.scheduler[m] = OneCycleLR(self.optimizer[m], max_lr=model_args[m].lr*10, total_steps=args.train.num_iter, anneal_strategy='cos')
+            self.scheduler[m] = OneCycleLR(self.optimizer[m], max_lr=model_args[m].lr, total_steps=args.train.num_iter, anneal_strategy='cos')
             
     def forward(self, data: Dict[str, torch.Tensor], **kwargs) -> Tuple[Dict[str, torch.Tensor], Dict[str, torch.Tensor]]:
         """Forward step of the task
