@@ -22,7 +22,7 @@ class efficientnet_b0(nn.Module):
         mid_feat = self.feature_extractor(x)
         late_feat = self.avgpool(mid_feat).squeeze()
         
-        return x, {'late_feat': late_feat,'mid_feat': mid_feat}
+        return {'late_feat': late_feat, 'mid_feat': mid_feat}
     
     
 class efficientnet_b3(nn.Module):
@@ -37,4 +37,4 @@ class efficientnet_b3(nn.Module):
         mid_feat = self.feature_extractor(x)
         late_feat = self.avgpool(mid_feat).squeeze()
         
-        return x, {'late_feat': late_feat,'mid_feat': mid_feat}
+        return {'late_feat': late_feat, 'mid_feat': mid_feat}

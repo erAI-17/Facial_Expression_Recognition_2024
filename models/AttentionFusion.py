@@ -6,19 +6,17 @@ from utils.args import args
 import torchaudio.transforms as T
 
 class SIMPLER_AttentionFusion1D_Module(nn.Module):
-   def __init__(self, C, d_model, nhead, d_ff):
+   def __init__(self, C, d_ff):
       super(SIMPLER_AttentionFusion1D_Module, self).__init__()
-      self.proj_rgb = nn.Linear(C, d_model)
-      self.proj_depth = nn.Linear(C, d_model)
-      self.attention = nn.Linear(d_model * 2, 1)
+      self.attention = nn.Linear(C * 2, 1)
       self.ffn = nn.Sequential(
-         nn.Linear(d_model, d_ff),
+         nn.Linear(C, d_ff),
          nn.ReLU(),
-         nn.Linear(d_ff, d_model)
+         nn.Linear(d_ff, C)
       )
       #?LayerNorm normalizes across the features for each individual sample.
       #?BatchNorm normalizes across the batch for each feature.
-      self.layer_norm = nn.LayerNorm(d_model)
+      self.layer_norm = nn.LayerNorm(C)
       self.d_ff = d_ff
 
    def forward(self, rgb_feat, depth_feat):
@@ -42,17 +40,15 @@ class SIMPLER_AttentionFusion1D_Module(nn.Module):
    
 
 class AttentionFusion1D_Module(nn.Module):
-   def __init__(self, C, d_model, nhead, d_ff):
+   def __init__(self, C, nhead, d_ff):
       super(AttentionFusion1D_Module, self).__init__()
-      self.proj_rgb = nn.Linear(C, d_model)
-      self.proj_depth = nn.Linear(C, d_model)
-      self.multihead_attn = nn.MultiheadAttention(embed_dim=d_model, num_heads=nhead,  batch_first=True)
+      self.multihead_attn = nn.MultiheadAttention(embed_dim=C, num_heads=nhead,  batch_first=True)
       self.ffn = nn.Sequential(
-         nn.Linear(d_model, d_ff),
+         nn.Linear(C, d_ff),
          nn.ReLU(),
-         nn.Linear(d_ff, d_model)
+         nn.Linear(d_ff, C)
       )
-      self.layer_norm = nn.LayerNorm(d_model)
+      self.layer_norm = nn.LayerNorm(C)
       self.d_ff = d_ff
 
    def forward(self, rgb_feat, depth_feat):
@@ -90,29 +86,35 @@ class AttentionFusion1D(nn.Module):
       elif args.models['RGB'].model == 'efficientnet_b3' and args.models['DEPTH'].model == 'efficientnet_b3':
          self.C = 1536
       #!ViT
-      elif args.models['RGB'].model == 'ViT':
+      elif args.models['RGB'].model == 'ViT':  
          if args.models['DEPTH'].model == 'efficientnet_b0':
-            self.C = 768
-            self.project_depth = nn.Linear(1280, 768)
+            self.C = 1280
          elif args.models['DEPTH'].model == 'efficientnet_b3':
-            self.C = 768
-            self.project_depth = nn.Linear(1536, 768)
+            self.C = 1536
+         self.bn = nn.BatchNorm1d(196)
+         self.dropout = nn.Dropout(0.2)
+         self.project_rgb = nn.Linear(196*768, self.C)
+        
+      self.attention = SIMPLER_AttentionFusion1D_Module(self.C, nhead=4, d_ff=1024)
+      #self.attention = AttentionFusion1D_Module(self.C, d_model=512, nhead=4, d_ff=1024) 
       
-      self.attention = SIMPLER_AttentionFusion1D_Module(rgb_dim=self.C, d_model=512, nhead=4, d_ff=1024) # AttentionFusion1D_Module SIMPLER_AttentionFusion1D_Module
-      
-      #final classifier
+      #?final classifier
       self.fc = nn.Linear(512, num_classes) 
 
    def forward(self, rgb_input, depth_input):
-      _, rgb_feat  = self.rgb_model(rgb_input)
-      _, depth_feat = self.depth_model(depth_input)
+      rgb_feat  = self.rgb_model(rgb_input)['late_feat']
+      depth_feat = self.depth_model(depth_input)['late_feat']
       
       #project to common dimension
-      if self.project_depth is not None:
-         depth_feat['late_feat'] = self.project_depth(depth_feat['late_feat'])
-      
+      if self.project_rgb is not None:
+         rgb_feat = self.bn(rgb_feat)
+         batch_size, seq_length, input_dim = rgb_feat.shape
+         rgb_feat = rgb_feat.view(batch_size,-1) #? flatten
+         rgb_feat = self.dropout(rgb_feat)
+         rgb_feat = self.project_rgb(rgb_feat)
+
       # Apply attention
-      att_fused_feat = self.attention(rgb_feat['late_feat'], depth_feat['late_feat'])  
+      att_fused_feat = self.attention(rgb_feat, depth_feat)  
 
       x = self.fc(att_fused_feat)
 

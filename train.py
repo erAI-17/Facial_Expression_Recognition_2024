@@ -118,7 +118,7 @@ def main():
                                                  args=args)
     
     emotion_classifier.grad_clip() #?gradient clipping is applied to the whole model (all the models for each modality)
-    emotion_classifier.script() #? script each model per modality
+    #emotion_classifier.script() #? script each model per modality
     
     emotion_classifier.load_on_gpu(device)
     

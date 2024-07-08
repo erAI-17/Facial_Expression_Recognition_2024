@@ -26,12 +26,7 @@ class ViT(nn.Module):
         # outer_model = AutoModelForImageClassification.from_pretrained("trpakov/vit-face-expression")
         # self.model = outer_model.vit
         # self.processor = AutoImageProcessor.from_pretrained("trpakov/vit-face-expression")
-        
-        #handling ViT output
-        self.bn = nn.BatchNorm1d(196)
-        self.dropout = nn.Dropout(0.4)
-        self.fc = nn.Linear(196*768, 2048)
-        
+                
         #?The  AutoImageProcessor  is used to preprocess input images so that they are in the correct format for the Vision Transformer (ViT) model. 
         #? This preprocessing typically includes resizing, normalization, and converting images to tensors.
     
@@ -67,16 +62,5 @@ class ViT(nn.Module):
         # Extract features
         x = self._extract_features_(x) #[batch_size, 196, 768]
         
-        x = self.bn(x)
-        #flat
-        batch_size, seq_length, input_dim = x.shape
-        x = x.view(batch_size,-1)
-        
-        #drop out
-        x = self.dropout(x)
-        
-        #downsize
-        x = self.fc(x)
-        
-        return x, {'late_feat': x}
+        return {'late_feat': x}
 

@@ -12,11 +12,12 @@ class AttentionSelectiveFusion_Module(nn.Module):
       While GLOBAL fusion is the same thing but it receives an average pooled input feature
    """
    def __init__(self, C, reduction_ratio=8):
-      num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
       super(AttentionSelectiveFusion_Module, self).__init__()
-      self.reduction_ratio = reduction_ratio
       
       self.C = C
+      self.reduction_ratio = reduction_ratio   
+      self.relu = nn.ReLU()
+      self.sigmoid = nn.Sigmoid()
          
       #? W_RGB  and  W_D  are defined as 1x1 convolutional layers. 
       #? They act as learnable weight matrices that can adaptively adjust the importance of features during fusion. 
@@ -34,16 +35,7 @@ class AttentionSelectiveFusion_Module(nn.Module):
       self.conv2L = nn.Conv2d(self.C // reduction_ratio, 1, kernel_size=1, padding=0)
       self.bnL1 = nn.BatchNorm2d(self.C // reduction_ratio)
       self.bnL2 = nn.BatchNorm2d(1)
-
-      #?classification (for ablation study: not using transformer)
-      self.fc1 = nn.Linear(self.C*self.HW*self.HW, 1024)
-      self.fc2 = nn.Linear(1024, 512)
-      self.fc3 = nn.Linear(512, num_classes)
-      
-      self.relu = nn.ReLU()
-      self.sigmoid = nn.Sigmoid()
-      
-      
+ 
    def forward(self, rgb_feat, depth_feat):
       
       U = self.W_RGB(rgb_feat) + self.W_D(depth_feat) # [batch_size, C, H, W]
@@ -58,7 +50,7 @@ class AttentionSelectiveFusion_Module(nn.Module):
       GL = G + L #?[batch_size, C,H,W]
       
       # Fused feature map
-      X_fused = rgb_feat['feat'] * GL + depth_feat['feat'] * (1 - GL)  #?[batch_size, C, H, W]
+      X_fused = rgb_feat * GL + depth_feat * (1 - GL)  #?[batch_size, C, H, W]
       
       return X_fused
    
@@ -69,8 +61,8 @@ class VTFF(nn.Module):
       Combines multiple Transformer encoder layers for classification
    """
    def __init__(self, rgb_model, depth_model):
-      num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
       super(VTFF, self).__init__()      
+      num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
       
       #!EfficientNetB0
       if args.models['RGB'].model == 'efficientnet_b0' and args.models['DEPTH'].model == 'efficientnet_b0':
@@ -99,7 +91,7 @@ class VTFF(nn.Module):
       self.pos_embed = nn.Parameter(torch.zeros(1, self.seq_len + 1,  self.Cp))
       nn.init.normal_(self.pos_embed, std=0.02)  # Initialize with small random values to break symmetry
       
-      self.linear_proj = nn.Linear(self.Cf,  self.Cp)
+      self.linear_proj = nn.Linear(self.C,  self.Cp)
       self.trans_encoder_layer = nn.TransformerEncoderLayer(self.Cp, nhead=self.nhead, dim_feedforward=self.mlp_dim, activation='gelu', batch_first=True)
       self.tranformer_encoder = nn.TransformerEncoder(self.trans_encoder_layer, num_layers=self.num_layers)
       
@@ -110,8 +102,8 @@ class VTFF(nn.Module):
 
    def forward(self, rgb_input, depth_input):
       
-      _, rgb_feat  = self.rgb_model(rgb_input)
-      _, depth_feat = self.depth_model(depth_input) 
+      rgb_feat  = self.rgb_model(rgb_input)
+      depth_feat = self.depth_model(depth_input) 
       
       #efficientnet_b0: #[batch_size, 1280, 7, 7]
       #efficientnet_b3: #[batch_size, 1536, 7, 7]
