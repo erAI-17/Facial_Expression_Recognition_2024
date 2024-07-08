@@ -193,8 +193,8 @@ def train(emotion_classifier, train_loader, val_loader, device):
         real_iter = (i + 1) / (args.total_batch // args.batch_size)
         
         #?PLOT lr and weights for each model (scheduler step is at each BATCH_SIZE iteration)
-        # for m in emotion_classifier.models:
-        #     writer.add_scalar(f'LR for modality/{m}', emotion_classifier.optimizer[m].param_groups[-1]['lr'], real_iter)   
+        for m in emotion_classifier.models:
+            writer.add_scalar(f'LR for modality/{m}', emotion_classifier.optimizer[m].param_groups[-1]['lr'], real_iter)   
                
         #? If the  data_loader_source  iterator is exhausted (i.e., it has iterated over the entire dataset), a  StopIteration  exception is raised. 
         #? The  except StopIteration  block catches this exception and reinitializes the iterator with effectively starting the iteration from the beginning of the dataset again. 

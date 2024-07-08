@@ -11,7 +11,7 @@ amp: ???  #automatic mixed precision
 profile: ??? # profile the training
 
 train:
-  num_iter: ???  #on total_batch of 128.  7793/128=60.88 ->1 epoch
+  num_iter: ???  #total_batch=128.  7793/128=60.88 ->1 epoch || total_batch=256.  7793/256=30.44 ->1 epoch
   eval_freq: ???  #every 25% of an epoch
   max_grad_norm: ???
   
