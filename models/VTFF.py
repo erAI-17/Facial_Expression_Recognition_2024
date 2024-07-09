@@ -79,11 +79,12 @@ class VTFF(nn.Module):
       
       #? attentional selective fusion module producing X_fused [batch_size, Cf=256 x Hd=14 x Wd=14]
       self.AttentionSelectiveFusion_Module = AttentionSelectiveFusion_Module(self.C)
-         
+      
+      #? Parameters for the transformer encoder   
       self.Cp = 768
       self.nhead  = 8
       self.num_layers = 4
-      self.mlp_dim = 3072 #?MLP dimension INTERNAL to each transformer layer
+      #self.mlp_dim = 3072 #?MLP dimension INTERNAL to each transformer layer (std is 2048)
       self.seq_len = self.HW**2
       
       self.cls_token = nn.Parameter(torch.zeros(1, 1,  self.Cp))
@@ -96,8 +97,6 @@ class VTFF(nn.Module):
       self.tranformer_encoder = nn.TransformerEncoder(self.trans_encoder_layer, num_layers=self.num_layers)
       
       #? final classification
-      self.relu = nn.ReLU()
-      self.dropout = nn.Dropout(0.2)
       self.fc = nn.Linear(self.Cp, num_classes)
 
    def forward(self, rgb_input, depth_input):
@@ -127,7 +126,6 @@ class VTFF(nn.Module):
       
       #?classification
       cls_output = x[:, 0]  #?Extract [cls] token's output
-      x = self.dropout(x)
       logits = self.fc(cls_output)
       
       return logits, {}
