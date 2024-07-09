@@ -82,17 +82,17 @@ class EmotionRecognition(tasks.Task, ABC):
             
             #!LR schedulers
             #?warm up schedule
-            warmup_iters = 3  # Number of iterations for warm-up
-            warmup_start_lr = 1e-7  # Starting learning rate at the beginning of warm-up
+            #warmup_iters = 3  # Number of iterations for warm-up
+            #warmup_start_lr = 1e-7  # Starting learning rate at the beginning of warm-up
             #? start_factor: The factor by which the learning rate is multiplied at the beginning of the warm-up phase. 
             #?So you are actually starting from 1e-7, going linearly to "model_args[m].lr" (over 20 iterations) and then cosine annealing start
-            #self.Warmup_scheduler = torch.optim.lr_scheduler.LinearLR(self.optimizer[m], start_factor=warmup_start_lr/model_args[m].lr, total_iters=warmup_iters)
+            #self.Warmup_scheduler[m] = torch.optim.lr_scheduler.LinearLR(self.optimizer[m], start_factor=warmup_start_lr/model_args[m].lr, total_iters=warmup_iters)
 
             #?Cosine Annealing 
-            self.CosineAnnealing = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer[m], T_max=args.train.num_iter, eta_min=1e-6)  #- warmup_iters
+            self.CosineAnnealing[m] = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer[m], T_max=args.train.num_iter, eta_min=1e-6)  #- warmup_iters
             
             #? CosineAnnealingWarmRestarts scheduler
-            #self.CosineAnnealingWarmRestarts = CosineAnnealingWarmRestarts(self.optimizer[m], T_0=10, T_mult=2, eta_min=1e-6) #T_0= every 10 epochs, then every 20 epochs, 40 ...
+            #self.CosineAnnealingWarmRestarts[m] = CosineAnnealingWarmRestarts(self.optimizer[m], T_0=10, T_mult=2, eta_min=1e-6) #T_0= every 10 epochs, then every 20 epochs, 40 ...
 
             #?milestones parameter receives [warmup_iters] to specify that the transition from the warm-up scheduler to the cosine annealing scheduler should occur after warmup_iters iterations.
             #self.scheduler[m] = torch.optim.lr_scheduler.SequentialLR(self.optimizer[m], schedulers=[self.Warmup_scheduler, self.CosineAnnealing], milestones=[warmup_iters])
