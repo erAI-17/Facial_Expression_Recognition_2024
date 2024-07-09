@@ -4,6 +4,12 @@ import torch
 import torchvision.transforms as transforms
 from utils.args import args
         
+ImageNet_mean = [0.485, 0.456, 0.406] 
+ImageNet_std = [0.229, 0.224, 0.225]
+
+FER2013_mean = [0.507395516207, 0.507395516207, 0.507395516207]
+FER2013_std = [0.255128989415, 0.255128989415, 0.255128989415]  
+   
 class ScaleToUnitInterval():
     def __call__(self, img):
         return img / img.max()
@@ -21,7 +27,7 @@ class RGB_transf:
         transformations = [
             transforms.ToTensor(),  # Converts the image to a tensor but doesn't normalize to [0,1]
             ScaleToUnitInterval(),  # Scale to [0,1]
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Normalize the tensor to [-1,1]
+            transforms.Normalize(mean=FER2013_mean, std=FER2013_std)  # Normalize the tensor to [-1,1]
         ]
         if augment:
             augmentations = [
@@ -50,7 +56,7 @@ class DEPTH_transf:
     def __init__(self, augment=False):    
         transformations = [
             ScaleToUnitInterval(), #need to scale into [0,1]
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+            transforms.Normalize(mean=ImageNet_mean, std=ImageNet_std)
         ]
         
         if augment:
