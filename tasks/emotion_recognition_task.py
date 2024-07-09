@@ -89,7 +89,7 @@ class EmotionRecognition(tasks.Task, ABC):
             #self.Warmup_scheduler[m] = torch.optim.lr_scheduler.LinearLR(self.optimizer[m], start_factor=warmup_start_lr/model_args[m].lr, total_iters=warmup_iters)
 
             #?Cosine Annealing 
-            self.scheduler[m] = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer[m], T_max=args.train.num_iter, eta_min=1e-6)  #- warmup_iters
+            self.scheduler[m] = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer[m], T_max=args.train.num_iter, eta_min=1e-8)  #- warmup_iters
             
             #? CosineAnnealingWarmRestarts scheduler
             #self.scheduler[m] = CosineAnnealingWarmRestarts(self.optimizer[m], T_0=10, T_mult=2, eta_min=1e-6) #T_0= every 10 epochs, then every 20 epochs, 40 ...
