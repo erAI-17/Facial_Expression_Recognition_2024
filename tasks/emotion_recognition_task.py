@@ -77,6 +77,7 @@ class EmotionRecognition(tasks.Task, ABC):
             #? model_args[m].lr : Initial learning rate for the optimizer
             #? weight_decay : The weight decay (L2 penalty) for the optimizer. 
             #!ADAM
+
             self.optimizer[m] = torch.optim.Adam(optim_params[m], model_args[m].lr, weight_decay=model_args[m].weight_decay)
             #self.optimizer[m] = torch.optim.AdamW(optim_params[m], model_args[m].lr, weight_decay=model_args[m].weight_decay)
             

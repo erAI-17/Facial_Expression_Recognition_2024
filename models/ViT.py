@@ -35,11 +35,11 @@ class ViT(nn.Module):
         #     param.requires_grad = False
             
         # #?unfreeze last classifier    
-        for name, param in self.model.named_parameters():
-            if 'classifier' in name: 
-                param.requires_grad = True
-            else: 
-                param.requires_grad = False
+        # for name, param in self.model.named_parameters():
+        #     if 'dense' in name: 
+        #         param.requires_grad = True
+        #     else: 
+        #         param.requires_grad = False
                 
         # #? Unfreeze some specific layers if needed
         # for param in self.model.encoder.layer[-1].parameters():
