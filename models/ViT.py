@@ -50,19 +50,16 @@ class ViT(nn.Module):
         inputs = self.processor(images=img, return_tensors="pt")
         return inputs["pixel_values"]
 
-    # Function to extract features from the [CLS] token of the last hidden state.
-    def _extract_features_(self, inputs):
-        outputs = self.model(inputs)
-        # Extract features from the [CLS] token
-        features = outputs.last_hidden_state[:, 1:, :] #[batch_size, 196, 768]
-        return features    
-
     def forward(self, x):        
-        #call processor
         #x = self._preprocessing_(x)
         
-        # Extract features
-        x = self._extract_features_(x) #[batch_size, 196, 768]
+        x = self.model(x) #? [batch_size, 197, 768]
         
-        return {'late_feat': x}
+        # Extract features
+        late_feat = x.last_hidden_state[:, 1:, :]
+        
+        # Extract cls token
+        cls = x.last_hidden_state[:, :1, :].squeeze() #? [batch_size, 768]
+        
+        return cls, {'late_feat': late_feat}
 

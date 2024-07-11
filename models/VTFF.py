@@ -107,8 +107,8 @@ class VTFF(nn.Module):
       #efficientnet_b0: #[batch_size, 1280, 7, 7]
       #efficientnet_b3: #[batch_size, 1536, 7, 7]
       
-      #?X_fused from attentional selective fusion module: X_fused [batch_size, C x H x W]
-      x = self.AttentionSelectiveFusion_Module(rgb_feat['mid_feat'], depth_feat['mid_feat'])
+      #?X_fused from attentional selective fusion module:  
+      x = self.AttentionSelectiveFusion_Module(rgb_feat['mid_feat'], depth_feat['mid_feat']) #? [batch_size, C x H x W]
 
       #? Flat and Project linealry to Cp channels [batch_size, C x H*W] ->  [batch_size, Cp x H*W]
       x = x.view(x.size(0), self.C, -1)  # Flat

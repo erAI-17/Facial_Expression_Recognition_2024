@@ -141,10 +141,9 @@ class EmotionRecognition(tasks.Task, ABC):
         loss_weight : float, optional
             weight of the classification loss, by default 1.0
         """
-        loss = self.criterion(logits, label) #? IF the criterion is defined with "reduction=None", so the loss function returns a tensor containing the loss for each individual sample in the batch,
-                                             #? rather than averaging or summing the losses. LATER, before backward pass, the loss is averaged over the batch size.
+        loss = self.criterion(logits, label)
         
-        #? Update the loss value, weighting it by the ratio of the batch size to the total batch size (for gradient accumulation)
+        #? Update the loss value, weighting it by the ratio of the batch size to the total batch size (because of gradient accumulation)
         self.loss.update(loss / (self.total_batch / self.batch_size), self.batch_size)
 
 

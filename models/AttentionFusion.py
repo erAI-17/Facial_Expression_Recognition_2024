@@ -4,84 +4,53 @@ import torch.nn.functional as F
 import utils
 from utils.args import args
 import torchaudio.transforms as T
-
-class AttentionFusion1D_Module(nn.Module):
-   def __init__(self, C, d_ff):
-      super(AttentionFusion1D_Module, self).__init__()
-      self.attention = nn.Linear(C * 2, C)
-      self.ffn = nn.Sequential(
-         nn.Linear(C, d_ff),
-         nn.ReLU(),
-         nn.Dropout(0.2),
-         nn.Linear(d_ff, C)
-      )
-      #?LayerNorm normalizes across the features for each individual sample.
-      #?BatchNorm normalizes across the batch for each feature.
-      self.layer_norm = nn.LayerNorm(C)
-      self.d_ff = d_ff
-
-   def forward(self, rgb_feat, depth_feat):
-      # Concatenate the projected features
-      combined_features = torch.cat((rgb_feat, depth_feat), dim=-1)
-
-      # Compute attention weights
-      attn_weights = F.softmax(self.attention(combined_features), dim=-1)
-
-      # Apply attention weights
-      weighted_rgb = attn_weights * depth_feat
-      weighted_depth = (1 - attn_weights) * rgb_feat
-
-      # Fuse features
-      fused_features = weighted_rgb + weighted_depth
-      fused_features = self.layer_norm(fused_features)
-
-      # Apply feed-forward network
-      output = self.ffn(fused_features)
-      return output
    
-class AttentionFusion1D(nn.Module):
+class Sequence_TransformerAttentionFusion(nn.Module):
    def __init__(self, rgb_model, depth_model):
-      super(AttentionFusion1D, self).__init__()
+      super(Sequence_TransformerAttentionFusion, self).__init__()
       #?define RGB and Depth networks (from configuration file)
       num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
       
       self.rgb_model = rgb_model
       self.depth_model = depth_model
-      
+
       #!EfficientNetB0
-      if args.models['RGB'].model == 'efficientnet_b0' and args.models['DEPTH'].model == 'efficientnet_b0':
-         self.C = 1280
+      if args.models['DEPTH'].model == 'efficientnet_b0':
+         self.depth_dim = 1280
       #!EfficientNetB3
-      elif args.models['RGB'].model == 'efficientnet_b3' and args.models['DEPTH'].model == 'efficientnet_b3':
-         self.C = 1536
-      #!ViT
-      elif args.models['RGB'].model == 'ViT':  
-         if args.models['DEPTH'].model == 'efficientnet_b0':
-            self.C = 1280
-         elif args.models['DEPTH'].model == 'efficientnet_b3':
-            self.C = 1536
-         self.bn = nn.BatchNorm1d(196)
-         self.project_rgb = nn.Linear(196*768, self.C)
-        
-      self.attention = AttentionFusion1D_Module(self.C, d_ff=1024)
+      elif args.models['DEPTH'].model == 'efficientnet_b3':
+         self.depth_dim = 1536
+
+      # Project EfficientNet features to the common dimension
+      self.effnet_proj = nn.Linear(self.depth_dim, 768)
+
+      # Transformer encoder layer
+      encoder_layer = nn.TransformerEncoderLayer(d_model=768, nhead=8, batch_first=True, dim_feedforward=2048, activation='gelu')
+      self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=4)
       
       #?final classifier
-      self.fc = nn.Linear(self.C, num_classes) 
+      self.fc = nn.Linear(768, num_classes) 
 
    def forward(self, rgb_input, depth_input):
-      rgb_feat  = self.rgb_model(rgb_input)['late_feat'] #? [batch_size, 196, 768]
+      rgb_vit_output  = self.rgb_model(rgb_input)
+      cls, rgb_feat = rgb_vit_output[0], rgb_vit_output[1]['late_feat'] #? cls: [batch_size, 768], late_feat: [batch_size, 196, 768]
+      
       depth_feat = self.depth_model(depth_input)['late_feat'] #? [batch_size, C]
       
-      #project to common dimension
-      if self.project_rgb is not None: 
-         rgb_feat = self.bn(rgb_feat)
-         batch_size, seq_length, input_dim = rgb_feat.shape
-         rgb_feat = rgb_feat.view(batch_size,-1) #? flatten
-         rgb_feat = self.project_rgb(rgb_feat)
-
-      # Apply attention
-      att_fused_feat = self.attention(rgb_feat, depth_feat)  
-
-      x = self.fc(att_fused_feat)
+      depth_feat = self.effnet_proj(depth_feat)  #? [batch_size, 768]
+      #depth_feat = depth_feat.unsqueeze(1)  #? [batch_size, 1, 768]
+      
+      # Concatenate ViT and EfficientNet features
+      # x = torch.cat((rgb_feat, depth_feat), dim=1)  #? [batch_size, 197, 768]
+      x = cls + depth_feat  #? [batch_size, 197, 768]
+        
+      # Apply transformer encoder
+      #x = self.transformer_encoder(x)  #? [batch_size, 197, 768]
+      
+      # Global average pooling
+      #x = x.mean(dim=1)  #?[batch_size, 768]
+      
+      # Classification
+      x = self.fc(x)  # [batch_size, num_classes]
 
       return x, {}

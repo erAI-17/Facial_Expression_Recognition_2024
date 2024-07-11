@@ -45,7 +45,7 @@ class FocalLoss(nn.Module):
         alpha_t = self.alpha if isinstance(self.alpha, torch.Tensor) else torch.tensor(self.alpha).to(logits.device)
         alpha_t = (self.alpha * labels_one_hot).sum(dim=1)
 
-        loss = - alpha_t * ((1 - p_t)**self.gamma) * torch.log(log_p_t)
+        loss = - alpha_t * ((1 - p_t)**self.gamma) * log_p_t
         
         if self.reduction == 'mean':
             loss = loss.mean()

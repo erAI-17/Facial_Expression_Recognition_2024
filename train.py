@@ -303,7 +303,7 @@ def validate(emotion_classifier, val_loader, device, it):
             emotion_classifier.compute_accuracy(logits, label)
 
             #?print the validation accuracy at 5 steps: 20% - 40% - 60% - 80% - 100% of validation set
-            if (i_val + 1) % (len(val_loader) // 5) == 0:
+            if (i_val + 1) % (len(val_loader) // 3) == 0:
                 logger.info("[{}/{}] top1= {:.3f}% top5 = {:.3f}%".format(i_val + 1, len(val_loader),
                                                                           emotion_classifier.accuracy.avg[1], emotion_classifier.accuracy.avg[5]))
 
