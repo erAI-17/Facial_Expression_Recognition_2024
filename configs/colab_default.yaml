@@ -32,17 +32,14 @@ models:
     model: ???
     kwargs: {}
     lr: ???
-    sgd_momentum: 0.9
-    weight_decay: 1e-
+    weight_decay: ???
   DEPTH:
     model: ???
     kwargs: {}
     lr: ???
-    sgd_momentum: 0.9
-    weight_decay: 1e-4
+    weight_decay: ???
   FUSION:
     model: ???
     kwargs: {}
     lr: ???
-    sgd_momentum: 0.9
-    weight_decay: 1e-4
+    weight_decay: ???
