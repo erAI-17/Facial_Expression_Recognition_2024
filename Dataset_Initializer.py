@@ -282,12 +282,12 @@ if __name__ == '__main__':
     path = '../Datasets/' + 'MenD3s' #MenD3s   #CalD3r   #C:/Users/studente/Documents/GitHub/Documenti/Github/Datasets/   #../Datasets/
     
     #!#example load of images and depth map for 1 sample
-    images, d_maps = load_2d_and_3d(path, gender='F', subjectid='09', emotion='anger') #choose example gender, subj_id and emotion
-    ##show
-    show(images[0], d_maps[0])
+    # images, d_maps = load_2d_and_3d(path, gender='F', subjectid='09', emotion='anger') #choose example gender, subj_id and emotion
+    # #show
+    # show(images[0], d_maps[0])
     
     #!generate annotation files for each dataset, TEST and TRAIN
-    train_test_annotations(test_size=0.1) #10% test, 90% train
+    train_test_annotations(test_size=0.2) #10% test, 90% train
     
     #!check annotation files 
     df = pd.read_pickle(path + '/annotations_train.pkl') 

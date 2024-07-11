@@ -33,7 +33,7 @@ models:
     kwargs: {}
     lr: ???
     sgd_momentum: 0.9
-    weight_decay: 1e-4
+    weight_decay: 1e-
   DEPTH:
     model: ???
     kwargs: {}

@@ -8,7 +8,7 @@ import torchaudio.transforms as T
 class AttentionFusion1D_Module(nn.Module):
    def __init__(self, C, d_ff):
       super(AttentionFusion1D_Module, self).__init__()
-      self.attention = nn.Linear(C * 2, 1)
+      self.attention = nn.Linear(C * 2, C)
       self.ffn = nn.Sequential(
          nn.Linear(C, d_ff),
          nn.ReLU(),
@@ -28,8 +28,8 @@ class AttentionFusion1D_Module(nn.Module):
       attn_weights = F.softmax(self.attention(combined_features), dim=-1)
 
       # Apply attention weights
-      weighted_rgb = attn_weights * rgb_feat
-      weighted_depth = (1 - attn_weights) * depth_feat
+      weighted_rgb = attn_weights * depth_feat
+      weighted_depth = (1 - attn_weights) * rgb_feat
 
       # Fuse features
       fused_features = weighted_rgb + weighted_depth
@@ -61,7 +61,6 @@ class AttentionFusion1D(nn.Module):
          elif args.models['DEPTH'].model == 'efficientnet_b3':
             self.C = 1536
          self.bn = nn.BatchNorm1d(196)
-         self.dropout = nn.Dropout(0.2)
          self.project_rgb = nn.Linear(196*768, self.C)
         
       self.attention = AttentionFusion1D_Module(self.C, d_ff=1024)
@@ -70,15 +69,14 @@ class AttentionFusion1D(nn.Module):
       self.fc = nn.Linear(self.C, num_classes) 
 
    def forward(self, rgb_input, depth_input):
-      rgb_feat  = self.rgb_model(rgb_input)['late_feat']
-      depth_feat = self.depth_model(depth_input)['late_feat']
+      rgb_feat  = self.rgb_model(rgb_input)['late_feat'] #? [batch_size, 196, 768]
+      depth_feat = self.depth_model(depth_input)['late_feat'] #? [batch_size, C]
       
       #project to common dimension
-      if self.project_rgb is not None:
+      if self.project_rgb is not None: 
          rgb_feat = self.bn(rgb_feat)
          batch_size, seq_length, input_dim = rgb_feat.shape
          rgb_feat = rgb_feat.view(batch_size,-1) #? flatten
-         rgb_feat = self.dropout(rgb_feat)
          rgb_feat = self.project_rgb(rgb_feat)
 
       # Apply attention
