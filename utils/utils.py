@@ -24,7 +24,7 @@ class Accuracy(object):
         self.reset()
 
     def reset(self):
-        ''' store the current value, average, sum, and count of accuracies for each top-k value. '''
+        ''' reset the current value, average, sum, and count of accuracies for each top-k scoring. '''
         self.val = {tk: 0 for tk in self.topk}
         self.avg = {tk: 0 for tk in self.topk}
         self.sum = {tk: 0 for tk in self.topk}
@@ -33,17 +33,21 @@ class Accuracy(object):
         self.total = list(0 for _ in range(self.num_classes)) #? list to store number of samples per class
 
     def update(self, outputs, labels):
-        '''updates the accuracy metrics with new batch outputs and labels. '''
+        '''updates the accuracy metrics with new batch '''
+
+        if outputs.dim() == 1: #? if the output is a single element in the final batch, unsqueeze it to have a batch of size 1
+            outputs = outputs.unsqueeze(0)
+            labels = labels.unsqueeze(0)
+            
         batch = labels.size(0)
 
-        for i_tk, top_k in enumerate(self.topk): #? for each top-k value , update the current value, sum, count, average, per-class correct and total counts. 
-            if i_tk == 0:
-                res = self.accuracy(outputs, labels, perclass_acc=True, topk=[top_k])
-                class_correct = res[1]
-                class_total = res[2]
-                res = res[0]
+        for i_tk, top_k in enumerate(self.topk): #? for each top-k scoring , update the current value, sum, count, average, per-class correct and total counts. 
+            
+            if i_tk == 0: #? if it is the first top-k scoring, coompute also per_class accuracy
+                res, class_correct, class_total = self.accuracy(outputs, labels,  topk=top_k, perclass_acc=True)
             else:
-                res = self.accuracy(outputs, labels, perclass_acc=False, topk=[top_k])[0]
+                res, _, _ = self.accuracy(outputs, labels, topk=top_k, perclass_acc=False)
+
             self.val[top_k] = res
             self.sum[top_k] += res * batch
             self.count[top_k] += batch
@@ -53,47 +57,54 @@ class Accuracy(object):
             self.correct[i] += class_correct[i]
             self.total[i] += class_total[i]
 
-    def accuracy(self, output, target, perclass_acc=False, topk=(1,)):
+    def accuracy(self, output, labels, topk, perclass_acc=False):
         """
-        Computes the top-k accuracy for the given outputs and targets
-        output: torch.Tensor -> the predictions
-        target: torch.Tensor -> ground truth labels
+        Computes the top-k accuracy for the given outputs and labelss
+        output: torch.Tensor -> the predictions #? [batch_size, num_classes]
+        labels: torch.Tensor -> ground truth labels #? [batch_size]
         perclass_acc -> bool, True if you want to compute also the top-1 accuracy per class
         """
-        maxk = max(topk)
-        batch_size = target.size(0)
-
-        _, pred = output.topk(maxk, -1, True, True)
-        pred = pred.t()
-        correct = pred.eq(target.view(1, -1).expand_as(pred))
-        res = []
-        for k in topk:
-            correct_k = correct[:k].reshape(-1).to(torch.float32).sum(0)
-            res.append(float(correct_k.mul_(100.0 / batch_size)))
+        batch_size = labels.size(0)
+  
+        #? .topk() returns the positions of the k largest elements of the given input tensor along given dimension. (num_classes in this case)
+        #? "True, True" specify that the elements should be sorted in descending order and that we want to sort the data itself, not a copy.
+        _, pred = output.topk(topk, 1, True, True) #? [batch_size, topk]
+        pred = pred.t() #? transpose [topk, batch_size]
+        
+        #? pred.eq() returns a tensor of the same size as input with True where the elements are equal and False where they are not.
+        #? labels.view(1, -1).expand_as(pred) -> reshapes the labels tensor to have the same shape as the pred tensor
+        check1 = labels.view(1, -1) #[1, batch_size]
+        check2 = labels.view(1, -1).expand_as(pred) #[topk, batch_size]
+        
+        correct = pred.eq(labels.view(1, -1).expand_as(pred)) 
+        correct_k = correct[:topk].reshape(-1).to(torch.float32).sum(0) #number of correct predictions in the batch for the top-k scoring
+        
+        res = float(correct_k.mul_(100.0 / batch_size)) #transform to percentage
+        class_correct, class_total = None, None
         if perclass_acc:
             # getting also top1 accuracy per class
-            class_correct, class_total = self.accuracy_per_class(correct[:1].view(-1), target)
-            res.append(class_correct)
-            res.append(class_total)
-        return res
+            class_correct, class_total = self.accuracy_per_class(correct[:1].view(-1), labels)
+            
+        return res, class_correct, class_total
 
-    def accuracy_per_class(self, correct, target):
+    def accuracy_per_class(self, correct, labels):
         """
         function to compute the accuracy per class
         correct -> (batch, bool): vector which, for each element of the batch, contains True/False depending on if
                                   the element in a specific poisition was correctly classified or not
-        target -> (batch, label): vector containing the ground truth for each element
+        labels -> (batch, label): vector containing the ground truth for each element
         """
         class_correct = list(0. for _ in range(0, self.num_classes))
         class_total = list(0. for _ in range(0, self.num_classes))
-        for i in range(0, target.size(0)):
-            class_label = target[i].item()
+        for i in range(0, labels.size(0)):
+            class_label = labels[i].item()
             class_correct[class_label] += correct[i].item()
             class_total[class_label] += 1
+            
         return class_correct, class_total
 
 
-class AverageMeter(object):
+class LossMeter(object):
     """Computes and stores the average and current value
        Used for loss update  
     """
@@ -117,7 +128,7 @@ class AverageMeter(object):
 
 
 def compute_class_weights(train_loader):
-    """This function computes weights for each class used in Weighted Cross Entropy Loss
+    """This function computes weights for each class used in Weighted losses
     """
     num_classes, _ = get_domains_and_labels(args)
     class_counts = np.zeros(num_classes)
@@ -140,10 +151,3 @@ def pformat_dict(d, indent=0):
     return fstr
 
 
-def plots():
-    """Reads log files from a training process and plots:
-            the loss in training process (at every epoch);
-            the accuracy on validation set during training at each validation step.
-    """
-    
-    

@@ -47,7 +47,7 @@ class EmotionRecognition(tasks.Task, ABC):
         
         #!self.accuracy and self.loss track the evolution of the accuracy and the training loss
         self.accuracy = utils.Accuracy(topk=(1, 5))
-        self.loss = utils.AverageMeter()
+        self.loss = utils.LossMeter()
         
         #!scaler for mixed precision 
         self.scaler = scaler

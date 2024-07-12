@@ -84,7 +84,7 @@ class VTFF(nn.Module):
       self.Cp = 768
       self.nhead  = 8
       self.num_layers = 4
-      #self.mlp_dim = 3072 #?MLP dimension INTERNAL to each transformer layer (std is 2048)
+      self.mlp_dim = 3072 #?MLP dimension INTERNAL to each transformer layer (std is 2048)
       self.seq_len = self.HW**2
       
       self.cls_token = nn.Parameter(torch.zeros(1, 1,  self.Cp))

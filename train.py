@@ -242,7 +242,7 @@ def train(emotion_classifier, train_loader, val_loader, device):
                 (real_iter, args.train.num_iter, emotion_classifier.loss.val, emotion_classifier.loss.avg,
                     emotion_classifier.accuracy.val[1], emotion_classifier.accuracy.avg[1]))
             
-            #? PLOT TRAINING LOSS
+            #? PLOT TRAINING LOSS and ACCURACY
             writer.add_scalar('Loss/train', emotion_classifier.loss.avg, real_iter)
             writer.add_scalar('Accuracy/train', emotion_classifier.accuracy.avg[1], real_iter)
             # #? PLOT WEIGHTS (optimizer step is at TOTAL_BATCH)
