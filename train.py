@@ -238,9 +238,8 @@ def train(emotion_classifier, train_loader, val_loader, device):
         
         #! if TOTAL_BATCH is finished, update weights and zero gradients
         if real_iter.is_integer():  
-            logger.info("[%d/%d]\tlast Verb loss: %.4f\tMean verb loss: %.4f\tAcc@1: %.2f%%\tAccMean@1: %.2f%%" %
-                (real_iter, args.train.num_iter, emotion_classifier.loss.val, emotion_classifier.loss.avg,
-                    emotion_classifier.accuracy.val[1], emotion_classifier.accuracy.avg[1]))
+            logger.info("[%d/%d]\tMean verb loss: %.4f\tAccMean@1: %.2f%%" %
+                (real_iter, args.train.num_iter, emotion_classifier.loss.avg, emotion_classifier.accuracy.avg[1]))
             
             #? PLOT TRAINING LOSS and ACCURACY
             writer.add_scalar('Loss/train', emotion_classifier.loss.avg, real_iter)
