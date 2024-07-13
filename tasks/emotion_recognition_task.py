@@ -53,10 +53,10 @@ class EmotionRecognition(tasks.Task, ABC):
         self.scaler = scaler
         
         #! CrossEntropyLoss (already reduce the loss over batch samples with MEAN to not make it dependent on the batch size)
-        self.criterion = torch.nn.CrossEntropyLoss(weight=None, size_average=None, ignore_index=-100, reduce=None, reduction='mean')
+        #self.criterion = torch.nn.CrossEntropyLoss(weight=None, size_average=None, ignore_index=-100, reduce=None, reduction='mean')
         
         #!Weighted CEL
-        #self.criterion = torch.nn.CrossEntropyLoss(weight=self.class_weights, size_average=None, ignore_index=-100, reduce=None, reduction='mean')
+        self.criterion = torch.nn.CrossEntropyLoss(weight=self.class_weights, size_average=None, ignore_index=-100, reduce=None, reduction='mean')
         
         #!Focal Loss #dynamically scales the loss for each sample based on the prediction confidence.
         #self.criterion = FocalLoss(alpha=1, gamma=2, reduction='mean')
