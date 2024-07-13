@@ -38,17 +38,17 @@ class SelfAttentionFusion1D(nn.Module):
       depth_feat = self.depth_model(depth_input)['late_feat'] #? [batch_size, C]
       
       depth_feat = self.effnet_proj(depth_feat)  #? [batch_size, 768]
-      #depth_feat = depth_feat.unsqueeze(1)  #? [batch_size, 1, 768]
+      depth_feat = depth_feat.unsqueeze(1)  #? [batch_size, 1, 768]
       
       # Concatenate ViT and EfficientNet features
-      # x = torch.cat((rgb_feat, depth_feat), dim=1)  #? [batch_size, 197, 768]
-      x = cls + depth_feat  #? [batch_size, 197, 768]
+      x = torch.cat((rgb_feat, depth_feat), dim=1)  #? [batch_size, 197, 768]
+      #x = cls + depth_feat  #? [batch_size, 197, 768]
         
       # Apply transformer encoder
-      #x = self.transformer_encoder(x)  #? [batch_size, 197, 768]
+      x = self.transformer_encoder(x)  #? [batch_size, 197, 768]
       
       # Global average pooling
-      #x = x.mean(dim=1)  #?[batch_size, 768]
+      x = x.mean(dim=1)  #?[batch_size, 768]
       
       # Classification
       x = self.fc(x)  # [batch_size, num_classes]
