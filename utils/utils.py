@@ -2,6 +2,7 @@ from collections.abc import Mapping
 import torch
 from utils.args import args
 import numpy as np
+from collections import Counter
 
 def get_domains_and_labels(arguments):    
     if arguments.dataset.name == 'CalD3r_MenD3s':
@@ -130,15 +131,24 @@ class LossMeter(object):
 def compute_class_weights(train_loader):
     """This function computes weights for each class used in Weighted losses
     """
-    num_classes, _ = get_domains_and_labels(args)
-    class_counts = np.zeros(num_classes)
+   # Step 1: Collect all labels from the DataLoader
+    all_labels = []
     for _, labels in train_loader:
-        for label in labels:
-            class_counts[label.item()] += 1
-    class_weights = 1. / class_counts #reciproc: gives higher weights to low represented classes and viceversa
-    class_weights = class_weights / class_weights.sum() * num_classes  # Normalize weights
-    return torch.FloatTensor(class_weights)
+        all_labels.extend(labels.tolist())  # Assuming labels are tensors, convert to list and extend
+    
+    # Step 2: Count class frequencies
+    class_counts = Counter(all_labels)
 
+    # Step 3: Compute class weights
+    total_samples = len(all_labels)
+    num_classes = len(class_counts)
+    class_weights = [total_samples / (class_counts[i] * num_classes) for i in range(num_classes)]
+
+    # Step 4: Normalize weights (optional)
+    sum_weights = sum(class_weights)
+    class_weights_normalized = [w / sum_weights for w in class_weights]
+
+    return torch.FloatTensor(class_weights_normalized)
 
 def pformat_dict(d, indent=0):
     fstr = ""

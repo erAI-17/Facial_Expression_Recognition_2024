@@ -90,7 +90,7 @@ def main():
                                                 shuffle=False,
                                                 num_workers=args.dataset.workers, 
                                                 pin_memory=True, 
-                                                drop_last=False)
+                                                drop_last=True) #?usually False
     
     #!compute class weights for Weighted Cross Entropy Loss
     class_weights = compute_class_weights(train_loader).to(device, non_blocking=True)

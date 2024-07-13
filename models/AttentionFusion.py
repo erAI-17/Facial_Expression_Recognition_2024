@@ -110,7 +110,7 @@ class ConcatenationFusion1D(nn.Module):
 
 class OnlyViT(nn.Module):
    def __init__(self, rgb_model, depth_model, p_dropout):
-      super(ConcatenationFusion1D, self).__init__()
+      super(OnlyViT, self).__init__()
       #?define RGB and Depth networks (from configuration file)
       num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
       
