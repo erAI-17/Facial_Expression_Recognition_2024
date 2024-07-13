@@ -29,31 +29,23 @@ class ViT(nn.Module):
         # self.model = outer_model.vit
         # self.processor = AutoImageProcessor.from_pretrained("trpakov/vit-face-expression")
         
-        # #? Freeze all parameters initially
-        # for param in self.model.parameters():
-        #     param.requires_grad = False
-            
-        # #?unfreeze last classifier    
-        # for name, param in self.model.named_parameters():
-        #     if 'dense' in name: 
+        #? Freeze all parameters initially
+        for param in self.model.parameters():
+            param.requires_grad = False
+                            
+        #? Unfreeze last 2 encoder layers, the "layernorm" and "pooler" 
+        # for i in range(10, 12):
+        #     for param in self.model.encoder.layer[i].parameters():
         #         param.requires_grad = True
-        #     else: 
-        #         param.requires_grad = False
-                
-        # #? Unfreeze some specific layers if needed
-        # for param in self.model.encoder.layer[-1].parameters():
-        #     param.requires_grad = True
+        for param in self.model.pooler.parameters():
+            param.requires_grad = True
+        for param in self.model.layernorm.parameters():
+            param.requires_grad = True
         
         #? set dropout
         for module in self.model.modules():
             if isinstance(module, nn.Dropout):
                 module.p = self.p_dropout
-
-                
-    # Function to preprocess a single image
-    def _preprocessing_(self, img):
-        inputs = self.processor(images=img, return_tensors="pt")
-        return inputs["pixel_values"]
 
     def forward(self, x):        
         #x = self._preprocessing_(x)
