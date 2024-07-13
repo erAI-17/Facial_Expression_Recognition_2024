@@ -33,6 +33,9 @@ class RGB_transf:
             augmentations = [
             transforms.RandomHorizontalFlip(),
             transforms.RandomRotation(10),
+            transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
+            transforms.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5)),
+            transforms.RandomErasing(scale=(0.02, 0.25), ratio=(0.5, 2.0))
             ]
             transformations = augmentations + transformations
             
@@ -63,6 +66,10 @@ class DEPTH_transf:
             augmentations = [
                 transforms.RandomHorizontalFlip(),
                 transforms.RandomRotation(10),
+                #transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
+                transforms.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5)),
+                transforms.RandomErasing(scale=(0.02, 0.25), ratio=(0.5, 2.0))
+            
             ]
             transformations = augmentations + transformations
             

@@ -2,6 +2,8 @@ from abc import ABC
 import pandas as pd
 import torch.utils.data as data
 from PIL import Image
+import platform
+import random
 import numpy as np
 import cv2
 import os
@@ -61,6 +63,12 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
             self.ann_list.extend([CalD3R_MenD3s_sample(dataset_name, row, self.dataset_conf) for row in self.ann_list_file.iterrows()])
         
         logger.info(f"Dataloader for {self.mode} with {len(self.ann_list)} samples generated")
+        
+        #if local run, reduce the validation set for faster debug
+        if platform.node() == 'MSI':
+            reduced_size = int(len(self.ann_list) * 0.2)  # Calculate 20% of the current list size
+            self.ann_list = random.sample(self.ann_list, reduced_size)  # Randomly select 20% of the items
+            logger.info(f"Reduced dataloader for {self.mode} to {len(self.ann_list)} samples for faster local debugging")
         
     def __len__(self):
             return len(self.ann_list)

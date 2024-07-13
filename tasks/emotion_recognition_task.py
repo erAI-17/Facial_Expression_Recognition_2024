@@ -59,7 +59,7 @@ class EmotionRecognition(tasks.Task, ABC):
         #self.criterion = torch.nn.CrossEntropyLoss(weight=self.class_weights, size_average=None, ignore_index=-100, reduce=None, reduction='mean')
         
         #!Focal Loss #dynamically scales the loss for each sample based on the prediction confidence.
-        self.criterion = FocalLoss(alpha=self.class_weights, gamma=2, reduction='mean')
+        self.criterion = FocalLoss(alpha=1, gamma=2, reduction='mean')
         
         #!CEL+Center Loss 
         #self.criterion = CEL_CL_Loss(alpha=1, gamma=2, reduction='mean')
