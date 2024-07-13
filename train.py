@@ -117,7 +117,6 @@ def main():
                                                  args.models, 
                                                  args=args)
     
-    emotion_classifier.grad_clip() #?gradient clipping is applied to the whole model (all the models for each modality)
     #emotion_classifier.script() #? script each model per modality
     
     emotion_classifier.load_on_gpu(device)
@@ -250,6 +249,7 @@ def train(emotion_classifier, train_loader, val_loader, device):
             #         writer.add_histogram(f'{m}/{name}', param, real_iter)    
                     
             #emotion_classifier.check_grad() #function that checks norm2 of the gradient (evaluate whether to apply clipping if too large)
+            emotion_classifier.grad_clip() #?gradient clipping is applied to all the models for each modality
             emotion_classifier.step() #step() attribute calls BOTH  optimizer.step()  and, if implemented,  scheduler.step()
             emotion_classifier.zero_grad() #now zero the gradients to avoid accumulating them since this batch has finished
             

@@ -106,3 +106,25 @@ class ConcatenationFusion1D(nn.Module):
       x = self.fc(x)  # [batch_size, num_classes]
 
       return x, {}
+
+
+class OnlyViT(nn.Module):
+   def __init__(self, rgb_model, depth_model, p_dropout):
+      super(ConcatenationFusion1D, self).__init__()
+      #?define RGB and Depth networks (from configuration file)
+      num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
+      
+      self.rgb_model = rgb_model
+      self.depth_model = depth_model
+
+      #?final classifier
+      self.fc = nn.Linear(768, num_classes) 
+
+   def forward(self, rgb_input, depth_input):
+      rgb_vit_output  = self.rgb_model(rgb_input)
+      cls, rgb_feat = rgb_vit_output[0], rgb_vit_output[1]['late_feat'] #? cls: [batch_size, 768], late_feat: [batch_size, 196, 768]
+      
+      # Classification
+      x = self.fc(cls)  # [batch_size, num_classes]
+
+      return x, {}

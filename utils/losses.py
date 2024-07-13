@@ -51,7 +51,8 @@ class FocalLoss(nn.Module):
             loss = loss.mean()
         elif self.reduction == 'sum':
             loss = loss.sum()
-
+        elif self.reduction == 'none': 
+            pass
         return loss
 
 #!CENTER LOSS
