@@ -9,10 +9,12 @@ from transformers import AutoImageProcessor, AutoModel, AutoModelForImageClassif
 
 
 class ViT(nn.Module):
-    def __init__(self):
+    def __init__(self, p_dropout):
         super(ViT, self).__init__()
-        #? Load pre-trained ViT model
         
+        self.p_dropout = p_dropout
+        
+        #? Load pre-trained ViT model
         #!1 FER2013,MMI Facial Expression Database, and AffectNet Accuracy: 0.8434 - Loss: 0.4503 (454d)
         self.model = AutoModel.from_pretrained("motheecreator/vit-Facial-Expression-Recognition")
         self.processor = AutoImageProcessor.from_pretrained("motheecreator/vit-Facial-Expression-Recognition")
@@ -26,10 +28,7 @@ class ViT(nn.Module):
         # outer_model = AutoModelForImageClassification.from_pretrained("trpakov/vit-face-expression")
         # self.model = outer_model.vit
         # self.processor = AutoImageProcessor.from_pretrained("trpakov/vit-face-expression")
-                
-        #?The  AutoImageProcessor  is used to preprocess input images so that they are in the correct format for the Vision Transformer (ViT) model. 
-        #? This preprocessing typically includes resizing, normalization, and converting images to tensors.
-    
+        
         # #? Freeze all parameters initially
         # for param in self.model.parameters():
         #     param.requires_grad = False
@@ -44,6 +43,12 @@ class ViT(nn.Module):
         # #? Unfreeze some specific layers if needed
         # for param in self.model.encoder.layer[-1].parameters():
         #     param.requires_grad = True
+        
+        #? set dropout
+        for module in self.model.modules():
+            if isinstance(module, nn.Dropout):
+                module.p = self.p_dropout
+
                 
     # Function to preprocess a single image
     def _preprocessing_(self, img):

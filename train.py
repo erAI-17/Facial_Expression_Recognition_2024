@@ -100,11 +100,11 @@ def main():
     logger.info("Instantiating models per modality")
     for m in args.modality:
         logger.info('{} Net\tModality: {}'.format(args.models[m].model, m))
-        models[m] = getattr(model_list, args.models[m].model)()
+        models[m] = getattr(model_list, args.models[m].model)(args.models[m].dropout)
     
     #?instanciate also the FUSION network
     logger.info('{} Net\tModality: {}'.format(args.models['FUSION'].model, 'FUSION'))
-    models['FUSION'] = getattr(model_list, args.models['FUSION'].model)(models['RGB'], models['DEPTH'])
+    models['FUSION'] = getattr(model_list, args.models['FUSION'].model)(models['RGB'], models['DEPTH'], args.models[m].dropout)
         
     #!Create  EmotionRecognition  object that wraps all the models for each modality    
     emotion_classifier = tasks.EmotionRecognition("emotion-classifier", 

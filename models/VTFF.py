@@ -60,7 +60,7 @@ class VTFF(nn.Module):
    """Visual Transformer Feature Fusion with Attention Selective fusion.
       Combines multiple Transformer encoder layers for classification
    """
-   def __init__(self, rgb_model, depth_model):
+   def __init__(self, rgb_model, depth_model, p_dropout):
       super(VTFF, self).__init__()      
       num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
       
@@ -76,6 +76,8 @@ class VTFF(nn.Module):
       #?define RGB and Depth networks (from configuration file)
       self.rgb_model = rgb_model
       self.depth_model = depth_model
+      
+      self.p_dropout = p_dropout
       
       #? attentional selective fusion module producing X_fused [batch_size, Cf=256 x Hd=14 x Wd=14]
       self.AttentionSelectiveFusion_Module = AttentionSelectiveFusion_Module(self.C)

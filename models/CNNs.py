@@ -6,17 +6,17 @@ from torchvision.models import EfficientNet_B0_Weights,EfficientNet_B3_Weights
 from transformers import AutoImageProcessor, AutoModel, AutoModelForImageClassification
 
 class efficientnet_b0(nn.Module):
-    def __init__(self):
+    def __init__(self, p_dropout):
         super(efficientnet_b0, self).__init__()
         
+        self.p_dropout = p_dropout
         self.model = models.efficientnet_b0(weights=EfficientNet_B0_Weights.DEFAULT) 
         self.feature_extractor = nn.Sequential(*list(self.model.children())[:-2]) #remove [avgpool layer, fc layer]
         self.avgpool =  nn.Sequential(*list(self.model.children())[-2:-1]) #bring [avgpool layer]
         
+        #? print model
         # with open('FULL_b0.txt', 'w') as f:
-        #     f.write(str(self.model))
-        # with open('FEAT_b0.txt', 'w') as f:
-        #     f.write(str(self.feature_extractor))
+        #     f.write(str(self.model)) 
 
     def forward(self, x):              
         mid_feat = self.feature_extractor(x)
@@ -26,9 +26,10 @@ class efficientnet_b0(nn.Module):
     
     
 class efficientnet_b3(nn.Module):
-    def __init__(self):
+    def __init__(self, p_dropout):
         super(efficientnet_b3, self).__init__()
         
+        self.p_dropout = p_dropout
         self.model = models.efficientnet_b3(weights=EfficientNet_B3_Weights.DEFAULT) 
         self.feature_extractor = nn.Sequential(*list(self.model.children())[:-2]) #remove [avgpool layer, fc layer]
         self.avgpool =  nn.Sequential(*list(self.model.children())[-2:-1]) #bring [avgpool layer],
