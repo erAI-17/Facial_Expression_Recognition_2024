@@ -13,7 +13,7 @@ import tasks
 import wandb
 from torch.profiler import profile, record_function, ProfilerActivity #profiler
 from utils.utils import compute_class_weights
-from utils.transforms import RGB_transf, DEPTH_transf
+from utils.transforms import RGBTransform, DEPTHTransform
 from torch.utils.tensorboard import SummaryWriter
 
 #!global variables
@@ -54,19 +54,16 @@ def main():
     #!Mixed precision scaler
     scaler = torch.amp.GradScaler()
 
-    #!TRANSFORMATIONS AND AUGMENTATION for TRAINING samples, 
-    #!ONLY TRANSFORMATION (NO AUGMENTATION) for VALIDATION/TEST samples
+    #!TRANSFORMATIONS AND AUGMENTATION for TRAINING samples. (NO AUGMENTATION) for VALIDATION samples
     train_transf = {}
     val_transf = {}
     for m in args.modality:
         if m == 'RGB':
-            train_transf[m] = RGB_transf(augment=True)
-            val_transf[m] = RGB_transf(augment=False)
+            train_transf[m] = RGBTransform(augment=True)
+            val_transf[m] = RGBTransform(augment=False)
         if m == 'DEPTH':
-            train_transf[m] = DEPTH_transf(augment=True)
-            val_transf[m] = DEPTH_transf(augment=False)
-    #? augmentation is ONLINE: at each epoch, the model sees different augmented versions of the same samples. So it doesn't increase the number of training samples
-    #? If OFFLINE augmentation, instead, we multiply the number of training samples by producing some augmented version of each samples.
+            train_transf[m] = DEPTHTransform(augment=True)
+            val_transf[m] = DEPTHTransform(augment=False)
             
     train_loader = torch.utils.data.DataLoader(CalD3R_MenD3s_Dataset(args.dataset.name,
                                                                         args.modality,
@@ -93,7 +90,7 @@ def main():
                                                 drop_last=True) #?usually False
     
     #!compute class weights for Weighted Cross Entropy Loss
-    class_weights = compute_class_weights(train_loader).to(device, non_blocking=True)
+    class_weights = compute_class_weights(train_loader, norm=False).to(device, non_blocking=True)
     
     #?instanciate a different model per modality. 
     models = {}
@@ -324,9 +321,6 @@ def validate(emotion_classifier, val_loader, device, it):
         f.write("[%d/%d]\tAcc@top1: %.2f%%\n" % (it, args.train.num_iter, test_results['top1']))
 
     return test_results
-
-
-
 
 
 

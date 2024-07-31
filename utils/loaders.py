@@ -58,13 +58,12 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
 
         #!Read annotations for each dataset selected in args.name,  and create unique ann_list
         self.ann_list = []
-        for dataset_name in self.datasets_name.split('_'): #iterate over CalD3r and MenD3s to create unique training and validation annotation files
-            self.ann_list_file = pd.read_pickle(os.path.join(self.dataset_conf.annotations_path, dataset_name, pickle_name))
-            self.ann_list.extend([CalD3R_MenD3s_sample(dataset_name, row, self.dataset_conf) for row in self.ann_list_file.iterrows()])
+        self.ann_list_file = pd.read_pickle(os.path.join(self.dataset_conf.annotations_path, pickle_name))
+        self.ann_list.extend([CalD3R_MenD3s_sample(row, self.dataset_conf) for row in self.ann_list_file.iterrows()])
         
         logger.info(f"Dataloader for {self.mode} with {len(self.ann_list)} samples generated")
         
-        #if local run, reduce the validation set for faster debug
+        ##! if local run, reduce the validation set for faster debug 
         if platform.node() == 'MSI':
             reduced_size = int(len(self.ann_list) * 0.2)  # Calculate 20% of the current list size
             self.ann_list = random.sample(self.ann_list, reduced_size)  # Randomly select 20% of the items
@@ -100,12 +99,12 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
         
         if img is None: #!file corrupted or missing (handled in __get_item__)
             return None, None
-        
+
         #*apply transformations (convert to tensor, normalize)!
         if self.transform is not None: 
-            transformed_img = self.transform[modality](img)
-       
-        return transformed_img, ann_sample.label
+            img = self.transform[modality](img)
+ 
+        return img, ann_sample.label
 
 
     def _load_data(self, modality, ann_sample):
@@ -125,8 +124,6 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
                     print("Img not found at path:", os.path.join(data_path, tmpl.format(ann_sample.gender, ann_sample.subj_id, ann_sample.code, ann_sample.description_label, 'Color')))
                     raise FileNotFoundError 
                      
-                # Convert the image from BGR to RGB
-                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
                 return img
             
             except Exception as e: 

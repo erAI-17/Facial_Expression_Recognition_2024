@@ -5,7 +5,7 @@ import numpy as np
 from collections import Counter
 
 def get_domains_and_labels(arguments):    
-    if arguments.dataset.name == 'CalD3r_MenD3s':
+    if arguments.dataset.name == 'CalD3rMenD3s':
         num_class = 7
         valid_labels = [i for i in range(num_class)]
         
@@ -128,7 +128,7 @@ class LossMeter(object):
         self.avg = self.sum / self.count
 
 
-def compute_class_weights(train_loader):
+def compute_class_weights(train_loader, norm=False):
     """This function computes weights for each class used in Weighted losses
     """
    # Step 1: Collect all labels from the DataLoader
@@ -145,10 +145,11 @@ def compute_class_weights(train_loader):
     class_weights = [total_samples / (class_counts[i] * num_classes) for i in range(num_classes)]
 
     # Step 4: Normalize weights (optional)
-    sum_weights = sum(class_weights)
-    class_weights_normalized = [w / sum_weights for w in class_weights]
+    if norm: 
+        sum_weights = sum(class_weights)
+        class_weights = [w / sum_weights for w in class_weights]
 
-    return torch.FloatTensor(class_weights_normalized)
+    return torch.FloatTensor(class_weights)
 
 def pformat_dict(d, indent=0):
     fstr = ""
