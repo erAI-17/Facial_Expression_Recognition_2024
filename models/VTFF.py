@@ -89,45 +89,46 @@ class VTFF(nn.Module):
       self.mlp_dim = 3072 #?MLP dimension INTERNAL to each transformer layer (std is 2048)
       self.seq_len = self.HW**2
       
+      self.linear_proj = nn.Linear(self.C,  self.Cp)
+      
+      self.trans_encoder_layer = nn.TransformerEncoderLayer(self.Cp, nhead=self.nhead, dim_feedforward=self.mlp_dim, activation='gelu', batch_first=True)
+      self.tranformer_encoder = nn.TransformerEncoder(self.trans_encoder_layer, num_layers=self.num_layers)
+      
       self.cls_token = nn.Parameter(torch.zeros(1, 1,  self.Cp))
       nn.init.normal_(self.cls_token, std=0.02)  # Initialize with small random values to break symmetry
       self.pos_embed = nn.Parameter(torch.zeros(1, self.seq_len + 1,  self.Cp))
       nn.init.normal_(self.pos_embed, std=0.02)  # Initialize with small random values to break symmetry
-      
-      self.linear_proj = nn.Linear(self.C,  self.Cp)
-      self.trans_encoder_layer = nn.TransformerEncoderLayer(self.Cp, nhead=self.nhead, dim_feedforward=self.mlp_dim, activation='gelu', batch_first=True)
-      self.tranformer_encoder = nn.TransformerEncoder(self.trans_encoder_layer, num_layers=self.num_layers)
       
       #? final classification
       self.fc = nn.Linear(self.Cp, num_classes)
 
    def forward(self, rgb_input, depth_input):
       
-      rgb_feat  = self.rgb_model(rgb_input)
-      depth_feat = self.depth_model(depth_input) 
+      X_rgb  = self.rgb_model(rgb_input)
+      X_depth = self.depth_model(depth_input) 
       
       #efficientnet_b0: #[batch_size, 1280, 7, 7]
-      #efficientnet_b3: #[batch_size, 1536, 7, 7]
+      #efficientnet_b2: #[batch_size, 1408, 7, 7]
       
       #?X_fused from attentional selective fusion module:  
-      x = self.AttentionSelectiveFusion_Module(rgb_feat['mid_feat'], depth_feat['mid_feat']) #? [batch_size, C x H x W]
+      X_fused = self.AttentionSelectiveFusion_Module(X_rgb['mid_feat'], X_depth['mid_feat']) #? [batch_size, C x H x W]
 
       #? Flat and Project linealry to Cp channels [batch_size, C x H*W] ->  [batch_size, Cp x H*W]
-      x = x.view(x.size(0), self.C, -1)  # Flat
-      x = x.permute(0, 2, 1) #?[batch_size, H*W, Cf] permute beacause nn.Linear reduces tha last dimension (not the channel) and we want to reduce the channels instead 
-      x = self.linear_proj(x) #Project #? (batch_size, H*W, Cp)
+      X_fused = X_fused.view(X_fused.size(0), self.C, -1)  # Flat
+      X_fused = X_fused.permute(0, 2, 1) #?[batch_size, H*W, Cf] permute beacause nn.Linear reduces tha last dimension (not the channel) and we want to reduce the channels instead 
+      X_fused = self.linear_proj(X_fused) #Project #? (batch_size, H*W, Cp)
 
       #?prepend [cls] token as learnable parameter
-      cls_tokens = self.cls_token.expand(x.size(0), -1, -1) # (batch_size, 1, Cp)
-      x = torch.cat((cls_tokens, x), dim=1) # (batch_size, H*W+1, Cp)
+      cls_tokens = self.cls_token.expand(X_fused.size(0), -1, -1) # (batch_size, 1, Cp)
+      X_fused = torch.cat((cls_tokens, X_fused), dim=1) # (batch_size, H*W+1, Cp)
 
       #?add positional embedding as learnable parameters to each element of the sequence
-      x = x + self.pos_embed #(batch_size, H*W+1, Cp)
+      X_fused = X_fused + self.pos_embed #(batch_size, H*W+1, Cp)
 
-      x = self.tranformer_encoder(x) #transformer (with batch_first=True) expects input: #? [batch_size, sequence_length= H*W+1, dimension=Cp]
+      X_fused = self.tranformer_encoder(X_fused) #transformer (with batch_first=True) expects input: #? [batch_size, sequence_length= H*W+1, dimension=Cp]
       
       #?classification
-      cls_output = x[:, 0]  #?Extract [cls] token's output
+      cls_output = X_fused[:, 0]  #?Extract [cls] token's output
       logits = self.fc(cls_output)
       
       return logits, {}
