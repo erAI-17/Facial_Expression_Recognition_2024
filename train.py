@@ -1,29 +1,36 @@
 from datetime import datetime
-from utils.logger import logger
-import torch.nn.parallel
-import torch.optim
+import cv2
 import torch
-from utils.loaders import CalD3R_MenD3s_Dataset
-from utils.args import args
-from utils.utils import pformat_dict
 import numpy as np
 import os
-import models as model_list
-import tasks
 import wandb
-from torch.profiler import profile, record_function, ProfilerActivity #profiler
+
+
+from utils.logger import logger
+from utils.utils import pformat_dict
 from utils.utils import compute_class_weights
+from utils.loaders import CalD3R_MenD3s_Dataset
+from utils.args import args
+from utils.utils import GradCAM
 from utils.transforms import RGBTransform, DEPTHTransform
+import tasks
+import models as model_list
+
+from torch.profiler import profile, ProfilerActivity 
+from sklearn.manifold import TSNE
+import matplotlib.pyplot as plt
+from matplotlib.cm import get_cmap
 from torch.utils.tensorboard import SummaryWriter
+
 
 #!global variables
 training_iterations = 0
 np.random.seed(13696641)
 torch.manual_seed(13696641)
 
-#!gpus setting up: commands in terminal
+#!gpus setting up:  commands in terminal
 #   nvidia-smi     to see all available gpus
-#   set CUDA_VISIBLE_DEVICES=0   to set the first gpu as the one where to run
+#   set CUDA_VISIBLE_DEVICES=0    to set the first gpu as the one where to run
 #   echo $CUDA_VISIBLE_DEVICES    to check if gpu is set up properly
 
 #!tensorboard visualization command
@@ -247,9 +254,9 @@ def train(emotion_classifier, train_loader, val_loader, device):
             emotion_classifier.step() #step() attribute calls BOTH  optimizer.step()  and, if implemented,  scheduler.step()
             emotion_classifier.zero_grad() #now zero the gradients to avoid accumulating them since this batch has finished
             
-            
+
         #! every "eval_freq" iterations the validation is done
-        if real_iter.is_integer() and real_iter % args.train.eval_freq == 0: 
+        if real_iter.is_integer() and real_iter % args.train.eval_freq == 0:  
             val_metrics = validate(emotion_classifier, val_loader, device, int(real_iter))
             
             #?PLOT VALIDATION ACCURACIES
@@ -261,26 +268,25 @@ def train(emotion_classifier, train_loader, val_loader, device):
                 logger.info("NEW best accuracy {:.2f}%".format(val_metrics['top1']))
                 emotion_classifier.best_iter = real_iter
                 emotion_classifier.best_iter_score = val_metrics['top1']
+                
+            #! every N_val_visualize validations, alos visualize features and GRADCAM
+            if args.N_val_visualize != 0 and args.N_val_visualize is not None and real_iter % args.train.eval_freq*args.N_val_visualize==0:
+                visualize_features(emotion_classifier, val_loader, device, int(real_iter))
+                #compute_gradcam(emotion_classifier, val_loader, device, int(real_iter))
 
             emotion_classifier.save_model(real_iter, val_metrics['top1'], prefix=None)
             emotion_classifier.train(True) 
-                      
+              
     writer.close()
 
-def validate(emotion_classifier, val_loader, device, it):
+def validate(emotion_classifier, val_loader, device, real_iter):
     """
-    function to validate the model on the test set
-    
-    model: Task containing the model to be tested
-    val_loader: dataloader containing the validation data
-    device: device on which you want to test
-    it: int, iteration among the training num_iter at which the model is tested
+    Validation function
     """
 
     emotion_classifier.reset_acc()
     emotion_classifier.train(False)
     
-    logits = {}
     with torch.no_grad():
         for i_val, (data, label) in enumerate(val_loader): #*for each batch in val loader
             
@@ -292,14 +298,14 @@ def validate(emotion_classifier, val_loader, device, it):
                             dtype=torch.float16,
                             enabled=args.amp): 
                 logits, _ = emotion_classifier.forward(data)
-            
-            emotion_classifier.compute_accuracy(logits, label)
 
+            emotion_classifier.compute_accuracy(logits, label)
+            
             #?print the validation accuracy at 5 steps: 20% - 40% - 60% - 80% - 100% of validation set
             if (i_val + 1) % (len(val_loader) // 3) == 0:
                 logger.info("[{}/{}] top1= {:.3f}% top5 = {:.3f}%".format(i_val + 1, len(val_loader),
                                                                           emotion_classifier.accuracy.avg[1], emotion_classifier.accuracy.avg[5]))
-
+        
         #?at the end print OVERALL validation accuracy on the whole validation set)
         logger.info('Final accuracy: top1 = %.2f%%\ttop5 = %.2f%%' % (emotion_classifier.accuracy.avg[1],
                                                                       emotion_classifier.accuracy.avg[5]))
@@ -318,11 +324,98 @@ def validate(emotion_classifier, val_loader, device, it):
 
     #?LOG validation results
     with open(os.path.join(args.log_dir, f'val_precision_{args.dataset.name}'), 'a+') as f:
-        f.write("[%d/%d]\tAcc@top1: %.2f%%\n" % (it, args.train.num_iter, test_results['top1']))
+        f.write("[%d/%d]\tAcc@top1: %.2f%%\n" % (real_iter, args.train.num_iter, test_results['top1']))
 
     return test_results
 
 
+def visualize_features(emotion_classifier, val_loader, device, real_iter):
+    '''Visualize features and GRADCAM'''
+    
+    emotions = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5, 'surprise':6}
+    val_features = []
+    val_labels = []
+    
+    emotion_classifier.train(False) 
+    with torch.no_grad():
+        for i_val, (data, label) in enumerate(val_loader): #*for each batch in val loader
+            
+            label = label.to(device, non_blocking=True)
+            for m in args.modality:
+                data[m] = data[m].to(device, non_blocking=True)
+            
+            with torch.autocast(device_type= ("cuda" if torch.cuda.is_available() else "cpu"), 
+                            dtype=torch.float16,
+                            enabled=args.amp): 
+                _, features = emotion_classifier.forward(data)
 
+            #?append, FUSION features for each new batch (for visualization), ordered by label
+            val_features.extend(features['late_feat'].cpu().numpy())
+            val_labels.extend(label.cpu().numpy())
+                      
+    #!plot features for each modality and for the fusion network
+    stacked_features = np.vstack(val_features) #? Stack the list of arrays into a single 2D array
+    
+    tsne = TSNE(n_components=2, random_state=42) #? apply tSNE to reduce to 3D space
+    features_2d = tsne.fit_transform(stacked_features)
+    
+    val_labels = np.array(val_labels)
+    cmap = get_cmap('tab20c')
+    for i, label in enumerate(emotions.keys()):
+        mask = (val_labels == i)
+        plt.scatter(features_2d[:, 0][mask], features_2d[:, 1][mask], c=cmap(i), label=label)
+    
+    #? plot the features
+    #plt.title(f'Features iteration {real_iter}')
+    plt.legend()
+    plt.show()              
+    plt.savefig(os.path.join('./Images/', f'Features_{real_iter}_iter.png'))
+
+def compute_gradcam(emotion_classifier, val_loader, device, real_iter):
+    emotions = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5, 'surprise':6}
+    
+    #!gradcam object
+    gradcam  = GradCAM(emotion_classifier.models['FUSION'].module.rgb_model.feature_extractor , emotion_classifier.models['FUSION'].module.rgb_model.feature_extractor[-1] ) #*take the last layer of the RGB network
+    
+    # Dictionary to store one image per class
+    class_images = {label: None for label in emotions.values()}
+    #!take 1 sample image per class from val loader
+    with torch.no_grad():
+        for data, label in val_loader:
+            data = data['RGB'].to(device, non_blocking=True)
+            label = label.to(device, non_blocking=True)
+
+            # Check if we already have an image for each class
+            for i in range(len(label)):
+                class_label = label[i].item()
+                if class_images[class_label] is None:
+                    class_images[class_label] = data[i]
+            
+            if all(value is not None for value in class_images.values()):
+                break
+    
+    #! Compute Grad-CAM for a each image class
+    for class_label, img in class_images.items():
+        if img is not None:
+
+            cam = gradcam.generate_cam(img, class_label)
+            
+            # Resize CAM to the image size and overlay it
+            cam_resized = cv2.resize(cam, (img.shape[1], img.shape[2]))
+            heatmap = cv2.applyColorMap(np.uint8(255 * cam_resized), cv2.COLORMAP_JET)
+            heatmap = np.float32(heatmap) / 255
+            
+            # Combine heatmap with the original image
+            img_np = img.cpu().numpy().transpose(1, 2, 0)
+            overlay_img = heatmap + np.float32(img_np)
+            overlay_img = overlay_img / np.max(overlay_img)
+            
+            # Display the result
+            plt.imshow(overlay_img)
+            plt.title(f'Class: {list(emotions.keys())[list(emotions.values()).index(class_label)]}')
+            plt.axis('off')
+            plt.show()
+            plt.savefig(os.path.join('./Images/', f'GRADCAM_{emotions[class_label]}_{real_iter}_iter.png'))
+            
 if __name__ == '__main__': 
     main()

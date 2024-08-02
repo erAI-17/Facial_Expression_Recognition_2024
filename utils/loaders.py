@@ -65,8 +65,8 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
         
         ##! if local run, reduce the validation set for faster debug 
         if platform.node() == 'MSI':
-            reduced_size = int(len(self.ann_list) * 0.2)  # Calculate 20% of the current list size
-            self.ann_list = random.sample(self.ann_list, reduced_size)  # Randomly select 20% of the items
+            reduced_size = int(len(self.ann_list) * 0.1)  # Calculate 10% of the current list size
+            self.ann_list = random.sample(self.ann_list, reduced_size)  # Randomly select 10% of the items
             logger.info(f"Reduced dataloader for {self.mode} to {len(self.ann_list)} samples for faster local debugging")
         
     def __len__(self):

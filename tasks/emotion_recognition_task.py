@@ -3,10 +3,12 @@ import torch
 from utils import utils
 import wandb
 import tasks
+import numpy as np
 from typing import Dict, Tuple
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts, OneCycleLR
-from utils.losses import FocalLoss #, CenterLoss
+from utils.losses import FocalLoss, CenterLoss
 from utils.args import args
+
 
 class EmotionRecognition(tasks.Task, ABC):
     def __init__(self, 
@@ -90,19 +92,20 @@ class EmotionRecognition(tasks.Task, ABC):
             #self.Warmup_scheduler[m] = torch.optim.lr_scheduler.LinearLR(self.optimizer[m], start_factor=warmup_start_lr/model_args[m].lr, total_iters=warmup_iters)
 
             #?Cosine Annealing 
-            #self.scheduler[m] = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer[m], T_max=args.train.num_iter, eta_min=1e-6)  #- warmup_iters
+            self.scheduler[m] = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer[m], T_max=args.train.num_iter, eta_min=1e-6)  #- warmup_iters
             
             #? step
-            self.scheduler[m] = torch.optim.lr_scheduler.StepLR(self.optimizer[m], step_size=54.44*10, gamma=0.1) #every 10 epochs
+            #self.scheduler[m] = torch.optim.lr_scheduler.StepLR(self.optimizer[m], step_size=54.44*5, gamma=0.1) #every 5 epochs
             
             #? CosineAnnealingWarmRestarts scheduler
-            #self.scheduler[m] = CosineAnnealingWarmRestarts(self.optimizer[m], T_0=10, T_mult=2, eta_min=1e-6) #T_0= every 10 epochs, then every 20 epochs, 40 ...
+            #self.scheduler[m] = CosineAnnealingWarmRestarts(self.optimizer[m], T_0=10, T_mult=2, eta_min=1e-6) #T_0=10 every 10 epochs, then every 20 epochs, 40 ...
 
             #?milestones parameter receives [warmup_iters] to specify that the transition from the warm-up scheduler to the cosine annealing scheduler should occur after warmup_iters iterations.
             #self.scheduler[m] = torch.optim.lr_scheduler.SequentialLR(self.optimizer[m], schedulers=[self.Warmup_scheduler, self.CosineAnnealing], milestones=[warmup_iters])
 
             #?OneCycleLR scheduler
             #self.scheduler[m] = OneCycleLR(self.optimizer[m], max_lr=model_args[m].lr, total_steps=args.train.num_iter, anneal_strategy='cos')
+          
             
     def forward(self, data: Dict[str, torch.Tensor], **kwargs) -> Tuple[Dict[str, torch.Tensor], Dict[str, torch.Tensor]]:
         """Forward step of the task
@@ -118,18 +121,8 @@ class EmotionRecognition(tasks.Task, ABC):
             output logits and features
         """
         #!train all modalities networks TOGETHER passing data to FUSION network
-        logits = {}
-        features = {}
-        logits, feat = self.models['FUSION'](data['RGB'],data['DEPTH'], **kwargs) #logits [32,7]
-        #? return features to PLOT which are more discriminative (try different loss functions)
-        for i_m, m in enumerate(self.modalities):
-            if i_m == 0: #initially set up an empty dictionary for each modality to store corresponding features
-                for k in feat.keys():
-                    features[k] = {} 
-            
-            for k in feat.keys(): #for each level of feature extraction (early-mid-late), save the features extracted
-                features[k][m] = feat[k]
-
+        logits, features = self.models['FUSION'](data['RGB'],data['DEPTH'], **kwargs) #logits [32,7]
+        
         return logits, features
 
 
@@ -147,6 +140,7 @@ class EmotionRecognition(tasks.Task, ABC):
         loss = self.criterion(logits, label)
         
         #? Update the loss value, weighting it by the ratio of the batch size to the total batch size (because of gradient accumulation)
+        #? loss is already reduced (over batch samples) with MEAN to not make it dependent on the batch size
         self.loss.update(loss / (self.total_batch / self.batch_size), self.batch_size)
 
 
@@ -161,6 +155,7 @@ class EmotionRecognition(tasks.Task, ABC):
         """
         self.accuracy.update(logits, label)
 
+
     def reset_loss(self):
         """Reset the classification loss.
 
@@ -168,9 +163,11 @@ class EmotionRecognition(tasks.Task, ABC):
         """
         self.loss.reset()
 
+
     def reset_acc(self):
         """Reset the classification accuracy."""
         self.accuracy.reset()
+
 
     def step(self):
         """This method performs an optimization step and resets both the loss and the accuracy.
@@ -192,6 +189,7 @@ class EmotionRecognition(tasks.Task, ABC):
         self.reset_loss()
         self.reset_acc()
 
+
     def backward(self, retain_graph: bool = False):
         """Compute the gradients for the current value of the classification loss.
 
@@ -205,20 +203,23 @@ class EmotionRecognition(tasks.Task, ABC):
         else:
             self.loss.val.backward(retain_graph=retain_graph)
     
+    
     def zero_grad(self):
         """Reset the gradient when gradient accumulation is finished."""
         for m in self.modalities:
             self.optimizer[m].zero_grad(set_to_none=True)
+            
             
     def grad_clip(self):
         """Clip the gradients to avoid exploding gradients."""
         for m in self.modalities:
             torch.nn.utils.clip_grad_norm_(self.models[m].parameters(), args.train.max_grad_norm)
             
+            
     def script(self):
         """Script ONLY the FUSION model containing the feature extraction models"""
         self.models['FUSION'] = torch.jit.script(self.models['FUSION'])
-        
+          
     def wandb_log(self):
             """Log the current loss and top1/top5 accuracies to wandb."""
             logs = {

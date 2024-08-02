@@ -3,6 +3,7 @@ import torch
 from utils.args import args
 import numpy as np
 from collections import Counter
+import torch.nn.functional as F
 
 def get_domains_and_labels(arguments):    
     if arguments.dataset.name == 'CalD3rMenD3s':
@@ -151,6 +152,55 @@ def compute_class_weights(train_loader, norm=False):
 
     return torch.FloatTensor(class_weights)
 
+
+class GradCAM:
+    def __init__(self, model, target_layer):
+        self.model = model
+        self.target_layer = target_layer
+        self.gradients = None
+        self.activations = None
+        
+        # Register hooks
+        self.hook_layers()
+
+    def hook_layers(self):
+        def forward_hook(module, input, output):
+            self.activations = output
+
+        def backward_hook(module, grad_in, grad_out):
+            self.gradients = grad_out[0]
+
+        self.target_layer.register_forward_hook(forward_hook)
+        self.target_layer.register_backward_hook(backward_hook)
+        
+    def generate_cam(self, input_tensor, target_class=None):
+        input_tensor = input_tensor.unsqueeze(0)  # Add batch dimension
+        self.model.zero_grad()
+        output = self.model(input_tensor)
+        
+        # Backpropagate to get gradients with respect to the target class
+        class_loss = output[:, target_class].sum()
+        class_loss.backward(retain_graph=True)
+        
+        # Get the gradients and activations
+        gradients = self.gradients
+        activations = self.activations
+        
+        # Compute the weight of each feature map
+        weights = torch.mean(gradients, dim=[2, 3], keepdim=True)
+        
+        # Compute the Grad-CAM
+        cam = torch.sum(weights * activations, dim=1, keepdim=True)
+        cam = F.relu(cam)
+        
+        # Normalize the CAM
+        cam = cam - cam.min()
+        cam = cam / cam.max()
+        cam = cam.squeeze().cpu().detach().numpy()
+
+        return cam
+ 
+ 
 def pformat_dict(d, indent=0):
     fstr = ""
     for key, value in d.items():

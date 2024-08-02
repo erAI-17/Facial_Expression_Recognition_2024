@@ -15,16 +15,16 @@ class efficientnet_b0(nn.Module):
         
         if args.pretrained:
             # Load the weights from the .pt file
-            self.model = torch.load('./models/pretrained_models/enet_b0_8_best_vgaf.pt', map_location='gpu' if torch.cuda.is_available() else 'cpu')
+            self.model = torch.load('./models/pretrained_models/enet_b0_8_best_vgaf.pt', map_location='cuda:0' if torch.cuda.is_available() else 'cpu')
         else:    
             self.model = models.efficientnet_b0(weights=EfficientNet_B0_Weights.DEFAULT) 
         
         self.feature_extractor = nn.Sequential(*list(self.model.children())[:-2]) #remove [avgpool layer, fc layer]
         self.avgpool =  nn.Sequential(*list(self.model.children())[-2:-1]) #bring [avgpool layer]
         
-        #? print model
-        with open('removed_enet_b0_8_best_vgaf.txt', 'w') as f:
-            f.write(str(self.model)) 
+        # #? print model
+        # with open('removed_enet_b0_8_best_vgaf.txt', 'w') as f:
+        #     f.write(str(self.model)) 
 
     def forward(self, x):              
         mid_feat = self.feature_extractor(x)
@@ -32,7 +32,6 @@ class efficientnet_b0(nn.Module):
     
         return {'late_feat': late_feat, 'mid_feat': late_feat}
     
-
 
 
 class efficientnet_b2(nn.Module):
@@ -44,7 +43,7 @@ class efficientnet_b2(nn.Module):
         if args.pretrained:
             self.model = models.efficientnet_b2(pretrained=False)
             # Load the weights from the .pt file
-            checkpoint = torch.load('pretrained_models/----.pt')
+            checkpoint = torch.load('./models/pretrained_models/enet_b2_7.pt', map_location='cuda:0' if torch.cuda.is_available() else 'cpu')
             self.model.load_state_dict(checkpoint)
         else:    
             self.model = models.efficientnet_b2(weights=EfficientNet_B2_Weights.DEFAULT) 

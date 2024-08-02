@@ -56,38 +56,43 @@ class FocalLoss(nn.Module):
         return loss
 
 #!CENTER LOSS
-# class CenterLoss(nn.Module):
-#     def __init__(self, num_classes, feat_dim, device='cpu'):
-#         super(CenterLoss, self).__init__()
-#         self.num_classes = num_classes
-#         self.feat_dim = feat_dim
-#         self.device = device
-        
-#         # Initialize the centers
-#         self.centers = nn.Parameter(torch.randn(num_classes, feat_dim).to(device, non_blocking=True))
-    
-#     def forward(self, features, labels):
-#         # Get the centers corresponding to the labels
-#         batch_size = features.size(0)
-#         centers_batch = self.centers.index_select(0, labels)
-        
-#         # Calculate the center loss
-#         center_loss = F.mse_loss(features, centers_batch)
-#         return center_loss
-    
-# class CEL_CL_Loss(nn.Module):
-#     def __init__(self, num_classes, feat_dim, lambda_center=0.5, device='cpu'):
-#         super(CEL_CL_Loss, self).__init__()
-#         self.cross_entropy_loss = nn.CrossEntropyLoss()
-#         self.center_loss = CenterLoss(num_classes, feat_dim, device)
-#         self.lambda_center = lambda_center
+class CenterLoss(nn.Module):
+    """Center loss.
+    Args:
+        num_classes (int): number of classes.
+        feat_dim (int): feature dimension.
+    """
+    def __init__(self, feat_dim=2, use_gpu=True):
+        super(CenterLoss, self).__init__()
+        num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
+        self.num_classes = num_classes
+        self.feat_dim = feat_dim
+        self.use_gpu = use_gpu
 
-#     def forward(self, logits, features, labels):
-#         ce_loss = self.cross_entropy_loss(logits, labels)
-#         c_loss = self.center_loss(features, labels)
-#         total_loss = ce_loss + self.lambda_center * c_loss
-#         return total_loss
-    
-    
+        if self.use_gpu:
+            self.centers = nn.Parameter(torch.randn(self.num_classes, self.feat_dim).cuda())
+        else:
+            self.centers = nn.Parameter(torch.randn(self.num_classes, self.feat_dim))
+
+    def forward(self, x, labels):
+        """
+        Args:
+            x: feature matrix with shape (batch_size, feat_dim).
+            labels: ground truth labels with shape (batch_size).
+        """
+        batch_size = x.size(0)
+        distmat = torch.pow(x, 2).sum(dim=1, keepdim=True).expand(batch_size, self.num_classes) + \
+                  torch.pow(self.centers, 2).sum(dim=1, keepdim=True).expand(self.num_classes, batch_size).t()
+        distmat.addmm_(1, -2, x, self.centers.t())
+
+        classes = torch.arange(self.num_classes).long()
+        if self.use_gpu: classes = classes.cuda()
+        labels = labels.unsqueeze(1).expand(batch_size, self.num_classes)
+        mask = labels.eq(classes.expand(batch_size, self.num_classes))
+
+        dist = distmat * mask.float()
+        loss = dist.clamp(min=1e-12, max=1e+12).sum() / batch_size
+
+        return loss
     
     

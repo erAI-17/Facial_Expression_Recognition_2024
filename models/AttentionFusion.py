@@ -33,9 +33,9 @@ class ConcatenationFusion1D(nn.Module):
       X_fused = torch.add(X_rgb, X_depth)  #? [batch_size, 197, 768]  
            
       # Classification
-      X_fused = self.fc(X_fused)  # [batch_size, num_classes]
+      logits = self.fc(X_fused)  # [batch_size, num_classes]
 
-      return X_fused, {}
+      return logits, {'late_feat': X_fused}
 
    
 class SelfAttentionFusion1D(nn.Module):
@@ -84,8 +84,8 @@ class SelfAttentionFusion1D(nn.Module):
       x = x.mean(dim=1)  #?[batch_size, 768]
       
       # Classification
-      x = self.fc(x)  # [batch_size, num_classes]
+      logits = self.fc(x)  # [batch_size, num_classes]
 
-      return x, {}
+      #return logits, {'late_feat': X_fused}  
 
 

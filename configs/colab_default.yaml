@@ -10,6 +10,7 @@ models_dir: null
 amp: ???  #automatic mixed precision
 profile: ??? # profile the training
 pretrained: ???
+N_val_visualize: ???
 
 train:
   num_iter: ???  #total_batch=128.  6969/128=54.44 ->1 epoch || total_batch=256.  6969/256=27.22 ->1 epoch
