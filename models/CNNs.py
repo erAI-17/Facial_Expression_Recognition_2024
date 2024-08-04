@@ -8,57 +8,78 @@ from transformers import AutoImageProcessor, AutoModel, AutoModelForImageClassif
 import timm
 
 class efficientnet_b0(nn.Module):
-    def __init__(self, p_dropout):
+    def __init__(self):
         super(efficientnet_b0, self).__init__()
         
-        self.p_dropout = p_dropout
-        
-        if args.pretrained:
-            # Load the weights from the .pt file
-            self.model = torch.load('./models/pretrained_models/enet_b0_8_best_vgaf.pt', map_location='cuda:0' if torch.cuda.is_available() else 'cpu')
-        else:    
-            self.model = models.efficientnet_b0(weights=EfficientNet_B0_Weights.DEFAULT) 
-        
-        self.feature_extractor = nn.Sequential(*list(self.model.children())[:-2]) #remove [avgpool layer, fc layer]
-        self.avgpool =  nn.Sequential(*list(self.model.children())[-2:-1]) #bring [avgpool layer]
-        
-        # #? print model
-        # with open('removed_enet_b0_8_best_vgaf.txt', 'w') as f:
-        #     f.write(str(self.model)) 
+        # Load the model from the .pt file
+        self.model = torch.load('./models/pretrained_models/enet_b0_8_best_vgaf.pt', map_location='cuda:0' if torch.cuda.is_available() else 'cpu')
 
-    def forward(self, x):              
-        mid_feat = self.feature_extractor(x)
-        late_feat = self.avgpool(mid_feat).squeeze()
+        # #? print model
+        # with open('enet_b0_8_best_vgaf.txt', 'w') as f:
+        #     f.write(str(self.model)) 
+        
+        self.features  = {}   
+        
+        # Define hooks to extract features from different layers
+        def get_features(name):
+            def hook(model, input, output):
+                self.features[name] = output
+            return hook    
+
+        # Registering hooks to the layers
+        self.model.blocks[0].register_forward_hook(get_features('early'))  # Early features
+        self.model.blocks[3].register_forward_hook(get_features('mid'))    # Mid features
+        self.model.blocks[6].register_forward_hook(get_features('late'))   # Late features
+
     
-        return {'late_feat': late_feat, 'mid_feat': late_feat}
+    def forward(self, x):       
+        _ = self.model(x)  # Forward pass through the model to trigger hooks
+               
+        # Extracted features are already stored in self.features
+        X_early = self.features.get('early') #? [batch_size, 16, 112, 112]
+        X_mid = self.features.get('mid') #? [batch_size, 80, 14, 14]
+        X_late = self.features.get('late') #? [batch_size, 352, 7, 7]
+    
+        return {'early': X_early, 'mid': X_mid, 'late': X_late}
     
 
 
 class efficientnet_b2(nn.Module):
-    def __init__(self, p_dropout):
-        super(efficientnet_b0, self).__init__()
+    def __init__(self):
+        super(efficientnet_b2, self).__init__()
         
-        self.p_dropout = p_dropout
-        
-        if args.pretrained:
-            self.model = models.efficientnet_b2(pretrained=False)
-            # Load the weights from the .pt file
-            checkpoint = torch.load('./models/pretrained_models/enet_b2_7.pt', map_location='cuda:0' if torch.cuda.is_available() else 'cpu')
-            self.model.load_state_dict(checkpoint)
-        else:    
-            self.model = models.efficientnet_b2(weights=EfficientNet_B2_Weights.DEFAULT) 
-        
-        self.feature_extractor = nn.Sequential(*list(self.model.children())[:-2]) #remove [avgpool layer, fc layer]
-        self.avgpool =  nn.Sequential(*list(self.model.children())[-2:-1]) #bring [avgpool layer]
-        
-        #? print model
-        # with open('FULL_b0.txt', 'w') as f:
-        #     f.write(str(self.model)) 
+        self.model = torch.load('./models/pretrained_models/enet_b2_7.pt', map_location='cuda:0' if torch.cuda.is_available() else 'cpu')
 
-    def forward(self, x):              
-        mid_feat = self.feature_extractor(x)
-        late_feat = self.avgpool(mid_feat).squeeze()
+        # #? print model
+        # with open('enet_b0_8_best_vgaf.txt', 'w') as f:
+        #     f.write(str(self.model)) 
         
-        return {'late_feat': late_feat, 'mid_feat': mid_feat}
+        # with open('INDEXES_enet_b2_7.txt', 'w') as f:
+        #     for idx, block in enumerate(self.model.blocks):
+        #         f.write(f'{idx}: {block}\n')
+            
+        self.features  = {}   
+        
+        # Define hooks to extract features from different layers
+        def get_features(name):
+            def hook(model, input, output):
+                self.features[name] = output
+            return hook    
+
+        # Registering hooks to the layers
+        self.model.blocks[0].register_forward_hook(get_features('early')) 
+        self.model.blocks[3].register_forward_hook(get_features('mid')) 
+        self.model.blocks[6].register_forward_hook(get_features('late')) 
+
+    
+    def forward(self, x):       
+        _ = self.model(x)  # Forward pass through the model to trigger hooks
+               
+        # Extracted features are already stored in self.features
+        X_early = self.features.get('early') #? [batch_size, 16, 112, 112]
+        X_mid = self.features.get('mid') #? [batch_size, 88, 14, 14]
+        X_late = self.features.get('late') #? [batch_size, 352, 7, 7]
+    
+        return {'early': X_early, 'mid': X_mid, 'late': X_late}
     
     

@@ -104,11 +104,11 @@ def main():
     logger.info("Instantiating models per modality")
     for m in args.modality:
         logger.info('{} Net\tModality: {}'.format(args.models[m].model, m))
-        models[m] = getattr(model_list, args.models[m].model)(args.models[m].dropout)
+        models[m] = getattr(model_list, args.models[m].model)()
     
     #?instanciate also the FUSION network
     logger.info('{} Net\tModality: {}'.format(args.models['FUSION'].model, 'FUSION'))
-    models['FUSION'] = getattr(model_list, args.models['FUSION'].model)(models['RGB'], models['DEPTH'], args.models[m].dropout)
+    models['FUSION'] = getattr(model_list, args.models['FUSION'].model)(models['RGB'], models['DEPTH'])
         
     #!Create  EmotionRecognition  object that wraps all the models for each modality    
     emotion_classifier = tasks.EmotionRecognition("emotion-classifier", 
@@ -350,8 +350,8 @@ def visualize_features(emotion_classifier, val_loader, device, real_iter):
                 _, features = emotion_classifier.forward(data)
 
             #?append, FUSION features for each new batch (for visualization), ordered by label
-            val_features.extend(features['late_feat'].cpu().numpy())
-            val_labels.extend(label.cpu().numpy())
+            val_features.extend(features['late'].numpy()) #.cpu().numpy()
+            val_labels.extend(label.numpy()) #.cpu().numpy()
                       
     #!plot features for each modality and for the fusion network
     stacked_features = np.vstack(val_features) #? Stack the list of arrays into a single 2D array
@@ -370,6 +370,7 @@ def visualize_features(emotion_classifier, val_loader, device, real_iter):
     plt.legend()
     plt.show()              
     plt.savefig(os.path.join('./Images/', f'Features_{real_iter}_iter.png'))
+
 
 def compute_gradcam(emotion_classifier, val_loader, device, real_iter):
     emotions = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5, 'surprise':6}
@@ -393,7 +394,7 @@ def compute_gradcam(emotion_classifier, val_loader, device, real_iter):
             
             if all(value is not None for value in class_images.values()):
                 break
-    
+            
     #! Compute Grad-CAM for a each image class
     for class_label, img in class_images.items():
         if img is not None:

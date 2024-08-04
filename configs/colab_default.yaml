@@ -9,7 +9,6 @@ logname: null
 models_dir: null 
 amp: ???  #automatic mixed precision
 profile: ??? # profile the training
-pretrained: ???
 N_val_visualize: ???
 
 train:
