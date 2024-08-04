@@ -350,8 +350,8 @@ def visualize_features(emotion_classifier, val_loader, device, real_iter):
                 _, features = emotion_classifier.forward(data)
 
             #?append, FUSION features for each new batch (for visualization), ordered by label
-            val_features.extend(features['late'].cpu().numpy()) #.cpu().numpy()
-            val_labels.extend(label.cpu().numpy()) #.cpu().numpy()
+            val_features.extend(features['late'].cpu().numpy()) 
+            val_labels.extend(label.cpu().numpy()) 
                       
     #!plot features for each modality and for the fusion network
     stacked_features = np.vstack(val_features) #? Stack the list of arrays into a single 2D array

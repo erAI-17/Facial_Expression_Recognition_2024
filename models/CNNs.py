@@ -71,15 +71,21 @@ class efficientnet_b2(nn.Module):
         self.model.blocks[3].register_forward_hook(get_features('mid')) 
         self.model.blocks[6].register_forward_hook(get_features('late')) 
 
+        self.feature_extractor = nn.Sequential(*list(self.model.children())[:-2]) #remove [avgpool layer, fc layer]
+        self.avgpool =  nn.Sequential(*list(self.model.children())[-2:-1]) #bring [avgpool layer]
+        
     
     def forward(self, x):       
-        _ = self.model(x)  # Forward pass through the model to trigger hooks
+        # X = self.model(x)  # Forward pass through the model to trigger hooks
                
-        # Extracted features are already stored in self.features
-        X_early = self.features.get('early') #? [batch_size, 16, 112, 112]
-        X_mid = self.features.get('mid') #? [batch_size, 88, 14, 14]
-        X_late = self.features.get('late') #? [batch_size, 352, 7, 7]
+        # # Extracted features are already stored in self.features
+        # X_early = self.features.get('early') #? [batch_size, 16, 112, 112]
+        # X_mid = self.features.get('mid') #? [batch_size, 88, 14, 14]
+        # X_late = self.features.get('late') #? [batch_size, 352, 7, 7]
     
-        return {'early': X_early, 'mid': X_mid, 'late': X_late}
-    
-    
+        # return {'early': X_early, 'mid': X_mid, 'late': X_late}
+              
+        mid_feat = self.feature_extractor(x)
+        late_feat = self.avgpool(mid_feat).squeeze()
+        
+        return {'mid': mid_feat, 'late': late_feat}
