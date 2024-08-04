@@ -368,8 +368,9 @@ def visualize_features(emotion_classifier, val_loader, device, real_iter):
     #? plot the features
     #plt.title(f'Features iteration {real_iter}')
     plt.legend()
-    plt.show()              
     plt.savefig(os.path.join('./Images/', f'Features_{real_iter}_iter.png'))
+    #plt.show()              
+    
 
 
 def compute_gradcam(emotion_classifier, val_loader, device, real_iter):
