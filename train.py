@@ -269,10 +269,10 @@ def train(emotion_classifier, train_loader, val_loader, device):
                 emotion_classifier.best_iter = real_iter
                 emotion_classifier.best_iter_score = val_metrics['top1']
                 
-            #! every N_val_visualize validations, alos visualize features and GRADCAM
-            if args.N_val_visualize != 0 and args.N_val_visualize is not None and real_iter % args.train.eval_freq*args.N_val_visualize==0:
+            #! every  N_val_visualize  validations, also visualize features and GRADCAM
+            if real_iter % (args.train.eval_freq*args.N_val_visualize)==0:
                 visualize_features(emotion_classifier, val_loader, device, int(real_iter))
-                #compute_gradcam(emotion_classifier, val_loader, device, int(real_iter))
+                compute_gradcam(emotion_classifier, val_loader, device, int(real_iter))
 
             emotion_classifier.save_model(real_iter, val_metrics['top1'], prefix=None)
             emotion_classifier.train(True) 
@@ -378,6 +378,7 @@ def compute_gradcam(emotion_classifier, val_loader, device, real_iter):
     emotions = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5, 'surprise':6}
     
     #!gradcam object
+    #feature exractor must produce features retaining some spatial info (must be a conv layer, cannot be an FC)
     gradcam  = GradCAM(emotion_classifier.models['FUSION'].module.rgb_model.feature_extractor , emotion_classifier.models['FUSION'].module.rgb_model.feature_extractor[-1] ) #*take the last layer of the RGB network
     
     # Dictionary to store one image per class

@@ -78,10 +78,12 @@ class EmotionRecognition(tasks.Task, ABC):
             optim_params[m] = filter(lambda parameter: parameter.requires_grad, self.models[m].parameters())
             
             #! Optimizers
-            if args.train.optimizer == 'ADAM':
+            if args.train.optimizer == 'ADAMW':
+                #!ADAMW
+                self.optimizer[m] = torch.optim.AdamW(optim_params[m], model_args[m].lr, weight_decay=model_args[m].weight_decay)
+            elif args.train.optimizer == 'ADAM':
                 #!ADAM
                 self.optimizer[m] = torch.optim.Adam(optim_params[m], model_args[m].lr, weight_decay=model_args[m].weight_decay)
-                #self.optimizer[m] = torch.optim.AdamW(optim_params[m], model_args[m].lr, weight_decay=model_args[m].weight_decay)
             elif args.train.optimizer == 'SGD':
                 #!SGD
                 self.optimizer[m] = torch.optim.SGD(optim_params[m], model_args[m].lr, momentum=0.9, weight_decay=model_args[m].weight_decay)
