@@ -47,24 +47,24 @@ class EmotionRecognition(tasks.Task, ABC):
         self.model_args = model_args
         self.class_weights = class_weights
         
-        #!self.accuracy and self.loss track the evolution of the accuracy and the training loss
+        #!self.accuracy and self.loss track the accuracy and the training loss
         self.accuracy = utils.Accuracy(topk=(1, 5))
         self.loss = utils.LossMeter()
         
         #!scaler for mixed precision 
         self.scaler = scaler
         
-        if args.loss_fn == 'CE':
+        if args.train.loss_fn == 'CE':
             #! CrossEntropyLoss (already reduce the loss over batch samples with MEAN to not make it dependent on the batch size)
             self.criterion = torch.nn.CrossEntropyLoss(weight=self.class_weights, reduction='mean')
-        elif args.loss_fn == 'Focal':    
+        elif args.train.loss_fn == 'Focal':    
             #!Focal Loss #dynamically scales the loss for each sample based on the prediction confidence.
             self.criterion = FocalLoss(alpha=1, gamma=2, reduction='mean')
-        elif args.loss_fn == 'CE_Center':    
+        elif args.train.loss_fn == 'CE_Center':    
             #!CEL+Center Loss 
             CE_loss = torch.nn.CrossEntropyLoss(weight=self.class_weights, reduction='mean')
-            Center_loss = CenterLoss()
-            lambda_center = 0.003
+            Center_loss = CenterLoss(feat_dim=1408) 
+            lambda_center = 5e-4
             self.optimizer_centers = torch.optim.SGD(Center_loss.parameters(), lr=0.5)  #alpha (lr) for class centers
             self.criterion = CE_Center_Criterion(CE_loss, Center_loss, lambda_center)
             
@@ -77,37 +77,42 @@ class EmotionRecognition(tasks.Task, ABC):
             #? includeed in gradient computation and NOT be updated because of PRE-TRAINING FREEZING
             optim_params[m] = filter(lambda parameter: parameter.requires_grad, self.models[m].parameters())
             
-            #? optim_params[m] : The parameters of the model  m  that require gradients. 
-            #? model_args[m].lr : Initial learning rate for the optimizer
-            #? weight_decay : The weight decay (L2 penalty) for the optimizer. 
-            #!ADAM
-
-            self.optimizer[m] = torch.optim.Adam(optim_params[m], model_args[m].lr, weight_decay=model_args[m].weight_decay)
-            #self.optimizer[m] = torch.optim.AdamW(optim_params[m], model_args[m].lr, weight_decay=model_args[m].weight_decay)
+            #! Optimizers
+            if args.train.optimizer == 'ADAM':
+                #!ADAM
+                self.optimizer[m] = torch.optim.Adam(optim_params[m], model_args[m].lr, weight_decay=model_args[m].weight_decay)
+                #self.optimizer[m] = torch.optim.AdamW(optim_params[m], model_args[m].lr, weight_decay=model_args[m].weight_decay)
+            elif args.train.optimizer == 'SGD':
+                #!SGD
+                self.optimizer[m] = torch.optim.SGD(optim_params[m], model_args[m].lr, momentum=0.9, weight_decay=model_args[m].weight_decay)
+                #self.optimizer[m] = torch.optim.SGD(optim_params[m], model_args[m].lr, momentum=0.9, weight_decay=model_args[m].weight_decay, nesterov=True)
             
             #!LR schedulers
-            #?warm up schedule
-            #warmup_iters = 3  # Number of iterations for warm-up
-            #warmup_start_lr = 1e-7  # Starting learning rate at the beginning of warm-up
-            #? start_factor: The factor by which the learning rate is multiplied at the beginning of the warm-up phase. 
-            #?So you are actually starting from 1e-7, going linearly to "model_args[m].lr" (over 20 iterations) and then cosine annealing start
-            #self.Warmup_scheduler[m] = torch.optim.lr_scheduler.LinearLR(self.optimizer[m], start_factor=warmup_start_lr/model_args[m].lr, total_iters=warmup_iters)
+            if args.train.scheduler == 'CosineAnnealing':    
+                #!Cosine Annealing 
+                self.scheduler[m] = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer[m], T_max=args.train.num_iter, eta_min=1e-6)
+            elif args.train.scheduler == 'StepLR':
+                #!Step
+                self.scheduler[m] = torch.optim.lr_scheduler.StepLR(self.optimizer[m], step_size=54.44*5, gamma=0.1) #every 5 epochs
+            elif args.train.scheduler == 'CosineAnnealingWarmRestarts':
+                #!CosineAnnealingWarmRestarts
+                self.scheduler[m] = CosineAnnealingWarmRestarts(self.optimizer[m], T_0=10, T_mult=2, eta_min=1e-6) #T_0=10 every 10 epochs, then every 20 epochs, 40 ...
+            elif args.train.scheduler == 'WarmupCosineAnnealing':
+                #!WarmupCosineAnnealing
+                self.CosineAnnealing[m] = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer[m], T_max=args.train.num_iter, eta_min=1e-6)  #- warmup_iters
+                
+                warmup_iters = 3  # Number of iterations for warm-up
+                warmup_start_lr = 1e-7  # Starting learning rate at the beginning of warm-up
+                #? start_factor: The factor by which the learning rate is multiplied at the beginning of the warm-up phase. 
+                #?So you are actually starting from 1e-7, going linearly to "model_args[m].lr" (over 20 iterations) and then cosine annealing start
+                self.Warmup_scheduler[m] = torch.optim.lr_scheduler.LinearLR(self.optimizer[m], start_factor=warmup_start_lr/model_args[m].lr, total_iters=warmup_iters)
 
-            #?Cosine Annealing 
-            self.scheduler[m] = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer[m], T_max=args.train.num_iter, eta_min=1e-6)  #- warmup_iters
+                #?milestones parameter receives [warmup_iters] to specify that the transition from the warm-up scheduler to the cosine annealing scheduler should occur after warmup_iters iterations.
+                self.scheduler[m] = torch.optim.lr_scheduler.SequentialLR(self.optimizer[m], schedulers=[self.Warmup_scheduler, self.CosineAnnealing], milestones=[warmup_iters])
+            elif args.train.scheduler == 'OneCycleLR':
+                #!OneCycleLR scheduler
+                self.scheduler[m] = OneCycleLR(self.optimizer[m], max_lr=model_args[m].lr, total_steps=args.train.num_iter, anneal_strategy='cos')
             
-            #? step
-            #self.scheduler[m] = torch.optim.lr_scheduler.StepLR(self.optimizer[m], step_size=54.44*5, gamma=0.1) #every 5 epochs
-            
-            #? CosineAnnealingWarmRestarts scheduler
-            #self.scheduler[m] = CosineAnnealingWarmRestarts(self.optimizer[m], T_0=10, T_mult=2, eta_min=1e-6) #T_0=10 every 10 epochs, then every 20 epochs, 40 ...
-
-            #?milestones parameter receives [warmup_iters] to specify that the transition from the warm-up scheduler to the cosine annealing scheduler should occur after warmup_iters iterations.
-            #self.scheduler[m] = torch.optim.lr_scheduler.SequentialLR(self.optimizer[m], schedulers=[self.Warmup_scheduler, self.CosineAnnealing], milestones=[warmup_iters])
-
-            #?OneCycleLR scheduler
-            #self.scheduler[m] = OneCycleLR(self.optimizer[m], max_lr=model_args[m].lr, total_steps=args.train.num_iter, anneal_strategy='cos')
-          
             
     def forward(self, data: Dict[str, torch.Tensor], **kwargs) -> Tuple[Dict[str, torch.Tensor], Dict[str, torch.Tensor]]:
         """Forward step of the task
@@ -185,9 +190,9 @@ class EmotionRecognition(tasks.Task, ABC):
             if self.scheduler[m] is not None:  
                 self.scheduler[m].step()
                 
-            #! If using center loss, perform the step with the center optimizer
-            if args.loss_fn == 'CE_Center':
-                self.optimizer_centers.step()
+        #! If using center loss, perform the step with the center optimizer
+        if args.train.loss_fn == 'CE_Center':
+            self.optimizer_centers.step()
             
         if args.amp: #! Update the scaler for the next iteration        
             self.scaler.update()

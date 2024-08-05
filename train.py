@@ -19,7 +19,7 @@ import models as model_list
 from torch.profiler import profile, ProfilerActivity 
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
-from matplotlib.cm import get_cmap
+from matplotlib import colormaps
 from torch.utils.tensorboard import SummaryWriter
 
 
@@ -360,19 +360,17 @@ def visualize_features(emotion_classifier, val_loader, device, real_iter):
     features_2d = tsne.fit_transform(stacked_features)
     
     val_labels = np.array(val_labels)
-    cmap = get_cmap('tab20c')
+    cmap = colormaps.get_cmap('tab10')
     for i, label in enumerate(emotions.keys()):
         mask = (val_labels == i)
-        plt.scatter(features_2d[:, 0][mask], features_2d[:, 1][mask], c=cmap(i), label=label)
+        plt.scatter(features_2d[:, 0][mask], features_2d[:, 1][mask], color=cmap(i), label=label)
     
     #? plot the features
     #plt.title(f'Features iteration {real_iter}')
     plt.legend()
     plt.savefig(os.path.join('./Images/', f'Features_{real_iter}_iter.png'))
     #plt.show()              
-    
-    #clear the plot 
-    plt.clf()
+    plt.clf() #clear the plot 
     
 
 
@@ -419,8 +417,10 @@ def compute_gradcam(emotion_classifier, val_loader, device, real_iter):
             plt.imshow(overlay_img)
             plt.title(f'Class: {list(emotions.keys())[list(emotions.values()).index(class_label)]}')
             plt.axis('off')
-            plt.show()
             plt.savefig(os.path.join('./Images/', f'GRADCAM_{emotions[class_label]}_{real_iter}_iter.png'))
+            #plt.show()
+            plt.clf()
+            
             
 if __name__ == '__main__': 
     main()
