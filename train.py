@@ -227,8 +227,8 @@ def train(emotion_classifier, train_loader, val_loader, device):
         with torch.autocast(device_type= ("cuda" if torch.cuda.is_available() else "cpu"), 
                             dtype=torch.float16,
                             enabled=args.amp): 
-            logits, _ = emotion_classifier.forward(data)
-            emotion_classifier.compute_loss(logits, source_label) #?internally, the scaler, scales the loss to avoid UNDERFLOW of the gradient (too small gradients) since they will  be computed in FP16 (half precision)
+            logits, features = emotion_classifier.forward(data)
+            emotion_classifier.compute_loss(logits, source_label, features['late']) #?internally, the scaler, scales the loss to avoid UNDERFLOW of the gradient (too small gradients) since they will  be computed in FP16 (half precision)
         if profiler:
             profiler.step() #!update profiler  
             profiler.stop() #!stop profiler   

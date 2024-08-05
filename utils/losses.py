@@ -6,6 +6,19 @@ from utils.args import args
 import torchaudio.transforms as T
 import models as model_list
 
+class CE_Center_Criterion(nn.Module):
+    def __init__(self, ce_loss=None, center_loss=None, lambda_center=0.1):
+        super(CE_Center_Criterion, self).__init__()
+        self.ce_loss = ce_loss
+        self.center_loss = center_loss
+        self.lambda_center = lambda_center
+
+    def forward(self, logits, labels, features):
+        ce_loss_value = self.ce_loss(logits, labels)
+        center_loss_value = self.center_loss(features, labels)
+        total_loss = ce_loss_value + self.lambda_center/2 * center_loss_value
+        return total_loss
+
 #!!!FOCAL LOSS
 class FocalLoss(nn.Module):
     def __init__(self,
@@ -57,33 +70,32 @@ class FocalLoss(nn.Module):
 
 #!CENTER LOSS
 class CenterLoss(nn.Module):
-    """Center loss.
-    Args:
-        num_classes (int): number of classes.
-        feat_dim (int): feature dimension.
-    """
-    def __init__(self, feat_dim=2, use_gpu=True):
+    def __init__(self):
         super(CenterLoss, self).__init__()
-        num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
-        self.num_classes = num_classes
-        self.feat_dim = feat_dim
-        self.use_gpu = use_gpu
-
-        if self.use_gpu:
-            self.centers = nn.Parameter(torch.randn(self.num_classes, self.feat_dim).cuda())
-        else:
-            self.centers = nn.Parameter(torch.randn(self.num_classes, self.feat_dim))
+        self.num_classes, _ = utils.utils.get_domains_and_labels(args)
+        self.use_gpu = True if torch.cuda.is_available() else False
+        self.centers = None
 
     def forward(self, x, labels):
         """
         Args:
-            x: feature matrix with shape (batch_size, feat_dim).
+            x: feature matrix (batch_size, feat_dim).
             labels: ground truth labels with shape (batch_size).
         """
-        batch_size = x.size(0)
+        batch_size, feat_dim = x.size()
+        
+        # Initialize centers if not already done
+        if self.centers is None or self.centers.size(1) != feat_dim:
+            if self.use_gpu:
+                self.centers = nn.Parameter(torch.randn(self.num_classes, feat_dim).cuda())
+            else:
+                self.centers = nn.Parameter(torch.randn(self.num_classes, feat_dim))
+        
+        # Compute the distance between features and centers
+        #?||x - c||^2 = ||x||^2 + ||c||^2 - (2 * x * c)
         distmat = torch.pow(x, 2).sum(dim=1, keepdim=True).expand(batch_size, self.num_classes) + \
                   torch.pow(self.centers, 2).sum(dim=1, keepdim=True).expand(self.num_classes, batch_size).t()
-        distmat.addmm_(1, -2, x, self.centers.t())
+        distmat.addmm_(1, -2, x, self.centers.t()) #? add and mult (-2 * x * c)
 
         classes = torch.arange(self.num_classes).long()
         if self.use_gpu: classes = classes.cuda()
@@ -91,7 +103,7 @@ class CenterLoss(nn.Module):
         mask = labels.eq(classes.expand(batch_size, self.num_classes))
 
         dist = distmat * mask.float()
-        loss = dist.clamp(min=1e-12, max=1e+12).sum() / batch_size
+        loss = dist.clamp(min=1e-12, max=1e+12).mean() #? sum over batch_size and compute mean
 
         return loss
     

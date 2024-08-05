@@ -6,7 +6,7 @@ import tasks
 import numpy as np
 from typing import Dict, Tuple
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts, OneCycleLR
-from utils.losses import FocalLoss, CenterLoss
+from utils.losses import FocalLoss, CenterLoss, CE_Center_Criterion
 from utils.args import args
 
 
@@ -54,18 +54,20 @@ class EmotionRecognition(tasks.Task, ABC):
         #!scaler for mixed precision 
         self.scaler = scaler
         
-        #! CrossEntropyLoss (already reduce the loss over batch samples with MEAN to not make it dependent on the batch size)
-        #self.criterion = torch.nn.CrossEntropyLoss(weight=None, size_average=None, ignore_index=-100, reduce=None, reduction='mean')
-        
-        #!Weighted CEL
-        self.criterion = torch.nn.CrossEntropyLoss(weight=self.class_weights, size_average=None, ignore_index=-100, reduce=None, reduction='mean')
-        
-        #!Focal Loss #dynamically scales the loss for each sample based on the prediction confidence.
-        #self.criterion = FocalLoss(alpha=1, gamma=2, reduction='mean')
-        
-        #!CEL+Center Loss 
-        #self.criterion = CEL_CL_Loss(alpha=1, gamma=2, reduction='mean')
-        
+        if args.loss_fn == 'CE':
+            #! CrossEntropyLoss (already reduce the loss over batch samples with MEAN to not make it dependent on the batch size)
+            self.criterion = torch.nn.CrossEntropyLoss(weight=self.class_weights, reduction='mean')
+        elif args.loss_fn == 'Focal':    
+            #!Focal Loss #dynamically scales the loss for each sample based on the prediction confidence.
+            self.criterion = FocalLoss(alpha=1, gamma=2, reduction='mean')
+        elif args.loss_fn == 'CE_Center':    
+            #!CEL+Center Loss 
+            CE_loss = torch.nn.CrossEntropyLoss(weight=self.class_weights, reduction='mean')
+            Center_loss = CenterLoss()
+            lambda_center = 0.003
+            self.optimizer_centers = torch.optim.SGD(Center_loss.parameters(), lr=0.5)  #alpha (lr) for class centers
+            self.criterion = CE_Center_Criterion(CE_loss, Center_loss, lambda_center)
+            
         # Initialize the model parameters and the optimizer
         optim_params = {}
         self.optimizer = {}
@@ -126,7 +128,7 @@ class EmotionRecognition(tasks.Task, ABC):
         return logits, features
 
 
-    def compute_loss(self, logits: torch.Tensor, label: torch.Tensor):
+    def compute_loss(self, logits: torch.Tensor, label: torch.Tensor, features: torch.Tensor = None):
         """Compute the classification loss.
 
         Parameters
@@ -134,10 +136,11 @@ class EmotionRecognition(tasks.Task, ABC):
         logits : final logits
         label : torch.Tensor
             ground truth
-        loss_weight : float, optional
-            weight of the classification loss, by default 1.0
         """
-        loss = self.criterion(logits, label)
+        if isinstance(self.criterion, CE_Center_Criterion):
+            loss = self.criterion(logits, label, features)
+        else:
+            loss = self.criterion(logits, label)
         
         #? Update the loss value, weighting it by the ratio of the batch size to the total batch size (because of gradient accumulation)
         #? loss is already reduced (over batch samples) with MEAN to not make it dependent on the batch size
@@ -181,6 +184,10 @@ class EmotionRecognition(tasks.Task, ABC):
             # Perform the step with the scheduler (if any)
             if self.scheduler[m] is not None:  
                 self.scheduler[m].step()
+                
+            #! If using center loss, perform the step with the center optimizer
+            if args.loss_fn == 'CE_Center':
+                self.optimizer_centers.step()
             
         if args.amp: #! Update the scaler for the next iteration        
             self.scaler.update()
