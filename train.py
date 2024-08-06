@@ -5,7 +5,6 @@ import numpy as np
 import os
 import wandb
 
-
 from utils.logger import logger
 from utils.utils import pformat_dict
 from utils.utils import compute_class_weights
@@ -271,7 +270,7 @@ def train(emotion_classifier, train_loader, val_loader, device):
                 
             #! every  N_val_visualize  validations, also visualize features and GRADCAM
             if real_iter % (args.train.eval_freq*args.N_val_visualize)==0:
-                visualize_features(emotion_classifier, val_loader, device, int(real_iter))
+                #visualize_features(emotion_classifier, val_loader, device, int(real_iter))
                 compute_gradcam(emotion_classifier, val_loader, device, int(real_iter))
 
             emotion_classifier.save_model(real_iter, val_metrics['top1'], prefix=None)
@@ -376,10 +375,10 @@ def visualize_features(emotion_classifier, val_loader, device, real_iter):
 
 def compute_gradcam(emotion_classifier, val_loader, device, real_iter):
     emotions = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5, 'surprise':6}
-    
+    reverse_emotions = {v: k for k, v in emotions.items()}
     #!gradcam object
     #feature exractor must produce features retaining some spatial info (must be a conv layer, cannot be an FC)
-    gradcam  = GradCAM(emotion_classifier.models['FUSION'].module.rgb_model.feature_extractor , emotion_classifier.models['FUSION'].module.rgb_model.feature_extractor[-1] ) #*take the last layer of the RGB network
+    gradcam  = GradCAM(emotion_classifier.models['FUSION'].module.rgb_model.feature_extractor , emotion_classifier.models['FUSION'].module.rgb_model.feature_extractor[-1] ) 
     
     # Dictionary to store one image per class
     class_images = {label: None for label in emotions.values()}
@@ -418,7 +417,7 @@ def compute_gradcam(emotion_classifier, val_loader, device, real_iter):
             plt.imshow(overlay_img)
             plt.title(f'Class: {list(emotions.keys())[list(emotions.values()).index(class_label)]}')
             plt.axis('off')
-            plt.savefig(os.path.join('./Images/', f'GRADCAM_{emotions[class_label]}_{real_iter}_iter.png'))
+            plt.savefig(os.path.join('./Images/', f'GRADCAM_{reverse_emotions[class_label]}_{real_iter}_iter.png'))
             #plt.show()
             plt.clf()
             

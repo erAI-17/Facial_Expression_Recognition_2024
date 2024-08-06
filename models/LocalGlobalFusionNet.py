@@ -15,8 +15,8 @@ class GlobalAttention_Module(nn.Module):
       
       #? GLOBAL context layers
       self.conv1G = nn.Conv2d(self.C, self.C // reduction_ratio, kernel_size=1, padding=0)
-      self.conv2G = nn.Conv2d(self.C // reduction_ratio, 1, kernel_size=1, padding=0)
       self.bnG1 = nn.BatchNorm2d(self.C // reduction_ratio)
+      self.conv2G = nn.Conv2d(self.C // reduction_ratio, 1, kernel_size=1, padding=0)
       self.bnG2 = nn.BatchNorm2d(1)
  
    def forward(self, X_fused):
@@ -66,15 +66,15 @@ class LocalGlobalFusionNet(nn.Module):
       
       self.num_patches = 7 #?num_patches on 1 dimension, tot num patches: 7 x 7
       self.patch_size = {}
-      self.W_RGB = nn.ModuleDict()
-      self.W_D = nn.ModuleDict()
+      self.Att_map_RGB = nn.ModuleDict()
+      self.Att_map_D = nn.ModuleDict()
       self.LocalAttention_Module = nn.ModuleDict()
       self.GlobalAttention_Module = nn.ModuleDict()
       self.proj_layers = nn.ModuleDict()
       
       for stage in self.stages.keys():
-            self.W_RGB[stage] = nn.Conv2d(self.stages[stage][0], self.stages[stage][0], kernel_size=1, bias=False)
-            self.W_D[stage] = nn.Conv2d(self.stages[stage][0], self.stages[stage][0], kernel_size=1, bias=False)
+            self.Att_map_RGB[stage] = nn.Conv2d(self.stages[stage][0], self.stages[stage][0], kernel_size=1, bias=False)
+            self.Att_map_D[stage] = nn.Conv2d(self.stages[stage][0], self.stages[stage][0], kernel_size=1, bias=False)
             #self.LocalAttention_Module[stage] = LocalAttention_Module(self.stages[stage][0])
             #self.GlobalAttention_Module[stage] = GlobalAttention_Module(self.stages[stage][0])
             
@@ -106,7 +106,7 @@ class LocalGlobalFusionNet(nn.Module):
       X_fused = {}            
       
       for stage in self.stages.keys():
-         X_fused[stage] = self.W_RGB[stage](X_rgb[stage]) + self.W_D[stage](X_depth[stage])
+         X_fused[stage] = torch.sigmoid(self.Att_map_RGB[stage](X_rgb[stage]))*X_rgb[stage] + torch.sigmoid(self.Att_map_D[stage](X_depth[stage]))*X_depth[stage]
          #X_fused[stage] = X_fused[stage] + X_fused[stage] * self.LocalAttention_Module[stage](X_fused[stage])
          #X_fused[stage] = X_fused[stage] * self.GlobalAttention_Module[stage](X_fused[stage])
         
