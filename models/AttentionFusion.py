@@ -52,8 +52,8 @@ class AttentionFusion1D(nn.Module):
          self.C = 1408
 
       #? Attention Convolutions
-      self.Att_map_rgb = nn.Conv2d(self.C, 1, kernel_size=1, padding=0)
-      self.Att_map_depth = nn.Conv2d(self.C, 1, kernel_size=1, padding=0)
+      self.Att_map_rgb = nn.Linear(self.C, self.C)
+      self.Att_map_depth = nn.Linear(self.C, self.C)
       
       #?final classifier
       self.fc = nn.Linear(self.C , num_classes) 
