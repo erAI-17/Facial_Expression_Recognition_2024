@@ -54,7 +54,7 @@ class RGBTransform:
             resizing = [transforms.Resize((288, 288), interpolation=transforms.InterpolationMode.BICUBIC)]
         
         
-        transformations = resizing + augmentations + to_tensor #?+ normalization       
+        transformations = resizing + augmentations + to_tensor + normalization       
         self.transform = transforms.Compose(transformations)
     
     def __call__(self, img):
@@ -93,7 +93,7 @@ class DEPTHTransform:
         if args.models['DEPTH'].model == 'DEPTH_efficientnet_b2':
             resizing = [transforms.Resize((288, 288), interpolation=transforms.InterpolationMode.BICUBIC)]
         
-        transformations = resizing + augmentations + to_tensor #?+ normalization  
+        transformations = resizing + augmentations + to_tensor + normalization  
         self.transform = transforms.Compose(transformations)
     
     def __call__(self, img):

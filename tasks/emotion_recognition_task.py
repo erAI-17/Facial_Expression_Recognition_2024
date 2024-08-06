@@ -63,8 +63,8 @@ class EmotionRecognition(tasks.Task, ABC):
         elif args.train.loss_fn == 'CE_Center':    
             #!CEL+Center Loss 
             CE_loss = torch.nn.CrossEntropyLoss(weight=self.class_weights, reduction='mean')
-            Center_loss = CenterLoss(feat_dim=1408) 
-            lambda_center = 5e-4
+            Center_loss = CenterLoss(feat_dim=1408) #1408 #2816 
+            lambda_center = 3e-3 #5e-4 #3e-3
             self.optimizer_centers = torch.optim.SGD(Center_loss.parameters(), lr=0.5)  #alpha (lr) for class centers
             self.criterion = CE_Center_Criterion(CE_loss, Center_loss, lambda_center)
             

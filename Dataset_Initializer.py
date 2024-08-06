@@ -86,7 +86,7 @@ def train_test_annotations(test_size):
                         sum_pix[m] += np.sum(img, axis=(0, 1))
                         sum_sq_pix[m] += np.sum(img ** 2, axis=(0, 1))
                         
-                        # Create a mask for each channel where pixel values are greater than the threshold
+                        # Create a mask for each channel where pixel values are greater than the threshold=0 (to avoid balck frame pixels)
                         mask = (img[:, :, 0] > 0) & (img[:, :, 1] >  0) & (img[:, :, 2] > 0)
                         #mask off 0 values (black pixels) in the frame, from each channel
                         img = img[mask]
