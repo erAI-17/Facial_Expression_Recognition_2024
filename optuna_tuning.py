@@ -112,8 +112,11 @@ def validate(emotion_classifier, val_loader, device, epoch):
     return {'top1': emotion_classifier.accuracy.avg[1], 'top5': emotion_classifier.accuracy.avg[5]}
 
 if __name__ == "__main__":
-    study = optuna.create_study(direction='maximize')
-    study.optimize(objective, n_trials=100, timeout=600)
+    # Save the study to a file
+    study_name = 'example_study'  # Unique identifier for the study
+    storage_name = f'sqlite:///{study_name}.db'
+    study = optuna.create_study(study_name=study_name, storage=storage_name, load_if_exists=True)
+    study.optimize(objective, n_trials=100)    
 
     print("Best trial:")
     trial = study.best_trial
@@ -123,3 +126,5 @@ if __name__ == "__main__":
     print("  Params: ")
     for key, value in trial.params.items():
         print("    {}: {}".format(key, value))
+        
+    
