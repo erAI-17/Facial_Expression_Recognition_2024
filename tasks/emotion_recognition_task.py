@@ -64,14 +64,14 @@ class EmotionRecognition(tasks.Task, ABC):
             #!CEL+Center Loss 
             self.CE_loss = torch.nn.CrossEntropyLoss(weight=self.class_weights, reduction='mean')
             self.Center_loss = CenterLoss(feat_dim=1408) #1408 #2816 
-            self.lambda_center = 3e-3 #5e-4/2 #3e-3/2
+            self.lambda_center = 3e-3/2 #5e-4/2 #3e-3/2
             self.optimizer_centers = torch.optim.SGD(self.Center_loss.parameters(), lr=0.5)  #alpha (lr) for class centers
             self.criterion = CE_Center_Criterion(self.CE_loss, self.Center_loss, self.lambda_center)
         elif args.train.loss_fn == 'CE_Center_Island':
             #!CEL+Center Loss + Island Loss
             self.CE_loss = torch.nn.CrossEntropyLoss(weight=self.class_weights, reduction='mean')
             self.Island_loss = IslandLoss(feat_dim=1408)
-            self.lambda_global = 3e-3 #5e-4/2 #3e-3/2
+            self.lambda_global = 3e-3/2 #5e-4/2 #3e-3/2
             self.lambda_island = 0.1
             self.optimizer_centers = torch.optim.SGD(self.Island_loss.parameters(), lr=0.5)  #alpha (lr) for class centers
             self.criterion = CE_Center_Island_Criterion(self.CE_loss, self.Island_loss, self.lambda_global, self.lambda_island)

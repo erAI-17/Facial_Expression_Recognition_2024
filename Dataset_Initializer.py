@@ -71,7 +71,7 @@ def train_test_annotations(test_size):
                         mask = (img[:, :, 0] > 0) | (img[:, :, 1] >  0) | (img[:, :, 2] > 0)
                         #mask off 0 values (black pixels) in the frame, from each channel
                         img = img[mask]
-                        n_pix[m] += img.shape[0] #mask converts into a 2D array
+                        n_pix[m] += mask.sum() #mask converts into a 2D array
                         
                     elif m == 'Depth':
                         img = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)
@@ -90,11 +90,11 @@ def train_test_annotations(test_size):
                         mask = (img[:, :, 0] > 0) | (img[:, :, 1] >  0) | (img[:, :, 2] > 0)
                         #mask off 0 values (black pixels) in the frame, from each channel
                         img = img[mask]
-                        n_pix[m] += img.shape[0] #mask converts into a 2D array
+                        n_pix[m] += mask.sum() #mask converts into a 2D array
                                         
     # Average mean and std over the number of samples
     for m in ['Color', 'Depth']:
-        mean[m] = sum_pix[m]/n_pix[m]
+        mean[m] = sum_pix[m] / n_pix[m]
         std[m] = np.sqrt(sum_sq_pix[m] / n_pix[m] - mean[m] ** 2)
 
             

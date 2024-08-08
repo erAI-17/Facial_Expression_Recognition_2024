@@ -45,8 +45,8 @@ class RGBTransform:
         if augment:
             augmentations = [
             transforms.RandomHorizontalFlip(),
-            transforms.RandomRotation(5),
-            #transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1), 
+            transforms.RandomRotation(10),
+            transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1), 
             #transforms.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5)), #simulates out of focus
             #transforms.RandomErasing(scale=(0.02, 0.25), ratio=(0.5, 2.0)) #simulates occlusions
             ]
@@ -87,7 +87,7 @@ class DEPTHTransform:
         if augment:
             augmentations = [
                 transforms.RandomHorizontalFlip(),
-                transforms.RandomRotation(5),
+                transforms.RandomRotation(10),
                 #transforms.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5)),
                 #transforms.RandomErasing(scale=(0.02, 0.25), ratio=(0.5, 2.0))
             ]
