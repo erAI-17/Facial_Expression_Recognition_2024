@@ -73,8 +73,8 @@ class LocalGlobalFusionNet(nn.Module):
       self.proj_layers = nn.ModuleDict()
       
       for stage in self.stages.keys():
-            self.Att_map_RGB[stage] = nn.Conv2d(self.stages[stage][0], 1, kernel_size=1, bias=False) #1 #self.stages[stage][0]
-            self.Att_map_D[stage] = nn.Conv2d(self.stages[stage][0], 1, kernel_size=1, bias=False)
+            self.Att_map_RGB[stage] = nn.Conv2d(self.stages[stage][0], self.stages[stage][0], kernel_size=1, bias=False) #1 #self.stages[stage][0]
+            self.Att_map_D[stage] = nn.Conv2d(self.stages[stage][0], self.stages[stage][0], kernel_size=1, bias=False)
             #self.LocalAttention_Module[stage] = LocalAttention_Module(self.stages[stage][0])
             #self.GlobalAttention_Module[stage] = GlobalAttention_Module(self.stages[stage][0])
             

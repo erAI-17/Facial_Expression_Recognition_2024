@@ -6,7 +6,7 @@ import tasks
 import numpy as np
 from typing import Dict, Tuple
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts, OneCycleLR
-from utils.losses import FocalLoss, CenterLoss, CE_Center_Criterion
+from utils.losses import FocalLoss, CenterLoss, IslandLoss, CE_Center_Criterion, CE_Center_Island_Criterion
 from utils.args import args
 
 
@@ -62,11 +62,20 @@ class EmotionRecognition(tasks.Task, ABC):
             self.criterion = FocalLoss(alpha=1, gamma=2, reduction='mean')
         elif args.train.loss_fn == 'CE_Center':    
             #!CEL+Center Loss 
-            CE_loss = torch.nn.CrossEntropyLoss(weight=self.class_weights, reduction='mean')
-            Center_loss = CenterLoss(feat_dim=1408) #1408 #2816 
-            lambda_center = 3e-3 #5e-4 #3e-3
-            self.optimizer_centers = torch.optim.SGD(Center_loss.parameters(), lr=0.5)  #alpha (lr) for class centers
-            self.criterion = CE_Center_Criterion(CE_loss, Center_loss, lambda_center)
+            self.CE_loss = torch.nn.CrossEntropyLoss(weight=self.class_weights, reduction='mean')
+            self.Center_loss = CenterLoss(feat_dim=1408) #1408 #2816 
+            self.lambda_center = 3e-3 #5e-4/2 #3e-3/2
+            self.optimizer_centers = torch.optim.SGD(self.Center_loss.parameters(), lr=0.5)  #alpha (lr) for class centers
+            self.criterion = CE_Center_Criterion(self.CE_loss, self.Center_loss, self.lambda_center)
+        elif args.train.loss_fn == 'CE_Center_Island':
+            #!CEL+Center Loss + Island Loss
+            self.CE_loss = torch.nn.CrossEntropyLoss(weight=self.class_weights, reduction='mean')
+            self.Island_loss = IslandLoss(feat_dim=1408)
+            self.lambda_global = 3e-3 #5e-4/2 #3e-3/2
+            self.lambda_island = 0.1
+            self.optimizer_centers = torch.optim.SGD(self.Island_loss.parameters(), lr=0.5)  #alpha (lr) for class centers
+            self.criterion = CE_Center_Island_Criterion(self.CE_loss, self.Island_loss, self.lambda_global, self.lambda_island)
+            
             
         # Initialize the model parameters and the optimizer
         optim_params = {}
@@ -194,6 +203,9 @@ class EmotionRecognition(tasks.Task, ABC):
                 
         #! If using center loss, perform the step with the center optimizer
         if args.train.loss_fn == 'CE_Center':
+            #don't want the lambda_center to affect the gradients of the loss with respect to the centers, so rescale back the gradients
+            for param in self.Center_loss.parameters():
+                param.grad.data *= (1. / self.lambda_center) 
             self.optimizer_centers.step()
             
         if args.amp: #! Update the scaler for the next iteration        
@@ -222,6 +234,15 @@ class EmotionRecognition(tasks.Task, ABC):
         """Reset the gradient when gradient accumulation is finished."""
         for m in self.modalities:
             self.optimizer[m].zero_grad(set_to_none=True)
+        
+        if args.train.loss_fn == 'CE_Center':
+            self.optimizer_centers.zero_grad(set_to_none=True)
+            
+        if args.train.loss_fn == 'CE_Center_Island':
+            self.optimizer_centers.zero_grad(set_to_none=True)
+            self.optimizer_island.zero_grad(set_to_none=True)
+        
+        
             
             
     def grad_clip(self):

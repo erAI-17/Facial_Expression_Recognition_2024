@@ -48,7 +48,7 @@ def train_test_annotations(test_size):
                     
                     
                     new_entry = [dataset, subj_id, code, description_label, emotions[description_label], add]
-                    if new_entry not in data:
+                    if new_entry not in data: #avoid duplicates (same sample with different modalities)
                         data.append([dataset, subj_id, code, description_label, emotions[description_label], add])
 
                     #!update class distribution
@@ -64,14 +64,14 @@ def train_test_annotations(test_size):
                         img = img / 255.0  # Normalize to [0, 1]
                         
                         #!update mean and std
-                        sum_pix[m] += np.sum(img, axis=(0, 1))
+                        sum_pix[m] += np.sum(img, axis=(0, 1)) #sum all pixels in the image, separately for each channel (black pixels are 0)
                         sum_sq_pix[m] += np.sum(img ** 2, axis=(0, 1))
                        
-                        # Create a mask where all three channels are below the threshold
-                        mask = (img[:, :, 0] > 0) & (img[:, :, 1] >  0) & (img[:, :, 2] > 0)
+                        # Create a mask to maintain only pixels where all three channels are below the threshold
+                        mask = (img[:, :, 0] > 0) | (img[:, :, 1] >  0) | (img[:, :, 2] > 0)
                         #mask off 0 values (black pixels) in the frame, from each channel
                         img = img[mask]
-                        n_pix[m] += img.shape[0] #mask converts into a 1D array
+                        n_pix[m] += img.shape[0] #mask converts into a 2D array
                         
                     elif m == 'Depth':
                         img = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)
@@ -80,17 +80,17 @@ def train_test_annotations(test_size):
                         
                         max_depth = max(max_depth, img.max()) #!get max depth before normalization
                         
-                        img = img / 9785.0  # Normalize to [0, 1]
+                        img = img / 9785.0  # Normalize to [0, 1] using max_depth=9785
                         
                         #!update mean and std
                         sum_pix[m] += np.sum(img, axis=(0, 1))
                         sum_sq_pix[m] += np.sum(img ** 2, axis=(0, 1))
                         
                         # Create a mask for each channel where pixel values are greater than the threshold=0 (to avoid balck frame pixels)
-                        mask = (img[:, :, 0] > 0) & (img[:, :, 1] >  0) & (img[:, :, 2] > 0)
+                        mask = (img[:, :, 0] > 0) | (img[:, :, 1] >  0) | (img[:, :, 2] > 0)
                         #mask off 0 values (black pixels) in the frame, from each channel
                         img = img[mask]
-                        n_pix[m] += img.shape[0] #mask converts into a 1D array
+                        n_pix[m] += img.shape[0] #mask converts into a 2D array
                                         
     # Average mean and std over the number of samples
     for m in ['Color', 'Depth']:

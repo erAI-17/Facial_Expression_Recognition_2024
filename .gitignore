@@ -8,5 +8,6 @@ configs/local_default.yaml
 models/__pycache__/
 tasks/__pycache__/
 utils/__pycache__/
+.vscode
 logs/*
 *pyc

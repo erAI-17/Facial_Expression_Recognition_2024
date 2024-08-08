@@ -8,8 +8,8 @@ import cv2
 ImageNet_mean = [0.485, 0.456, 0.406] 
 ImageNet_std = [0.229, 0.224, 0.225]
 
-Calder_Mendes_mean_RGB = [0.4995032053305857, 0.3682551044795388, 0.32203149433857986]
-Calder_Mendes_std_RGB = [0.26163392534341473, 0.2138249487001331, 0.21422498153220476]
+Calder_Mendes_mean_RGB = [0.499013695404109, 0.3678942168471979, 0.3217159055466871]
+Calder_Mendes_std_RGB = [0.26197232721001346, 0.21403053699700778, 0.2143569416789142]
 Calder_Mendes_mean_DEPTH = [0.36479503953065234, 0.36479503953065234, 0.36479503953065234]
 Calder_Mendes_std_DEPTH = [0.06903268, 0.06903268, 0.06903268]
    
@@ -30,10 +30,12 @@ class ToTensorUint16:
         img_tensor = torch.from_numpy(img_np).permute(2, 0, 1)
         return img_tensor
         
+        
 class RGBTransform:
     def __init__(self, augment=False):
         to_tensor = [
-            transforms.ToTensor(), #normalize to [0,1]
+                transforms.ToImage(), #transform to PIL image
+                transforms.ToDtype(torch.float32, scale=True) #convert to float32 and scale to [0,1] (deviding by 255)
         ]
         normalization = [
             transforms.Normalize(mean=Calder_Mendes_mean_RGB, std=Calder_Mendes_std_RGB)  # Normalize the tensor to [-1,1]
@@ -56,10 +58,11 @@ class RGBTransform:
         
         transformations = resizing + augmentations + to_tensor + normalization       
         self.transform = transforms.Compose(transformations)
-    
+            
     def __call__(self, img):
         # Convert the image from BGR to RGB
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                
         # Convert NumPy array to PIL Image
         if isinstance(img, np.ndarray):
             img = Image.fromarray(img)
