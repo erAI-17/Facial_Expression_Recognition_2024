@@ -207,6 +207,11 @@ class EmotionRecognition(tasks.Task, ABC):
             for param in self.Center_loss.parameters():
                 param.grad.data *= (1. / self.lambda_center) 
             self.optimizer_centers.step()
+        elif args.train.loss_fn == 'CE_Island':
+            #don't want the lambda_global to affect the gradients of the loss with respect to the centers, so rescale back the gradients
+            for param in self.Island_loss.parameters():
+                param.grad.data *= (1. / self.lambda_global) 
+            self.optimizer_centers.step()
             
         if args.amp: #! Update the scaler for the next iteration        
             self.scaler.update()
@@ -235,16 +240,9 @@ class EmotionRecognition(tasks.Task, ABC):
         for m in self.modalities:
             self.optimizer[m].zero_grad(set_to_none=True)
         
-        if args.train.loss_fn == 'CE_Center':
+        if args.train.loss_fn == 'CE_Center' or args.train.loss_fn == 'CE_Island':
             self.optimizer_centers.zero_grad(set_to_none=True)
-            
-        if args.train.loss_fn == 'CE_Center_Island':
-            self.optimizer_centers.zero_grad(set_to_none=True)
-            self.optimizer_island.zero_grad(set_to_none=True)
-        
-        
-            
-            
+                  
     def grad_clip(self):
         """Clip the gradients to avoid exploding gradients."""
         for m in self.modalities:

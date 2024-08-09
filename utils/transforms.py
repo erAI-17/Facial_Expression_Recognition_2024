@@ -12,7 +12,7 @@ Calder_Mendes_mean_RGB = [0.499013695404109, 0.3678942168471979, 0.3217159055466
 Calder_Mendes_std_RGB = [0.26197232721001346, 0.21403053699700778, 0.2143569416789142]
 Calder_Mendes_mean_DEPTH = [0.36479503953065234, 0.36479503953065234, 0.36479503953065234]
 Calder_Mendes_std_DEPTH = [0.06903268, 0.06903268, 0.06903268]
-   
+
 class ToTensorUint16:
     def __call__(self, img):
         # Convert image to numpy array
@@ -33,31 +33,32 @@ class ToTensorUint16:
         
 class RGBTransform:
     def __init__(self, augment=False):
-        to_tensor = [
+        self.to_tensor = [
                 transforms.ToImage(), #transform to PIL image
-                transforms.ToDtype(torch.float32, scale=True) #convert to float32 and scale to [0,1] (deviding by 255)
+                transforms.ToDtype(torch.float32, scale=True), #convert to float32 and scale to [0,1] (deviding by 255)
         ]
-        normalization = [
-            transforms.Normalize(mean=Calder_Mendes_mean_RGB, std=Calder_Mendes_std_RGB)  # Normalize the tensor to [-1,1]
+        self.normalization = [
+            transforms.Normalize(mean=Calder_Mendes_mean_RGB, std=Calder_Mendes_std_RGB),  # Normalize the tensor to [-1,1]
         ]
         
-        augmentations = []
+        self.augmentations = []
         if augment:
             augmentations = [
             transforms.RandomHorizontalFlip(),
             transforms.RandomRotation(10),
             transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1), 
             #transforms.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5)), #simulates out of focus
-            #transforms.RandomErasing(scale=(0.02, 0.25), ratio=(0.5, 2.0)) #simulates occlusions
+            #transforms.RandomErasing(scale=(0.02, 0.25), ratio=(0.5, 2.0)), #simulates occlusions
             ]
    
-        resizing = []    
+        self.resizing = []    
         if args.models['RGB'].model == 'RGB_efficientnet_b2':
-            resizing = [transforms.Resize((288, 288), interpolation=transforms.InterpolationMode.BICUBIC)]
+            resizing = [transforms.Resize((288, 288), interpolation=transforms.InterpolationMode.BICUBIC),
+                        ]
         
         
-        transformations = resizing + augmentations + to_tensor + normalization       
-        self.transform = transforms.Compose(transformations)
+        self.transformations = self.resizing + self.augmentations + self.to_tensor + self.normalization    
+        self.transform = transforms.Compose(self.transformations)
             
     def __call__(self, img):
         # Convert the image from BGR to RGB
@@ -75,29 +76,30 @@ class RGBTransform:
 class DEPTHTransform:
     def __init__(self, augment=False):    
         
-        to_tensor = [
+        self.to_tensor = [
             ToTensorUint16(),  # Converts the image to a tensor but doesn't normalize to [0,1]
         ]    
         
-        normalization = [
-            transforms.Normalize(mean=Calder_Mendes_mean_DEPTH, std=Calder_Mendes_std_DEPTH)
+        self.normalization = [
+            transforms.Normalize(mean=Calder_Mendes_mean_DEPTH, std=Calder_Mendes_std_DEPTH),
         ]
         
-        augmentations = []
+        self.augmentations = []
         if augment:
             augmentations = [
                 transforms.RandomHorizontalFlip(),
                 transforms.RandomRotation(10),
                 #transforms.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5)),
-                #transforms.RandomErasing(scale=(0.02, 0.25), ratio=(0.5, 2.0))
+                #transforms.RandomErasing(scale=(0.02, 0.25), ratio=(0.5, 2.0)),
             ]
             
-        resizing = []
+        self.resizing = []
         if args.models['DEPTH'].model == 'DEPTH_efficientnet_b2':
-            resizing = [transforms.Resize((288, 288), interpolation=transforms.InterpolationMode.BICUBIC)]
+            resizing = [transforms.Resize((288, 288), interpolation=transforms.InterpolationMode.BICUBIC),
+                        ]
         
-        transformations = resizing + augmentations + to_tensor + normalization  
-        self.transform = transforms.Compose(transformations)
+        self.transformations = self.resizing + self.augmentations + self.to_tensor + self.normalization   
+        self.transform = transforms.Compose(self.transformations)
     
     def __call__(self, img):
         # Convert NumPy array to PIL Image
