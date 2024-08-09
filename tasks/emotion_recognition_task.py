@@ -6,7 +6,7 @@ import tasks
 import numpy as np
 from typing import Dict, Tuple
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts, OneCycleLR
-from utils.losses import FocalLoss, CenterLoss, IslandLoss, CE_Center_Criterion, CE_Center_Island_Criterion
+from utils.losses import FocalLoss, CenterLoss, IslandLoss, CE_Center_Criterion, CE_Island_Criterion
 from utils.args import args
 
 
@@ -64,17 +64,17 @@ class EmotionRecognition(tasks.Task, ABC):
             #!CEL+Center Loss 
             self.CE_loss = torch.nn.CrossEntropyLoss(weight=self.class_weights, reduction='mean')
             self.Center_loss = CenterLoss(feat_dim=1408) #1408 #2816 
-            self.lambda_center = 5e-2 #5e-4/2 #3e-3/2
+            self.lambda_center = 1e-2 #5e-4/2 #3e-3/2
             self.optimizer_centers = torch.optim.SGD(self.Center_loss.parameters(), lr=0.5)  #alpha (lr) for class centers
             self.criterion = CE_Center_Criterion(self.CE_loss, self.Center_loss, self.lambda_center)
-        elif args.train.loss_fn == 'CE_Center_Island':
+        elif args.train.loss_fn == 'CE_Island':
             #!CEL+Center Loss + Island Loss
             self.CE_loss = torch.nn.CrossEntropyLoss(weight=self.class_weights, reduction='mean')
-            self.Island_loss = IslandLoss(feat_dim=1408)
-            self.lambda_global = 3e-3/2 #5e-4/2 #3e-3/2
-            self.lambda_island = 0.1
+            self.lambda_global = 1e-2 
+            self.lambda_island = 10
+            self.Island_loss = IslandLoss(feat_dim=1408, lambda_island=self.lambda_island)
             self.optimizer_centers = torch.optim.SGD(self.Island_loss.parameters(), lr=0.5)  #alpha (lr) for class centers
-            self.criterion = CE_Center_Island_Criterion(self.CE_loss, self.Island_loss, self.lambda_global, self.lambda_island)
+            self.criterion = CE_Island_Criterion(self.CE_loss, self.Island_loss, self.lambda_global)
             
             
         # Initialize the model parameters and the optimizer
@@ -153,7 +153,7 @@ class EmotionRecognition(tasks.Task, ABC):
         label : torch.Tensor
             ground truth
         """
-        if isinstance(self.criterion, CE_Center_Criterion):
+        if isinstance(self.criterion, (CE_Center_Criterion, CE_Island_Criterion)):
             loss = self.criterion(logits, label, features)
         else:
             loss = self.criterion(logits, label)

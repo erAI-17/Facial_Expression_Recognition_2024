@@ -310,7 +310,7 @@ def validate(emotion_classifier, val_loader, device, real_iter):
         logger.info('Final accuracy: top1 = %.2f%%\ttop5 = %.2f%%' % (emotion_classifier.accuracy.avg[1],
                                                                       emotion_classifier.accuracy.avg[5]))
         #?print the PER-CLASS accuracy
-        class_accuracies = [(x / y) * 100 for x, y in zip(emotion_classifier.accuracy.correct, emotion_classifier.accuracy.total)]
+        class_accuracies = [(x / y) * 100 if y != 0 else 0 for x, y in zip(emotion_classifier.accuracy.correct, emotion_classifier.accuracy.total)] #? if no samples for a given class, put 0
         for i_class, class_acc in enumerate(class_accuracies):
             logger.info('Class %d = [%d/%d] = %.2f%%' % (i_class,
                                                          int(emotion_classifier.accuracy.correct[i_class]),

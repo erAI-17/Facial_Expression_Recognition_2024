@@ -7,7 +7,7 @@ import torchaudio.transforms as T
 import models as model_list
 
 class CE_Center_Criterion(nn.Module):
-    def __init__(self, ce_loss=None, center_loss=None, lambda_center=5e-4):
+    def __init__(self, ce_loss=None, center_loss=None, lambda_center=1e-2):
         super(CE_Center_Criterion, self).__init__()
         self.ce_loss = ce_loss
         self.center_loss = center_loss
@@ -19,12 +19,12 @@ class CE_Center_Criterion(nn.Module):
         total_loss = ce_loss_value + self.lambda_center * center_loss_value
         return total_loss
 
-class CE_Center_Island_Criterion(nn.Module):
-    def __init__(self, ce_loss=None, center_loss=None, island_loss=None, lambda_center=5e-4, lambda_island=0.1):
-        super(CE_Center_Island_Criterion, self).__init__()
+class CE_Island_Criterion(nn.Module):
+    def __init__(self, ce_loss=None, island_loss=None, lambda_global=1e-2):
+        super(CE_Island_Criterion, self).__init__()
         self.ce_loss = ce_loss
         self.island_loss = island_loss
-        self.lambda_global = lambda_center
+        self.lambda_global = lambda_global
 
     def forward(self, logits, labels, features):
         ce_loss_value = self.ce_loss(logits, labels)
@@ -70,10 +70,11 @@ class CenterLoss(nn.Module):
     
 #!!!ISLAND LOSS
 class IslandLoss(nn.Module):
-    def __init__(self, feat_dim):
+    def __init__(self, feat_dim, lambda_island=10):
         super(IslandLoss, self).__init__()
         self.num_classes, _ = utils.utils.get_domains_and_labels(args)
         self.feat_dim = feat_dim
+        self.lambda_island = lambda_island
         if torch.cuda.is_available():
             self.centers = nn.Parameter(torch.randn(self.num_classes, self.feat_dim).cuda())
         else:
@@ -97,8 +98,8 @@ class IslandLoss(nn.Module):
         if torch.cuda.is_available(): 
             classes = classes.cuda()
             
-        labels = labels.unsqueeze(1).expand(batch_size, self.num_islands, self.num_classes)
-        mask = labels.eq(classes.expand(batch_size, self.num_islands, self.num_classes))
+        labels = labels.unsqueeze(1).expand(batch_size, self.num_classes)
+        mask = labels.eq(classes.expand(batch_size, self.num_classes))
 
         dist = distmat * mask.float()
         center_loss = dist.clamp(min=1e-12, max=1e+12).sum() / batch_size #? sum over batch_size and compute mean
