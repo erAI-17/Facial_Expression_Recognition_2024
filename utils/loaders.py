@@ -118,7 +118,7 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
         
         if modality == 'RGB':
             try:
-                img = cv2.imread(os.path.join(data_path, tmpl.format(ann_sample.gender, ann_sample.subj_id, ann_sample.code, ann_sample.description_label, 'Color')))
+                img = Image.open(os.path.join(data_path, tmpl.format(ann_sample.gender, ann_sample.subj_id, ann_sample.code, ann_sample.description_label, 'Color')))
                 
                 if img is None: #!image not found or corrupt, cv2 returns None
                     print("Img not found at path:", os.path.join(data_path, tmpl.format(ann_sample.gender, ann_sample.subj_id, ann_sample.code, ann_sample.description_label, 'Color')))
@@ -132,7 +132,7 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
         
         if modality == 'DEPTH':
             try:
-                img = cv2.imread(os.path.join(data_path, tmpl.format(ann_sample.gender, ann_sample.subj_id, ann_sample.code, ann_sample.description_label, 'Depth')), cv2.IMREAD_UNCHANGED)
+                img = Image.open(os.path.join(data_path, tmpl.format(ann_sample.gender, ann_sample.subj_id, ann_sample.code, ann_sample.description_label, 'Depth')))
                 if img is None: #!image not found or corrupt, cv2 returns None
                     print("Img not found at path:", os.path.join(data_path, tmpl.format(ann_sample.gender, ann_sample.subj_id, ann_sample.code, ann_sample.description_label, 'Depth')))
                     raise FileNotFoundError

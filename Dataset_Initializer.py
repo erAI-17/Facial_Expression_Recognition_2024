@@ -5,6 +5,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from matplotlib import pyplot as plt
 import cv2
+import PIL.Image as Image
 
 def train_test_annotations(test_size):
     """Splits dataset into TRAIN and TEST splits and generate annotation .pkl files where a row represents a sample with this schema:
@@ -57,12 +58,11 @@ def train_test_annotations(test_size):
                     #!load image
                     img_path = f'{files_path}/{filename}'
                     if m == 'Color':
-                        img = cv2.imread(img_path)
-                        # Convert the image from BGR to RGB
-                        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-                        
+                        img =  Image.open(img_path)
+                        img = np.array(img)
+                         
                         #Resize images to input size of the model you will use
-                        img = cv2.resize(img, (260, 260), interpolation=cv2.INTER_CUBIC)
+                        img = cv2.resize(img, (260, 260), interpolation=cv2.INTER_LINEAR)
                         
                         # Normalize to [0, 1]
                         img = img / 255.0  
@@ -78,14 +78,16 @@ def train_test_annotations(test_size):
                         n_pix[m] += mask.sum() #mask converts into a 2D array
                         
                     elif m == 'Depth':
-                        img = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)
+                        img = Image.open(img_path)
+                        img = np.array(img)
+                        #!convert to 3 channels                       
                         img = np.expand_dims(img, axis=-1)
                         img = np.repeat(img, 3, axis=-1)
                         
                         max_depth = max(max_depth, img.max()) #!get max depth before normalization
                         
                         #Resize images to input size of the model you will use
-                        img = cv2.resize(img, (260, 260), interpolation=cv2.INTER_CUBIC)
+                        img = cv2.resize(img, (260, 260), interpolation=cv2.INTER_LINEAR)
                         
                         # Normalize to [0, 1] using max_depth=9785
                         img = img / 9785.0  
@@ -106,7 +108,7 @@ def train_test_annotations(test_size):
         std[m] = np.sqrt(sum_sq_pix[m] / n_pix[m] - mean[m] ** 2)
 
             
-    #!split data into train and test dataframes (making sure that all the samples with same subj_id, label and add fall inside the same split)
+    #!split data into train and test dataframes (making sure that all the samples with same 'subj_id', 'label' and 'add', fall inside the same split)
     for sample in data:
         key = (sample[0], sample[1], sample[2], sample[3], sample[4], tuple(sample[5])) #?#key: (dataset, subj_id, code, description_label, label)
         grouped.setdefault(key, []).append(sample)  #?#grouped: {'group1': [[sample1], [sample2],...], 'group2': [[]], ... }    
