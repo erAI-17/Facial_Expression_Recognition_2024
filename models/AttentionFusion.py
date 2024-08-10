@@ -74,9 +74,9 @@ class AttentionFusion1D(nn.Module):
       return logits, {'late': X_fused}
    
    
-class CrossAttentionFusionNetwork(nn.Module):
+class CrossAttentionFusion1D(nn.Module):
    def __init__(self, rgb_model, depth_model):
-      super(CrossAttentionFusionNetwork, self).__init__()
+      super(CrossAttentionFusion1D, self).__init__()
       num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
       
       self.rgb_model = rgb_model
@@ -100,16 +100,16 @@ class CrossAttentionFusionNetwork(nn.Module):
       X_depth = self.depth_model(depth_input)['late']
 
       # Cross-attention
-      #nn.MultiheadAttention receives queries, keys, and values. Returns the output and the attention weights
+      #   # Reshape for MultiheadAttention: (L, N, E) where L is sequence length, N is batch size, E is embedding dimension. Returns the output and the attention weights
       Att_X_rgb, _ = self.cross_attention_rgb(X_rgb.unsqueeze(0), X_depth.unsqueeze(0), X_depth.unsqueeze(0))
       Att_X_depth, _ = self.cross_attention_depth(X_depth.unsqueeze(0), X_rgb.unsqueeze(0), X_rgb.unsqueeze(0))
 
       # Remove sequence length dimension
-      attn_output_rgb = attn_output_rgb.squeeze(0)
-      attn_output_depth = attn_output_depth.squeeze(0)
+      Att_X_rgb = Att_X_rgb.squeeze(0)
+      Att_X_depth = Att_X_depth.squeeze(0)
 
       # Concatenate features
-      X_fused = torch.cat((attn_output_rgb, attn_output_depth), dim=1)
+      X_fused = torch.cat((Att_X_rgb, Att_X_depth), dim=1)
 
       # Fully connected layers
       X_fused = self.dropout(F.relu(self.bn1(self.fc1(X_fused))))

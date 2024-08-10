@@ -13,7 +13,7 @@ N_val_visualize: ???
 
 
 train:
-  num_iter: ???  #total_batch=128.  6969/128=54.44 ->1 epoch || total_batch=256.  6969/256=27.22 ->1 epoch
+  num_iter: ???  #total_batch=128  6969/128=54.44 ->1 epoch || total_batch=256.  6969/256=27.22 ->1 epoch
   eval_freq: ???  #every 25% of an epoch
   max_grad_norm: ???
   loss_fn: ??? # 'CE_Center' # 'CE' # 'Focal'

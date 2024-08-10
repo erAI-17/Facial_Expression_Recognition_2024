@@ -202,15 +202,7 @@ class EmotionRecognition(tasks.Task, ABC):
                 self.scheduler[m].step()
                 
         #! If using center loss, perform the step with the center optimizer
-        if args.train.loss_fn == 'CE_Center':
-            #don't want the lambda_center to affect the gradients of the loss with respect to the centers, so rescale back the gradients
-            for param in self.Center_loss.parameters():
-                param.grad.data *= (1. / self.lambda_center) 
-            self.optimizer_centers.step()
-        elif args.train.loss_fn == 'CE_Island':
-            #don't want the lambda_global to affect the gradients of the loss with respect to the centers, so rescale back the gradients
-            for param in self.Island_loss.parameters():
-                param.grad.data *= (1. / self.lambda_global) 
+        if args.train.loss_fn == 'CE_Center' or  args.train.loss_fn == 'CE_Island':
             self.optimizer_centers.step()
             
         if args.amp: #! Update the scaler for the next iteration        

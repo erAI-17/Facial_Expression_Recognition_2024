@@ -134,6 +134,5 @@ class LocalGlobalFusionNet(nn.Module):
       cls_output = X_fused[:, 0]  #?Extract [cls] token's output
       logits = self.fc(cls_output)
 
-      
       return logits, {'late':cls_output} 
 
