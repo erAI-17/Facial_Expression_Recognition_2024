@@ -61,7 +61,11 @@ def train_test_annotations(test_size):
                         # Convert the image from BGR to RGB
                         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
                         
-                        img = img / 255.0  # Normalize to [0, 1]
+                        #Resize images to input size of the model you will use
+                        img = cv2.resize(img, (260, 260), interpolation=cv2.INTER_CUBIC)
+                        
+                        # Normalize to [0, 1]
+                        img = img / 255.0  
                         
                         #!update mean and std
                         sum_pix[m] += np.sum(img, axis=(0, 1)) #sum all pixels in the image, separately for each channel (black pixels are 0)
@@ -80,7 +84,11 @@ def train_test_annotations(test_size):
                         
                         max_depth = max(max_depth, img.max()) #!get max depth before normalization
                         
-                        img = img / 9785.0  # Normalize to [0, 1] using max_depth=9785
+                        #Resize images to input size of the model you will use
+                        img = cv2.resize(img, (260, 260), interpolation=cv2.INTER_CUBIC)
+                        
+                        # Normalize to [0, 1] using max_depth=9785
+                        img = img / 9785.0  
                         
                         #!update mean and std
                         sum_pix[m] += np.sum(img, axis=(0, 1))

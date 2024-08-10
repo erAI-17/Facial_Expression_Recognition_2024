@@ -8,10 +8,10 @@ import cv2
 ImageNet_mean = [0.485, 0.456, 0.406] 
 ImageNet_std = [0.229, 0.224, 0.225]
 
-Calder_Mendes_mean_RGB = [0.499013695404109, 0.3678942168471979, 0.3217159055466871]
-Calder_Mendes_std_RGB = [0.26197232721001346, 0.21403053699700778, 0.2143569416789142]
-Calder_Mendes_mean_DEPTH = [0.36479503953065234, 0.36479503953065234, 0.36479503953065234]
-Calder_Mendes_std_DEPTH = [0.06903268, 0.06903268, 0.06903268]
+Calder_Mendes_mean_RGB = [0.4954188046463236, 0.365289621256328, 0.3194358753260218]
+Calder_Mendes_std_RGB = [0.26393761653339637, 0.21517540134099997, 0.21502950740118704]
+Calder_Mendes_mean_DEPTH = [0.3601669753802989, 0.3601669753802989, 0.3601669753802989]
+Calder_Mendes_std_DEPTH = [0.07899400881961408, 0.07899400881961408, 0.07899400881961408]
 
 class ToTensorUint16:
     def __call__(self, img):
@@ -53,7 +53,7 @@ class RGBTransform:
    
         self.resizing = []    
         if args.models['RGB'].model == 'RGB_efficientnet_b2':
-            resizing = [transforms.Resize((288, 288), interpolation=transforms.InterpolationMode.BICUBIC),
+            self.resizing = [transforms.Resize((260, 260), interpolation=transforms.InterpolationMode.BICUBIC),
                         ]
         
         
@@ -86,7 +86,7 @@ class DEPTHTransform:
         
         self.augmentations = []
         if augment:
-            augmentations = [
+            self.augmentations = [
                 transforms.RandomHorizontalFlip(),
                 transforms.RandomRotation(10),
                 #transforms.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5)),
@@ -95,7 +95,7 @@ class DEPTHTransform:
             
         self.resizing = []
         if args.models['DEPTH'].model == 'DEPTH_efficientnet_b2':
-            resizing = [transforms.Resize((288, 288), interpolation=transforms.InterpolationMode.BICUBIC),
+            self.resizing = [transforms.Resize((260, 260), interpolation=transforms.InterpolationMode.BICUBIC),
                         ]
         
         self.transformations = self.resizing + self.augmentations + self.to_tensor + self.normalization   
