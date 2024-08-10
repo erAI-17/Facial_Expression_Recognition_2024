@@ -43,7 +43,7 @@ class RGBTransform:
         
         self.augmentations = []
         if augment:
-            augmentations = [
+            self.augmentations = [
             transforms.RandomHorizontalFlip(),
             transforms.RandomRotation(10),
             transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1), 
@@ -52,7 +52,7 @@ class RGBTransform:
             ]
    
         self.resizing = []    
-        if args.models['RGB'].model == 'RGB_efficientnet_b2':
+        if args.models['RGB'].model == 'efficientnet_b2':
             self.resizing = [transforms.Resize((260, 260), interpolation=transforms.InterpolationMode.BICUBIC),
                         ]
         
@@ -94,7 +94,7 @@ class DEPTHTransform:
             ]
             
         self.resizing = []
-        if args.models['DEPTH'].model == 'DEPTH_efficientnet_b2':
+        if args.models['DEPTH'].model == 'efficientnet_b2':
             self.resizing = [transforms.Resize((260, 260), interpolation=transforms.InterpolationMode.BICUBIC),
                         ]
         

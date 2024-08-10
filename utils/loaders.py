@@ -100,7 +100,7 @@ class CalD3R_MenD3s_Dataset(data.Dataset, ABC):
         if img is None: #!file corrupted or missing (handled in __get_item__)
             return None, None
 
-        #*apply transformations (convert to tensor, normalize)!
+        #*apply transformations (convert to tensor, normalize, augment)!
         if self.transform is not None: 
             img = self.transform[modality](img)
  
