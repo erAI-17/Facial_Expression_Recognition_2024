@@ -72,7 +72,8 @@ class EmotionRecognition(tasks.Task, ABC):
             self.CE_loss = torch.nn.CrossEntropyLoss(weight=self.class_weights, reduction='mean')
             self.lambda_global = 1e-2 
             self.lambda_island = 10
-            self.Island_loss = IslandLoss(feat_dim=1408, lambda_island=self.lambda_island)
+            self.feat_dim = 1408 if args.models['RGB'].model == 'efficientnet_b2' else 1280 
+            self.Island_loss = IslandLoss(feat_dim=self.feat_dim, lambda_island=self.lambda_island)
             self.optimizer_centers = torch.optim.SGD(self.Island_loss.parameters(), lr=0.5)  #alpha (lr) for class centers
             self.criterion = CE_Island_Criterion(self.CE_loss, self.Island_loss, self.lambda_global)
             

@@ -272,7 +272,7 @@ def train(emotion_classifier, train_loader, val_loader, device):
             #! every  N_val_visualize  validations, also visualize features and GRADCAM
             if real_iter % (args.train.eval_freq*args.N_val_visualize)==0:
                 visualize_features(emotion_classifier, val_loader, device, int(real_iter))
-                compute_gradcam(emotion_classifier, val_loader, device, int(real_iter))
+                #compute_gradcam(emotion_classifier, val_loader, device, int(real_iter))
 
             emotion_classifier.save_model(real_iter, val_metrics['top1'], prefix=None)
             emotion_classifier.train(True) 
@@ -377,9 +377,11 @@ def visualize_features(emotion_classifier, val_loader, device, real_iter):
 def compute_gradcam(emotion_classifier, val_loader, device, real_iter):
     emotions = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5, 'surprise':6}
     reverse_emotions = {v: k for k, v in emotions.items()}
+    Calder_Mendes_mean_RGB = [0.49102524485829907, 0.3618844398451173, 0.31640123102109985]
+    Calder_Mendes_std_RGB = [0.26517980798288976, 0.21546631829305746, 0.21493371251079485]
     #!gradcam object
     #feature exractor must produce features retaining some spatial info (must be a conv layer, cannot be an FC)
-    gradcam  = GradCAM(emotion_classifier.models['FUSION'].module.rgb_model.feature_extractor , emotion_classifier.models['FUSION'].module.rgb_model.feature_extractor[-1] ) 
+    gradcam  = GradCAM(emotion_classifier.models['FUSION'].module.rgb_model , emotion_classifier.models['FUSION'].module.rgb_model.model[2][4] ) 
     
     # Dictionary to store one image per class
     class_images = {label: None for label in emotions.values()}
@@ -411,6 +413,8 @@ def compute_gradcam(emotion_classifier, val_loader, device, real_iter):
             
             # Combine heatmap with the original image
             img_np = img.cpu().numpy().transpose(1, 2, 0)
+            #recover the original image
+            img_np = ((img_np * Calder_Mendes_std_RGB) + Calder_Mendes_mean_RGB) * 255
             overlay_img = heatmap + np.float32(img_np)
             overlay_img = overlay_img / np.max(overlay_img)
             

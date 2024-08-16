@@ -20,13 +20,16 @@ class SumFusion1D(nn.Module):
       #!EfficientNetB2
       elif args.models['DEPTH'].model == 'efficientnet_b2':
          self.C = 1408
-
+      #!MobilNetv4
+      elif args.models['DEPTH'].model == 'mobilenet_v4':
+         self.C = 1280
+      
       #?final classifier
       self.fc = nn.Linear(self.C , num_classes) 
 
    def forward(self, rgb_input, depth_input):
-      X_rgb  = self.rgb_model(rgb_input)['late']       
-      X_depth = self.depth_model(depth_input)['late'] #? [batch_size, self.C]
+      X_rgb, _  = self.rgb_model(rgb_input)     
+      X_depth, _ = self.depth_model(depth_input) #? [batch_size, self.C]
             
       X_fused = torch.add(X_rgb, X_depth)  #? [batch_size, self.C]  
            
@@ -41,8 +44,8 @@ class AttentionFusion1D(nn.Module):
       super(AttentionFusion1D, self).__init__()
       num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
       
-      self.rgb_model = rgb_model
-      self.depth_model = depth_model
+      self.rgb_model, _ = rgb_model
+      self.depth_model, _ = depth_model
 
       if args.models['DEPTH'].model == 'efficientnet_b0':
          self.C = 1280
@@ -58,8 +61,8 @@ class AttentionFusion1D(nn.Module):
       self.fc2 = nn.Linear(self.C , num_classes)
       
    def forward(self, rgb_input, depth_input):
-      X_rgb  = self.rgb_model(rgb_input)['late']       
-      X_depth = self.depth_model(depth_input)['late']
+      X_rgb  = self.rgb_model(rgb_input)       
+      X_depth = self.depth_model(depth_input)
       
       Att_X_rgb = torch.sigmoid(self.Att_map_rgb(X_rgb))
       Att_X_depth = torch.sigmoid(self.Att_map_depth(X_depth))
@@ -96,8 +99,8 @@ class CrossAttentionFusion1D(nn.Module):
       self.fc2 = nn.Linear(self.C, num_classes)
 
    def forward(self, rgb_input, depth_input):
-      X_rgb = self.rgb_model(rgb_input)['late']
-      X_depth = self.depth_model(depth_input)['late']
+      X_rgb = self.rgb_model(rgb_input)
+      X_depth = self.depth_model(depth_input)
 
       # Cross-attention
       #   # Reshape for MultiheadAttention: (L, N, E) where L is sequence length, N is batch size, E is embedding dimension. Returns the output and the attention weights
