@@ -271,7 +271,7 @@ def train(emotion_classifier, train_loader, val_loader, device):
                 
             #! every  N_val_visualize  validations, also visualize features and GRADCAM
             if real_iter % (args.train.eval_freq*args.N_val_visualize)==0:
-                #visualize_features(emotion_classifier, val_loader, device, int(real_iter))
+                visualize_features(emotion_classifier, val_loader, device, int(real_iter))
                 compute_gradcam(emotion_classifier, val_loader, device, int(real_iter))
 
             #emotion_classifier.save_model(real_iter, val_metrics['top1'], prefix=None)

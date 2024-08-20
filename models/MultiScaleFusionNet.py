@@ -57,15 +57,15 @@ class MultiScaleFusionNet(nn.Module):
       self.depth_model = depth_model
       
       #? Heights and Widths of the feature maps at different stages 
-      self.stages = {'late': [352, 9]} # only late features
-      #self.stages = {'early': [32, 130], 'mid': [88, 17], 'late': [352, 9]}
+      #self.stages = {'late': [352, 9]} # only late features
+      self.stages = {'early': [32, 130], 'mid': [88, 17], 'late': [352, 9]}
       
       #? Weights for RGB and Depth modalities
       self.weight_rgb = nn.ParameterDict({stage: nn.Parameter(torch.randn(1)) for stage in self.stages})
       self.weight_depth = nn.ParameterDict({stage: nn.Parameter(torch.randn(1)) for stage in self.stages}) 
             
       self.patch_sizes = { 'early': 10 , 'mid': 8, 'late': 1}
-      self.n_spatial_attentions = 3
+      self.n_spatial_attentions = 4
       self.patch_size = {}
       self.Att_map_RGB = nn.ModuleDict()
       self.Att_map_D = nn.ModuleDict()
