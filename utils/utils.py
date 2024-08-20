@@ -173,14 +173,18 @@ class GradCAM:
         self.target_layer.register_forward_hook(forward_hook)
         self.target_layer.register_backward_hook(backward_hook)
         
-    def generate_cam(self, input_tensor, target_class=None):
-        input_tensor = input_tensor.unsqueeze(0)  # Add batch dimension
+    def generate_cam(self, data, target_class):
+        img = data['RGB'].unsqueeze(0)  # Add batch dimension
+        depth = data['DEPTH'].unsqueeze(0)
         self.model.zero_grad()
-        output = self.model(input_tensor)
         
-        # Backpropagate to get gradients with respect to the target class
-        class_loss = output[:, target_class].sum()
-        class_loss.backward(retain_graph=True)
+        # Forward pass
+        output, _ = self.model(img, depth)
+        
+        # Backpropagate to get gradients with respect to the target class score
+        output = output.squeeze()
+        target_output = output[target_class]
+        target_output.backward(retain_graph=True)
         
         # Get the gradients and activations
         gradients = self.gradients

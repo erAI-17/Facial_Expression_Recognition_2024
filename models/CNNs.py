@@ -28,9 +28,9 @@ class efficientnet_b0(nn.Module):
             return hook    
 
         # Registering hooks to the layers
-        self.model.blocks[0].register_forward_hook(get_features('early'))  # Early features
-        self.model.blocks[3].register_forward_hook(get_features('mid'))    # Mid features
-        self.model.blocks[6].register_forward_hook(get_features('late'))   # Late features
+        self.model[1].register_forward_hook(get_features('early'))  # Early features
+        self.model[2][3].register_forward_hook(get_features('mid'))    # Mid features
+        self.model[2][6].register_forward_hook(get_features('late'))   # Late features
 
     
     def forward(self, X):       
@@ -66,18 +66,18 @@ class efficientnet_b2(nn.Module):
             return hook    
 
         # Registering hooks to the layers
-        self.model.blocks[0].register_forward_hook(get_features('early')) 
-        self.model.blocks[3].register_forward_hook(get_features('mid')) 
-        self.model.blocks[6].register_forward_hook(get_features('late')) 
+        self.model[1].register_forward_hook(get_features('early')) 
+        self.model[2][3].register_forward_hook(get_features('mid')) 
+        self.model[2][6].register_forward_hook(get_features('late')) 
 
     def forward(self, X):       
         X = self.model(X)  # Forward pass through the model to trigger hooks
         X = X.squeeze()
                
         # Extracted features are already stored in self.features
-        X_early = self.features.get('early') #? [batch_size, 16, 112, 112]
-        X_mid = self.features.get('mid') #? [batch_size, 88, 14, 14]
-        X_late = self.features.get('late') #? [batch_size, 352, 7, 7]
+        X_early = self.features.get('early') #? [batch_size, 32, 130, 130]
+        X_mid = self.features.get('mid') #? [batch_size, 88, 17, 17]
+        X_late = self.features.get('late') #? [batch_size, 352, 9, 9]
     
         return X.squeeze(), {'early': X_early, 'mid': X_mid, 'late': X_late}
               

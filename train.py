@@ -94,7 +94,7 @@ def main():
                                                 shuffle=False,
                                                 num_workers=args.dataset.workers, 
                                                 pin_memory=True, 
-                                                drop_last=True) #?usually False
+                                                drop_last=False) 
     
     #!compute class weights for Weighted Cross Entropy Loss
     class_weights = compute_class_weights(train_loader, norm=False).to(device, non_blocking=True)
@@ -257,24 +257,24 @@ def train(emotion_classifier, train_loader, val_loader, device):
 
         #! every "eval_freq" iterations the validation is done
         if real_iter.is_integer() and real_iter % args.train.eval_freq == 0:  
-            val_metrics = validate(emotion_classifier, val_loader, device, int(real_iter))
+            #val_metrics = validate(emotion_classifier, val_loader, device, int(real_iter))
             
-            #?PLOT VALIDATION ACCURACIES
-            writer.add_scalar('Accuracy/validation', val_metrics['top1'], int(real_iter))
+            # #?PLOT VALIDATION ACCURACIES
+            # writer.add_scalar('Accuracy/validation', val_metrics['top1'], int(real_iter))
 
-            if val_metrics['top1'] <= emotion_classifier.best_iter_score:
-                logger.info("OLD best accuracy {:.2f}% at iteration {}".format(emotion_classifier.best_iter_score, emotion_classifier.best_iter))
-            else:
-                logger.info("NEW best accuracy {:.2f}%".format(val_metrics['top1']))
-                emotion_classifier.best_iter = real_iter
-                emotion_classifier.best_iter_score = val_metrics['top1']
+            # if val_metrics['top1'] <= emotion_classifier.best_iter_score:
+            #     logger.info("OLD best accuracy {:.2f}% at iteration {}".format(emotion_classifier.best_iter_score, emotion_classifier.best_iter))
+            # else:
+            #     logger.info("NEW best accuracy {:.2f}%".format(val_metrics['top1']))
+            #     emotion_classifier.best_iter = real_iter
+            #     emotion_classifier.best_iter_score = val_metrics['top1']
                 
             #! every  N_val_visualize  validations, also visualize features and GRADCAM
             if real_iter % (args.train.eval_freq*args.N_val_visualize)==0:
-                visualize_features(emotion_classifier, val_loader, device, int(real_iter))
-                #compute_gradcam(emotion_classifier, val_loader, device, int(real_iter))
+                #visualize_features(emotion_classifier, val_loader, device, int(real_iter))
+                compute_gradcam(emotion_classifier, val_loader, device, int(real_iter))
 
-            emotion_classifier.save_model(real_iter, val_metrics['top1'], prefix=None)
+            #emotion_classifier.save_model(real_iter, val_metrics['top1'], prefix=None)
             emotion_classifier.train(True) 
               
     writer.close()
@@ -381,35 +381,37 @@ def compute_gradcam(emotion_classifier, val_loader, device, real_iter):
     Calder_Mendes_std_RGB = [0.26517980798288976, 0.21546631829305746, 0.21493371251079485]
     #!gradcam object
     #feature exractor must produce features retaining some spatial info (must be a conv layer, cannot be an FC)
-    gradcam  = GradCAM(emotion_classifier.models['FUSION'].module.rgb_model , emotion_classifier.models['FUSION'].module.rgb_model.model[2][4] ) 
+    gradcam  = GradCAM(emotion_classifier.models['FUSION'], emotion_classifier.models['FUSION'].module.rgb_model.model[2][6]) 
     
     # Dictionary to store one image per class
-    class_images = {label: None for label in emotions.values()}
+    class_images = {label: {m: None for m in args.modality} for label in emotions.values()}
     #!take 1 sample image per class from val loader
     with torch.no_grad():
-        for data, label in val_loader:
-            data = data['RGB'].to(device, non_blocking=True)
+        for i_val, (data, label) in enumerate(val_loader): 
             label = label.to(device, non_blocking=True)
+            for m in args.modality:
+                data[m] = data[m].to(device, non_blocking=True)
 
-            # Check if we already have an image for each class
-            for i in range(len(label)):
-                class_label = label[i].item()
-                if class_images[class_label] is None:
-                    class_images[class_label] = data[i]
-            
-            if all(value is not None for value in class_images.values()):
-                break
+                # Check if already have an image for each class
+                for i in range(len(label)):
+                    class_label = label[i].item()
+                    if class_images[class_label][m] is None:
+                        class_images[class_label][m] = data[m][i]
+                
+                if all(all(value is not None for value in class_images[label].values()) for label in class_images):
+                    break
             
     #! Compute Grad-CAM for a each image class
-    for class_label, img in class_images.items():
-        if img is not None:
+    for class_label, data in class_images.items():
+        if data is not None:
 
-            cam = gradcam.generate_cam(img, class_label)
-            
+            cam = gradcam.generate_cam(data, class_label)
+            img = data['RGB']
             # Resize CAM to the image size and overlay it
             cam_resized = cv2.resize(cam, (img.shape[1], img.shape[2]))
-            heatmap = cv2.applyColorMap(np.uint8(255 * cam_resized), cv2.COLORMAP_JET)
-            heatmap = np.float32(heatmap) / 255
+            cam_resized = cam_resized * 255
+            heatmap = cv2.applyColorMap(np.uint8(cam_resized), cv2.COLORMAP_JET)
+            heatmap = np.float32(heatmap)
             
             # Combine heatmap with the original image
             img_np = img.cpu().numpy().transpose(1, 2, 0)

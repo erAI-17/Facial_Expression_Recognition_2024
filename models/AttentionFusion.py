@@ -44,13 +44,16 @@ class AttentionFusion1D(nn.Module):
       super(AttentionFusion1D, self).__init__()
       num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
       
-      self.rgb_model, _ = rgb_model
-      self.depth_model, _ = depth_model
+      self.rgb_model = rgb_model
+      self.depth_model = depth_model
 
       if args.models['DEPTH'].model == 'efficientnet_b0':
          self.C = 1280
       elif args.models['DEPTH'].model == 'efficientnet_b2':
          self.C = 1408
+      #!MobilNetv4
+      elif args.models['DEPTH'].model == 'mobilenet_v4':
+         self.C = 1280
 
       self.Att_map_rgb = nn.Linear(self.C, self.C)
       self.Att_map_depth = nn.Linear(self.C, self.C)
@@ -61,8 +64,8 @@ class AttentionFusion1D(nn.Module):
       self.fc2 = nn.Linear(self.C , num_classes)
       
    def forward(self, rgb_input, depth_input):
-      X_rgb  = self.rgb_model(rgb_input)       
-      X_depth = self.depth_model(depth_input)
+      X_rgb, _  = self.rgb_model(rgb_input)       
+      X_depth, _ = self.depth_model(depth_input)
       
       Att_X_rgb = torch.sigmoid(self.Att_map_rgb(X_rgb))
       Att_X_depth = torch.sigmoid(self.Att_map_depth(X_depth))
