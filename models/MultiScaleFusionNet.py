@@ -57,14 +57,14 @@ class MultiScaleFusionNet(nn.Module):
       self.depth_model = depth_model
       
       #? Heights and Widths of the feature maps at different stages 
-      #self.stages = {'late': [352, 9]} # only late features
-      self.stages = {'early': [32, 130], 'mid': [88, 17], 'late': [352, 9]}
+      self.stages = {'late': [352, 9]} # only late features
+      #self.stages = {'early': [32, 130], 'mid': [88, 17], 'late': [352, 9]}
       
       #? Weights for RGB and Depth modalities
       self.weight_rgb = nn.ParameterDict({stage: nn.Parameter(torch.randn(1)) for stage in self.stages})
       self.weight_depth = nn.ParameterDict({stage: nn.Parameter(torch.randn(1)) for stage in self.stages}) 
             
-      self.patch_sizes = { 'early': 10 , 'mid': 8, 'late': 1}
+      self.patch_sizes = { 'early': 13 , 'mid': 8, 'late': 1}
       self.n_spatial_attentions = 4
       self.patch_size = {}
       self.Att_map_RGB = nn.ModuleDict()
@@ -84,11 +84,11 @@ class MultiScaleFusionNet(nn.Module):
       #? Transformer encoder   
       self.Ct = 768
       self.trans_encoder_layer = nn.TransformerEncoderLayer(self.Ct, nhead=8, dim_feedforward=3072, activation='gelu', batch_first=True)
-      self.transformer_encoder = nn.TransformerEncoder(self.trans_encoder_layer, num_layers=4)
+      self.transformer_encoder = nn.TransformerEncoder(self.trans_encoder_layer, num_layers=8)
       self.cls_token = nn.Parameter(torch.zeros(1, 1,  self.Ct))
-      #nn.init.normal_(self.cls_token, std=0.02)  # Initialize with small random values to break symmetry
+      nn.init.normal_(self.cls_token, std=0.02)  # Initialize with small random values to break symmetry
       self.pos_embed = nn.Parameter(torch.zeros(1,  sum([(self.stages[stage][1] // self.patch_sizes[stage])**2 for stage in self.stages]) + 1,  self.Ct))
-      #nn.init.normal_(self.pos_embed, std=0.02)  # Initialize with small random values to break symmetry
+      nn.init.normal_(self.pos_embed, std=0.02)  # Initialize with small random values to break symmetry
       
       #? final classification
       self.fc = nn.Linear(self.Ct, num_classes)

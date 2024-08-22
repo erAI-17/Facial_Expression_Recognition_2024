@@ -4,6 +4,7 @@ import torch
 import torchvision.transforms.v2 as transforms
 from utils.args import args
 import cv2
+import dlib
         
 ImageNet_mean = [0.485, 0.456, 0.406] 
 ImageNet_std = [0.229, 0.224, 0.225]
@@ -29,6 +30,35 @@ class ToTensorUint16:
         # Convert to PyTorch tensor
         img_tensor = torch.from_numpy(img_np).permute(2, 0, 1)
         return img_tensor
+    
+# Initialize dlib's face detector (HOG-based) and create the landmark predictor
+detector = dlib.get_frontal_face_detector()
+predictor = dlib.shape_predictor("./models/pretrained_models/shape_predictor_68_face_landmarks.dat")
+def landmark_extraction(img):
+    #convert image to numpy array
+    img = np.array(img)
+    
+    # Detect faces
+    faces = detector(img)
+    
+    if len(faces) >=1:
+        # Get the first detected face
+        face = faces[0]
+        
+        # Get landmarks
+        landmarks = predictor(img, face)
+        
+        # Convert landmarks to a list of (x, y) tuples
+        landmarks_list = [(p.x, p.y) for p in landmarks.parts()]
+        
+        # Draw landmarks on the image
+        for (x, y) in landmarks_list:
+            cv2.circle(img, (x, y), 2, (0, 255, 0), -1)
+        
+        #convert back to PIL image
+        img = Image.fromarray(img)
+    
+    return img
         
         
 class RGBTransform:
@@ -63,7 +93,11 @@ class RGBTransform:
         self.transformations = self.to_tensor + self.resize + self.augment + self.normalize    
         self.transform = transforms.Compose(self.transformations)
             
-    def __call__(self, img):            
+    def __call__(self, img):    
+        
+        if args.landmarks:
+            img = landmark_extraction(img)
+                
         # Apply transformations
         img = self.transform(img)
         
