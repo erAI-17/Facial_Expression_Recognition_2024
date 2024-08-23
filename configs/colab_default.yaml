@@ -10,6 +10,7 @@ models_dir: null
 amp: ???  #automatic mixed precision
 profile: ??? # profile the training
 N_val_visualize: ???
+landmarks: ??? #landmarks overlay on the RGB image
 
 
 train:

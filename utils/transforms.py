@@ -31,34 +31,68 @@ class ToTensorUint16:
         img_tensor = torch.from_numpy(img_np).permute(2, 0, 1)
         return img_tensor
     
+def RGB_to_G(img):
+    # Convert the image to grayscale
+    grayscale_img = img.convert("L")
+    
+    # Convert the grayscale image back to a NumPy array
+    grayscale_array = np.array(grayscale_img)
+    
+    # Stack the grayscale array to create a 3-channel image
+    stacked_img = np.stack((grayscale_array,)*3, axis=-1)
+    
+    # Convert the stacked array back to an image
+    stacked_img = Image.fromarray(stacked_img)
+    
+    return stacked_img
+
 # Initialize dlib's face detector (HOG-based) and create the landmark predictor
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor("./models/pretrained_models/shape_predictor_68_face_landmarks.dat")
 def landmark_extraction(img):
     #convert image to numpy array
-    img = np.array(img)
+    img_np = np.array(img)
+    fallback_scale=2
+    original_shape = img_np.shape[:2]
     
-    # Detect faces
-    faces = detector(img)
+       # Detect faces in the original image
+    faces = detector(img_np)
     
-    if len(faces) >=1:
-        # Get the first detected face
+    if len(faces) >= 1:
         face = faces[0]
+    else:
+        # Resize the image for fallback detection
+        img_resized = cv2.resize(img_np, (original_shape[1] * fallback_scale, original_shape[0] * fallback_scale))
+        faces = detector(img_resized)
         
-        # Get landmarks
-        landmarks = predictor(img, face)
-        
-        # Convert landmarks to a list of (x, y) tuples
-        landmarks_list = [(p.x, p.y) for p in landmarks.parts()]
-        
-        # Draw landmarks on the image
-        for (x, y) in landmarks_list:
-            cv2.circle(img, (x, y), 2, (0, 255, 0), -1)
-        
-        #convert back to PIL image
-        img = Image.fromarray(img)
+        if len(faces) >= 1:
+            face = faces[0]
+            
+            # Scale the face rectangle back to the original size
+            face = dlib.rectangle(
+                int(face.left() / fallback_scale),
+                int(face.top() / fallback_scale),
+                int(face.right() / fallback_scale),
+                int(face.bottom() / fallback_scale)
+            )
+        else:
+            print("No face detected even after resizing.")
+            return img
     
-    return img
+    # Get landmarks
+    landmarks = predictor(img_np, face)
+    
+    # Convert landmarks to a list of (x, y) tuples
+    landmarks_list = [(p.x, p.y) for p in landmarks.parts()]
+    
+    # Draw landmarks on the image (optional)
+    for (x, y) in landmarks_list:
+        cv2.circle(img_np, (x, y), 2, (0, 255, 0), -1)
+    
+    # Convert back to PIL image
+    img_with_landmarks = Image.fromarray(img_np)
+    
+    return img_with_landmarks
         
         
 class RGBTransform:
@@ -97,7 +131,10 @@ class RGBTransform:
         
         if args.landmarks:
             img = landmark_extraction(img)
-                
+            
+        #convert RGB to grayscale
+        img = RGB_to_G(img)
+         
         # Apply transformations
         img = self.transform(img)
         
