@@ -1,9 +1,9 @@
 import numpy as np
 import cv2
-import open3d as o3d
+#import open3d as o3d
 import matplotlib.pyplot as plt
 import os
-
+from PIL import Image
 
 #!##
 #!GENERAL
@@ -32,15 +32,14 @@ def load_2d_and_3d(path, gender, subjectid, emotion):
                 
                 if (parts[4] == "Color.png"): 
                     #load 2d image
-                    image = cv2.imread(path_images + filename)
-                    # Convert the image from BGR to RGB
-                    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                    image = Image.open(path_images + filename)
                     
                     images.append(image)
                     
                 if (parts[4] == "Depth.png"): 
                     #load 3d image    
                     d_map = cv2.imread(path_d_maps + filename, cv2.IMREAD_UNCHANGED)
+
                     d_maps.append(d_map)
                 
     return  images, d_maps   
@@ -136,41 +135,28 @@ def depthmap_to_mesh(rgb, d_map):
     o3d.visualization.draw_geometries([mesh])
     return mesh
 
-#!##
-#!LANDMARK EXTRACTION
-#!##
-def landmark_extraction(img):
-    # Detect faces
-    faces = detector(img)
-    
-    if len(faces) > 0:
-        # Get the first detected face
-        face = faces[0]
-        
-        # Get landmarks
-        landmarks = predictor(img, face)
-        
-        # Convert landmarks to a list of (x, y) tuples
-        landmarks_list = [(p.x, p.y) for p in landmarks.parts()]
-        
-        # Draw landmarks on the image
-        for (x, y) in landmarks_list:
-            cv2.circle(img, (x, y), 2, (0, 255, 0), -1)
-        
-    # Display the output
-    cv2.imshow('Facial Landmarks', img)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-    
-
 if __name__ == '__main__':
     path = '../Datasets/' + 'CalD3r' #MenD3s   #CalD3r   #C:/Users/studente/Documents/GitHub/Documenti/Github/Datasets/   #../Datasets/
     
-    #!#example load of images and depth map for 1 sample
-    images, d_maps = load_2d_and_3d(path, gender='M', subjectid='023', emotion='anger') #choose example gender, subj_id and emotion
+    for emotion in ['anger', 'surprise', 'disgust', 'fear', 'happiness', 'sadness', 'neutral']:
+        #!#example load of images and depth map for 1 sample
+        images, d_maps = load_2d_and_3d(path, gender='M', subjectid='010', emotion=emotion) #choose example gender, subj_id and emotion
 
-    #!show 2D and 3D
-    #show(images[0], d_maps[0])
+        #save the first sample
+        save_path = 'C:/Users/emanu/Desktop/'
+        images[0].save(save_path + 'M_010_RGB' + emotion + '.png')
+        
+        # Display the image
+        plt.imshow(d_maps[0], cmap='gray')
+        plt.colorbar()
+        plt.show()
+
+        # Save the image
+        plt.imsave(save_path + 'M_010_depth' + emotion + '.png', d_maps[0], cmap='gray')
+      
+        
+        # #!show 2D and 3D
+        #show(images[0], d_maps[0])
     
     #!show pointcloud generated from 2d + depth_map 
     #depthmap_to_point_cloud(images[0], d_maps[0])
@@ -178,9 +164,3 @@ if __name__ == '__main__':
     #!show mesh generated from 2d + depth_map 
     #depthmap_to_mesh(images[0], d_maps[0])
     
-    #!landmark extraction
-    # Load pre-trained face detector and shape predictor from dlib
-    detector = dlib.get_frontal_face_detector()
-    predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
-
-    landmark_extraction(images[0])
