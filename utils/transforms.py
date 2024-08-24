@@ -129,11 +129,11 @@ class RGBTransform:
             
     def __call__(self, img):    
         
-        if args.landmarks:
-            img = landmark_extraction(img)
+        # if args.landmarks:
+        #     img = landmark_extraction(img)
             
         #convert RGB to grayscale
-        img = RGB_to_G(img)
+        #img = RGB_to_G(img)
          
         # Apply transformations
         img = self.transform(img)

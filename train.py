@@ -269,10 +269,10 @@ def train(emotion_classifier, train_loader, val_loader, device):
                 emotion_classifier.best_iter = real_iter
                 emotion_classifier.best_iter_score = val_metrics['top1']
                 
-            #! every  N_val_visualize  validations, also visualize features and GRADCAM
+            #! every  N_val_visualize  validations, also visualize features and heatmap
             if real_iter % (args.train.eval_freq*args.N_val_visualize)==0:
-                visualize_features(emotion_classifier, val_loader, device, int(real_iter))
-                #compute_gradcam(emotion_classifier, val_loader, device, int(real_iter))
+                #visualize_features(emotion_classifier, val_loader, device, int(real_iter))
+                compute_heatmap(emotion_classifier, val_loader, device, int(real_iter))
 
             #emotion_classifier.save_model(real_iter, val_metrics['top1'], prefix=None)
             emotion_classifier.train(True) 
@@ -330,7 +330,7 @@ def validate(emotion_classifier, val_loader, device, real_iter):
 
 
 def visualize_features(emotion_classifier, val_loader, device, real_iter):
-    '''Visualize features and GRADCAM'''
+    '''Visualize features and heatmap'''
     
     emotions = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5, 'surprise':6}
     val_features = []
@@ -374,12 +374,12 @@ def visualize_features(emotion_classifier, val_loader, device, real_iter):
     
 
 
-def compute_gradcam(emotion_classifier, val_loader, device, real_iter):
+def compute_heatmap(emotion_classifier, val_loader, device, real_iter):
     emotions = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5, 'surprise':6}
     reverse_emotions = {v: k for k, v in emotions.items()}
     Calder_Mendes_mean_RGB = [0.49102524485829907, 0.3618844398451173, 0.31640123102109985]
     Calder_Mendes_std_RGB = [0.26517980798288976, 0.21546631829305746, 0.21493371251079485]
-    #!gradcam object
+    #!heatmap object
     #feature exractor must produce features retaining some spatial info (must be a conv layer, cannot be an FC)
     gradcam  = GradCAM(emotion_classifier.models['FUSION'], emotion_classifier.models['FUSION'].module.rgb_model.model[2][6]) 
     
@@ -398,33 +398,33 @@ def compute_gradcam(emotion_classifier, val_loader, device, real_iter):
                     if class_images[class_label][m] is None:
                         class_images[class_label][m] = data[m][i]
                 
-                if all(all(value is not None for value in class_images[label].values()) for label in class_images):
-                    break
+            if all(all(value is not None for value in class_images[label].values()) for label in class_images):
+                break
             
     #! Compute Grad-CAM for a each image class
     for class_label, data in class_images.items():
         if data is not None:
-
-            cam = gradcam.generate_cam(data, class_label)
+            heatmap = gradcam(data, class_label)
             img = data['RGB']
-            # Resize CAM to the image size and overlay it
-            cam_resized = cv2.resize(cam, (img.shape[1], img.shape[2]))
-            cam_resized = cam_resized * 255
-            heatmap = cv2.applyColorMap(np.uint8(cam_resized), cv2.COLORMAP_JET)
-            heatmap = np.float32(heatmap)
             
-            # Combine heatmap with the original image
-            img_np = img.cpu().numpy().transpose(1, 2, 0)
+            # Resize heatmap to the image size and overlay it
+            heatmap_resized = cv2.resize(heatmap, (img.shape[1], img.shape[2]))
+            heatmap_resized = np.uint8(heatmap_resized * 255)
+            heatmap = cv2.applyColorMap(heatmap_resized, cv2.COLORMAP_JET)
+            
             #recover the original image
-            img_np = ((img_np * Calder_Mendes_std_RGB) + Calder_Mendes_mean_RGB) * 255
-            overlay_img = heatmap + np.float32(img_np)
-            overlay_img = overlay_img / np.max(overlay_img)
+            img_np = img.cpu().numpy().transpose(1, 2, 0)
+            img_np = ((img_np * Calder_Mendes_std_RGB) + Calder_Mendes_mean_RGB) 
+            img_np = np.uint8(img_np * 255)
+            
+            # Overlay the heatmap on the image
+            overlay_img = cv2.addWeighted(img_np, 1 - 0.5, heatmap, 0.5, 0)
             
             # Display the result
             plt.imshow(overlay_img)
             plt.title(f'Class: {list(emotions.keys())[list(emotions.values()).index(class_label)]}')
             plt.axis('off')
-            plt.savefig(os.path.join('./Images/', f'GRADCAM_{reverse_emotions[class_label]}_{real_iter}_iter.png'))
+            plt.savefig(os.path.join('./Images/', f'heatmap_{reverse_emotions[class_label]}_{real_iter}_iter.png'))
             #plt.show()
             plt.clf()
             

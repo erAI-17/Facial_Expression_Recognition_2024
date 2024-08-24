@@ -160,22 +160,19 @@ class GradCAM:
         self.gradients = None
         self.activations = None
         
-        # Register hooks
-        self.hook_layers()
+        # Hook the gradients and activations
+        self.target_layer.register_forward_hook(self.save_activation)
+        self.target_layer.register_backward_hook(self.save_gradient)
 
-    def hook_layers(self):
-        def forward_hook(module, input, output):
-            self.activations = output
+    def save_activation(self, module, input, output):
+        self.activations = output.detach()
 
-        def backward_hook(module, grad_in, grad_out):
-            self.gradients = grad_out[0]
-
-        self.target_layer.register_forward_hook(forward_hook)
-        self.target_layer.register_backward_hook(backward_hook)
+    def save_gradient(self, module, grad_input, grad_output):
+        self.gradients = grad_output[0].detach()
         
-    def generate_cam(self, data, target_class):
-        img = data['RGB'].unsqueeze(0)  # Add batch dimension
-        depth = data['DEPTH'].unsqueeze(0)
+    def __call__(self, X, target_class):
+        img = X['RGB'].unsqueeze(0)  # Add batch dimension
+        depth = X['DEPTH'].unsqueeze(0)
         self.model.zero_grad()
         
         # Forward pass
@@ -186,23 +183,20 @@ class GradCAM:
         target_output = output[target_class]
         target_output.backward(retain_graph=True)
         
-        # Get the gradients and activations
-        gradients = self.gradients
-        activations = self.activations
-        
         # Compute the weight of each feature map
-        weights = torch.mean(gradients, dim=[2, 3], keepdim=True)
+        weights = torch.mean(self.gradients, dim=[2, 3], keepdim=True)
         
         # Compute the Grad-CAM
-        cam = torch.sum(weights * activations, dim=1, keepdim=True)
-        cam = F.relu(cam)
+        weights = torch.mean(self.gradients, dim=[2, 3], keepdim=True)
+        gradcam = torch.sum(weights * self.activations, dim=1, keepdim=True)
+        gradcam = F.relu(gradcam)
+        gradcam = F.interpolate(gradcam, size=(X['RGB'].size(1), X['RGB'].size(2)), mode='bilinear', align_corners=False)
+        gradcam = gradcam.squeeze().numpy()
         
         # Normalize the CAM
-        cam = cam - cam.min()
-        cam = cam / cam.max()
-        cam = cam.squeeze().cpu().detach().numpy()
+        gradcam = (gradcam - gradcam.min()) / (gradcam.max() - gradcam.min())
 
-        return cam
+        return gradcam
  
  
 def pformat_dict(d, indent=0):
