@@ -8,18 +8,21 @@ import wandb
 from utils.logger import logger
 from utils.utils import pformat_dict
 from utils.utils import compute_class_weights
-from utils.loaders import CalD3R_MenD3s_Dataset
+from utils.Datasets import CalD3RMenD3s_Dataset, BU3DFE_Dataset
 from utils.args import args
 from utils.utils import GradCAM
-from utils.transforms import RGBTransform, DEPTHTransform
 import tasks
 import models as model_list
+from utils.transforms import Transform
+
 
 from torch.profiler import profile, ProfilerActivity 
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 from matplotlib import colormaps
 from torch.utils.tensorboard import SummaryWriter
+from sklearn.model_selection import KFold
+from sklearn.model_selection import train_test_split
 
 
 #!global variables
@@ -61,72 +64,90 @@ def main():
     #!Mixed precision scaler
     scaler = torch.amp.GradScaler()
 
-    #!TRANSFORMATIONS AND AUGMENTATION for TRAINING samples. (NO AUGMENTATION) for VALIDATION samples
-    train_transf = {}
-    val_transf = {}
-    for m in args.modality:
-        if m == 'RGB':
-            train_transf[m] = RGBTransform(augment=True)
-            val_transf[m] = RGBTransform(augment=False)
-        if m == 'DEPTH':
-            train_transf[m] = DEPTHTransform(augment=True)
-            val_transf[m] = DEPTHTransform(augment=False)
-            
-    train_loader = torch.utils.data.DataLoader(CalD3R_MenD3s_Dataset(args.dataset.name,
-                                                                        args.modality,
-                                                                        'train', 
-                                                                        args.dataset,
-                                                                        train_transf,
-                                                                        additional_info=False),
-                                                batch_size=args.batch_size, #small BATCH_SIZE
-                                                shuffle=True,
-                                                num_workers=args.dataset.workers, 
-                                                pin_memory=True, 
-                                                drop_last=True)
+    #! create datasets
+    dataset = {
+        'CalD3rMenD3s': CalD3RMenD3s_Dataset,
+        'BU3DFE': BU3DFE_Dataset
+    }
+    if args.dataset.name in dataset:
+        dataset = dataset[args.dataset.name](args.dataset.name, 
+                                             args.modality,
+                                             args.dataset
+                                            )
+    else:
+        raise NotImplementedError(f"Dataset {args.dataset.name} not implemented")
+    
 
-    val_loader = torch.utils.data.DataLoader(CalD3R_MenD3s_Dataset(args.dataset.name,
-                                                                    args.modality,
-                                                                    'val', 
-                                                                    args.dataset,
-                                                                    val_transf,
-                                                                    additional_info=False),
-                                                batch_size=args.batch_size, 
-                                                shuffle=False,
-                                                num_workers=args.dataset.workers, 
-                                                pin_memory=True, 
-                                                drop_last=False) 
-    
-    #!compute class weights for Weighted Cross Entropy Loss
-    class_weights = compute_class_weights(train_loader, norm=False).to(device, non_blocking=True)
-    
-    #?instanciate a different model per modality. 
-    models = {}
-    logger.info("Instantiating models per modality")
-    for m in args.modality:
-        logger.info('{} Net\tModality: {}'.format(args.models[m].model, m))
-        models[m] = getattr(model_list, args.models[m].model)()
-    
-    #?instanciate also the FUSION network
-    logger.info('{} Net\tModality: {}'.format(args.models['FUSION'].model, 'FUSION'))
-    models['FUSION'] = getattr(model_list, args.models['FUSION'].model)(models['RGB'], models['DEPTH'])
+    #!BFU3DFE cross val
+    # fold_accuracies = []  
+    # for fold in range(5):
+    #     logger.info(f"Fold {fold + 1}")
+    #     # Randomly split the dataset
+    #     train_idx, val_idx = train_test_split(range(len(dataset)), test_size=0.4, random_state=fold) #60%train 40%val
         
-    #!Create  EmotionRecognition  object that wraps all the models for each modality    
-    emotion_classifier = tasks.EmotionRecognition("emotion-classifier", 
-                                                 models, 
-                                                 args.batch_size,
-                                                 args.total_batch, 
-                                                 args.models_dir, 
-                                                 scaler, #mixed precision scaler
-                                                 class_weights,
-                                                 args.models, 
-                                                 args=args)
+    #! CalD3rMenD3s Cross validation
+    kf = KFold(n_splits=5, shuffle=True, random_state=42)     
+    fold_accuracies = []  
+    for fold, (train_idx, val_idx) in enumerate(kf.split(dataset)): 
+        logger.info(f"Fold {fold + 1}")
+        
+        #? Create data loaders Subsets for training and validation with respective transforms
+        train_subset = torch.utils.data.Subset(dataset, train_idx)
+        train_subset.dataset.transform = Transform(augment=True)
+        logger.info(f"Train samples: {len(train_subset)} at fold {fold + 1}")
+        
+        val_subset = torch.utils.data.Subset(dataset, val_idx)
+        val_subset.dataset.transform = Transform(augment=False)
+        logger.info(f"Validation samples: {len(val_subset)} at fold {fold + 1}")   
+            
+        # Create DataLoader instances
+        train_loader = torch.utils.data.DataLoader(
+            train_subset,
+            batch_size=args.batch_size,
+            shuffle=True,
+            num_workers=args.dataset.workers, 
+            pin_memory=True, 
+            drop_last=True
+        )
+
+        val_loader = torch.utils.data.DataLoader(
+            val_subset,
+            batch_size=args.batch_size, 
+            shuffle=False,
+            num_workers=args.dataset.workers, 
+            pin_memory=True, 
+            drop_last=False
+        )
+        
+        #!compute class weights for Weighted Cross Entropy Loss
+        class_weights = compute_class_weights(train_loader, norm=False).to(device, non_blocking=True)
     
-    #emotion_classifier.script() #? script each model per modality
-    
-    emotion_classifier.load_on_gpu(device)
-    
-    #!TRAIN and TESTING
-    if args.action == "train":
+        #?instanciate a different model per modality. 
+        models = {}
+        logger.info("Instantiating models per modality")
+        for m in args.modality:
+            logger.info('{} Net\tModality: {}'.format(args.models[m].model, m))
+            models[m] = getattr(model_list, args.models[m].model)()
+        
+        #?instanciate also the FUSION network
+        logger.info('{} Net\tModality: {}'.format(args.models['FUSION'].model, 'FUSION'))
+        models['FUSION'] = getattr(model_list, args.models['FUSION'].model)(models['RGB'], models['DEPTH'])
+            
+        #!Create  EmotionRecognition  object that wraps all the models for each modality    
+        emotion_classifier = tasks.EmotionRecognition("emotion-classifier", 
+                                                    models, 
+                                                    args.batch_size,
+                                                    args.total_batch, 
+                                                    args.models_dir, 
+                                                    scaler, #mixed precision scaler
+                                                    class_weights,
+                                                    args.models, 
+                                                    args=args)
+        
+        #emotion_classifier.script() #? script each model per modality
+        
+        emotion_classifier.load_on_gpu(device)
+        
         # resume_from argument is adopted in case of restoring from a checkpoint
         if args.resume_from is not None:
             emotion_classifier.load_last_model(args.resume_from)
@@ -139,28 +160,20 @@ def main():
         #* so total number of iterations done over the whole dataset (since we are using smaller batches BATCH_SIZE) is
         training_iterations = args.train.num_iter * (args.total_batch // args.batch_size)
             
-        train(emotion_classifier, train_loader, val_loader, device)
+        #* TRAINING
+        fold_accuracy = train(emotion_classifier, train_loader, val_loader, fold, device)
+        fold_accuracies.append(fold_accuracy)
+        logger.info(f"Fold {fold + 1} accuracy: {fold_accuracy:.2f}%")
+    
+    #!final results
+    logger.info(f"Final results: {fold_accuracies}")
+    average_accuracy = np.mean(fold_accuracies)
+    std_dev_accuracy = np.std(fold_accuracies)
+    logger.info(f"Mean accuracy: {average_accuracy:.2f}%")
+    logger.info(f"Standard deviation: {std_dev_accuracy:.2f}%")
 
-    #!TEST
-    elif args.action == "test":
-        if args.resume_from is not None:
-            emotion_classifier.load_last_model(args.resume_from)
-            
-        test_loader = torch.utils.data.DataLoader(CalD3R_MenD3s_Dataset(args.dataset.name,
-                                                                        args.modality,
-                                                                        'test', 
-                                                                        val_transf,
-                                                                        args.dataset),
-                                                 batch_size=args.batch_size, 
-                                                 shuffle=False,
-                                                 num_workers=args.dataset.workers, 
-                                                 pin_memory=True, 
-                                                 drop_last=False)
-
-        validate(emotion_classifier, test_loader, device, emotion_classifier.current_iter)
-
-
-def train(emotion_classifier, train_loader, val_loader, device):
+    
+def train(emotion_classifier, train_loader, val_loader, fold, device):
     """
     emotion_classifier: Task containing 1 model per modality
     train_loader: dataloader containing the training data
@@ -197,7 +210,7 @@ def train(emotion_classifier, train_loader, val_loader, device):
         
         #?PLOT lr and weights for each model (scheduler step is at each BATCH_SIZE iteration)
         for m in emotion_classifier.models:
-            writer.add_scalar(f'LR for modality/{m}', emotion_classifier.optimizer[m].param_groups[-1]['lr'], real_iter)   
+            writer.add_scalar(f'Fold_{fold}/LR for modality/{m}', emotion_classifier.optimizer[m].param_groups[-1]['lr'], real_iter)   
                
         #? If the  data_loader_source  iterator is exhausted (i.e., it has iterated over the entire dataset), a  StopIteration  exception is raised. 
         #? The  except StopIteration  block catches this exception and reinitializes the iterator with effectively starting the iteration from the beginning of the dataset again. 
@@ -217,7 +230,6 @@ def train(emotion_classifier, train_loader, val_loader, device):
         data = {}
         for m in args.modality:
             data[m] = source_data[m].to(device, non_blocking=True) #? data to GPU
-        
         
         # Start profiling
         if profiler:
@@ -242,12 +254,12 @@ def train(emotion_classifier, train_loader, val_loader, device):
                 (real_iter, args.train.num_iter, emotion_classifier.loss.avg, emotion_classifier.accuracy.avg[1]))
             
             #? PLOT TRAINING LOSS and ACCURACY
-            writer.add_scalar('Loss/train', emotion_classifier.loss.avg, real_iter)
-            writer.add_scalar('Accuracy/train', emotion_classifier.accuracy.avg[1], real_iter)
+            writer.add_scalar('Fold_{fold}/Loss/train', emotion_classifier.loss.avg, real_iter)
+            writer.add_scalar('Fold_{fold}/Accuracy/train', emotion_classifier.accuracy.avg[1], real_iter)
             # #? PLOT WEIGHTS (optimizer step is at TOTAL_BATCH)
             # for m in emotion_classifier.models:
             #     for name, param in emotion_classifier.models[m].named_parameters(): 
-            #         writer.add_histogram(f'{m}/{name}', param, real_iter)    
+            #         writer.add_histogram(f'Fold_{fold}/{m}/{name}', param, real_iter)    
                     
             #emotion_classifier.check_grad() #function that checks norm2 of the gradient (evaluate whether to apply clipping if too large)
             emotion_classifier.grad_clip() #?gradient clipping is applied to all the models for each modality
@@ -260,7 +272,7 @@ def train(emotion_classifier, train_loader, val_loader, device):
             val_metrics = validate(emotion_classifier, val_loader, device, int(real_iter))
             
             #?PLOT VALIDATION ACCURACIES
-            writer.add_scalar('Accuracy/validation', val_metrics['top1'], int(real_iter))
+            writer.add_scalar('Fold_{fold}/Accuracy/validation', val_metrics['top1'], int(real_iter))
 
             if val_metrics['top1'] <= emotion_classifier.best_iter_score:
                 logger.info("OLD best accuracy {:.2f}% at iteration {}".format(emotion_classifier.best_iter_score, emotion_classifier.best_iter))
@@ -269,16 +281,19 @@ def train(emotion_classifier, train_loader, val_loader, device):
                 emotion_classifier.best_iter = real_iter
                 emotion_classifier.best_iter_score = val_metrics['top1']
                 
-            #! every  N_val_visualize  validations, also visualize features and heatmap
+            #! every  N_val_visualize validations, also visualize features and heatmap
             if real_iter % (args.train.eval_freq*args.N_val_visualize)==0:
-                #visualize_features(emotion_classifier, val_loader, device, int(real_iter))
+                visualize_features(emotion_classifier, val_loader, device, int(real_iter))
                 compute_heatmap(emotion_classifier, val_loader, device, int(real_iter))
 
             #emotion_classifier.save_model(real_iter, val_metrics['top1'], prefix=None)
             emotion_classifier.train(True) 
               
     writer.close()
-
+    #collect final validation accuracy
+    return emotion_classifier.best_iter_score
+    
+    
 def validate(emotion_classifier, val_loader, device, real_iter):
     """
     Validation function
@@ -377,14 +392,14 @@ def visualize_features(emotion_classifier, val_loader, device, real_iter):
 def compute_heatmap(emotion_classifier, val_loader, device, real_iter):
     emotions = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5, 'surprise':6}
     reverse_emotions = {v: k for k, v in emotions.items()}
-    Calder_Mendes_mean_RGB = [0.49102524485829907, 0.3618844398451173, 0.31640123102109985]
-    Calder_Mendes_std_RGB = [0.26517980798288976, 0.21546631829305746, 0.21493371251079485]
+    ImageNet_mean = [0.485, 0.456, 0.406] 
+    ImageNet_std = [0.229, 0.224, 0.225]
     #!heatmap object
     #feature exractor must produce features retaining some spatial info (must be a conv layer, cannot be an FC)
     gradcam  = GradCAM(emotion_classifier.models['FUSION'], emotion_classifier.models['FUSION'].module.rgb_model.model[2][6]) 
     
     # Dictionary to store one image per class
-    class_images = {label: {m: None for m in args.modality} for label in emotions.values()}
+    class_images = {label: {m: [] for m in args.modality} for label in emotions.values()}
     #!take 1 sample image per class from val loader
     with torch.no_grad():
         for i_val, (data, label) in enumerate(val_loader): 
@@ -395,38 +410,40 @@ def compute_heatmap(emotion_classifier, val_loader, device, real_iter):
                 # Check if already have an image for each class
                 for i in range(len(label)):
                     class_label = label[i].item()
-                    if class_images[class_label][m] is None:
-                        class_images[class_label][m] = data[m][i]
+                    if len(class_images[class_label][m]) < 4: #?take 4 images per class
+                        class_images[class_label][m].append(data[m][i])
                 
-            if all(all(value is not None for value in class_images[label].values()) for label in class_images):
+            if all(len(data) == 4 for data in class_images.values()):
                 break
             
     #! Compute Grad-CAM for a each image class
     for class_label, data in class_images.items():
         if data is not None:
-            heatmap = gradcam(data, class_label)
-            img = data['RGB']
-            
-            # Resize heatmap to the image size and overlay it
-            heatmap_resized = cv2.resize(heatmap, (img.shape[1], img.shape[2]))
-            heatmap_resized = np.uint8(heatmap_resized * 255)
-            heatmap = cv2.applyColorMap(heatmap_resized, cv2.COLORMAP_JET)
-            
-            #recover the original image
-            img_np = img.cpu().numpy().transpose(1, 2, 0)
-            img_np = ((img_np * Calder_Mendes_std_RGB) + Calder_Mendes_mean_RGB) 
-            img_np = np.uint8(img_np * 255)
-            
-            # Overlay the heatmap on the image
-            overlay_img = cv2.addWeighted(img_np, 1 - 0.5, heatmap, 0.5, 0)
-            
-            # Display the result
-            plt.imshow(overlay_img)
-            plt.title(f'Class: {list(emotions.keys())[list(emotions.values()).index(class_label)]}')
-            plt.axis('off')
-            plt.savefig(os.path.join('./Images/', f'heatmap_{reverse_emotions[class_label]}_{real_iter}_iter.png'))
-            #plt.show()
-            plt.clf()
+            for i in range(len(data['RGB'])):
+                input_data = {'RGB': data['RGB'][i], 'DEPTH': data['DEPTH'][i]}
+                heatmap = gradcam(input_data, class_label)
+                img = data['RGB'][i]
+                
+                # Resize heatmap to the image size and overlay it
+                heatmap_resized = cv2.resize(heatmap, (img.shape[1], img.shape[2]))
+                heatmap_resized = np.uint8(heatmap_resized * 255)
+                heatmap = cv2.applyColorMap(heatmap_resized, cv2.COLORMAP_JET)
+                
+                #recover the original image
+                img_np = img.cpu().numpy().transpose(1, 2, 0)
+                #img_np = ((img_np * ImageNet_mean) + ImageNet_std) 
+                img_np = np.uint8(img_np * 255)
+                
+                # Overlay the heatmap on the image
+                overlay_img = cv2.addWeighted(img_np, 1 - 0.5, heatmap, 0.5, 0)
+                
+                # Display the result
+                plt.imshow(overlay_img)
+                plt.title(f'Class: {list(emotions.keys())[list(emotions.values()).index(class_label)]}')
+                plt.axis('off')
+                plt.savefig(os.path.join('./Images/', f'heatmap_{reverse_emotions[class_label]}_number{i}_iter{real_iter}.png'))
+                #plt.show()
+                plt.clf()
             
             
 if __name__ == '__main__': 

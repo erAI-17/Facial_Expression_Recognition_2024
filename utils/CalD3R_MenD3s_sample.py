@@ -6,12 +6,10 @@ class CalD3R_MenD3s_sample(object):
         dataset: str
             dataset object .yaml
         '''
-        #?PRIVATE attributes have initial underscore and need getters (and setters if requires) to be set
         self._index = str(row[0]) 
         self._series = row[1]
         self.dataset_conf = dataset_conf
-    
-    #?PUBLIC SETTERS as properties 
+
     @property
     def uid(self):
         return int(self._index)
@@ -46,27 +44,4 @@ class CalD3R_MenD3s_sample(object):
     def gender(self):
         return str(self._series['add'][0]) 
 
-
-#?- **Direct Attribute**: 
-#   class Class(object):
-#       def __init__(self, attribute): 
-#           self.attribute = attribute
-#?    - **Pros**: Simpler and more straightforward. Direct access to the value. 
-#?   - **Cons**: Less flexible. If the computation or retrieval logic changes, you need to update all places where the attribute is set. 
-#? 
-
-
-#?- **Property**: 
-#?#?When you use  @property, you can access the method as if it were an attribute, without needing to call it explicitly. 
-#?This approach is useful for creating read-only attributes or for computing values dynamically when they are accessed. 
-#   class Class(object):
-#       def __init__(self, attribute): 
-#           self._attribute = attribute
-#
-#       @property 
-#       def attribute(self):
-#           return int(self._attribute)
-#
-#?    - **Pros**: More flexible. Encapsulates the logic for retrieving the value. If the logic changes, you only need to update the property method. 
-#?    - **Cons**: Slightly more complex. Each access involves a method call, which might have a negligible performance impact. 
 

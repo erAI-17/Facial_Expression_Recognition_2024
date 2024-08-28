@@ -191,7 +191,7 @@ class GradCAM:
         gradcam = torch.sum(weights * self.activations, dim=1, keepdim=True)
         gradcam = F.relu(gradcam)
         gradcam = F.interpolate(gradcam, size=(X['RGB'].size(1), X['RGB'].size(2)), mode='bilinear', align_corners=False)
-        gradcam = gradcam.squeeze().numpy()
+        gradcam = gradcam.squeeze().cpu().numpy()
         
         # Normalize the CAM
         gradcam = (gradcam - gradcam.min()) / (gradcam.max() - gradcam.min())

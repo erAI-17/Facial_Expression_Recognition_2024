@@ -3,7 +3,7 @@ import torch
 from utils.args import args
 from models import efficientnet_b2, AttentionFusion1D
 from tasks.emotion_recognition_task import EmotionRecognition
-from utils.loaders import CalD3R_MenD3s_Dataset
+from utils.Datasets import CalD3R_MenD3s_Dataset
 from torch.utils.data import DataLoader
 
 def objective(trial):

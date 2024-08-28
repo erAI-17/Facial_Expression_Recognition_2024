@@ -34,21 +34,13 @@ if 'config' in cli_args and cli_args.config:
 args = OmegaConf.merge(args, cli_args)
 
 # add log directories
-args.experiment_dir = os.path.join(args.name, datetime.now().strftime('%b%d_%H-%M-%S'))
-if args.action != "train":
-    args.log_dir = os.path.join('Test_results', args.name)
-    if args.logname is None:
-        args.logname = args.action + "_" + args.dataset.shift + ".log"
-    else:
-        args.logname = args.logname + "_" + args.dataset.shift + ".log"
-    args.logfile = os.path.join(args.log_dir, args.logname)
-else:
-    args.log_dir = os.path.join('Experiment_logs', args.experiment_dir)
-    args.logfile = os.path.join(args.log_dir, args.action + ".log")
+args.experiment_dir = os.path.join(datetime.now().strftime('%b%d_%H-%M-%S'))
+args.log_dir = os.path.join('Experiment_logs', args.experiment_dir)
+args.logfile = os.path.join(args.log_dir, ".log")
     
 os.makedirs(args.log_dir, exist_ok=True)
 
 if args.models_dir is None:
     args.models_dir = os.path.join("saved_models", args.experiment_dir)
-if args.action != "train" and args.action != 'save' and args.resume_from is None:
+if args.resume_from is not None:
     args.resume_from = os.path.join(args.models_dir, args.name)

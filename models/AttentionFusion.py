@@ -9,20 +9,17 @@ import torchaudio.transforms as T
 class SumFusion1D(nn.Module):
    def __init__(self, rgb_model, depth_model):
       super(SumFusion1D, self).__init__()
-      num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
+      num_classes, _ = utils.utils.get_domains_and_labels(args)
       
       self.rgb_model = rgb_model
       self.depth_model = depth_model
 
-      #!EfficientNetB0
-      if args.models['DEPTH'].model == 'efficientnet_b0':
+      #!EfficientNetB0, MobileNetV4
+      if args.models['DEPTH'].model == 'efficientnet_b0' or args.models['DEPTH'].model == 'mobilenet_v4':
          self.C = 1280
       #!EfficientNetB2
       elif args.models['DEPTH'].model == 'efficientnet_b2':
          self.C = 1408
-      #!MobilNetv4
-      elif args.models['DEPTH'].model == 'mobilenet_v4':
-         self.C = 1280
       
       #?final classifier
       self.fc = nn.Linear(self.C , num_classes) 
@@ -42,18 +39,17 @@ class SumFusion1D(nn.Module):
 class AttentionFusion1D(nn.Module):
    def __init__(self, rgb_model, depth_model):
       super(AttentionFusion1D, self).__init__()
-      num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
+      num_classes, _ = utils.utils.get_domains_and_labels(args)
       
       self.rgb_model = rgb_model
       self.depth_model = depth_model
 
-      if args.models['DEPTH'].model == 'efficientnet_b0':
+      #!EfficientNetB0, MobileNetV4
+      if args.models['DEPTH'].model == 'efficientnet_b0' or args.models['DEPTH'].model == 'mobilenet_v4':
          self.C = 1280
+      #!EfficientNetB2
       elif args.models['DEPTH'].model == 'efficientnet_b2':
          self.C = 1408
-      #!MobilNetv4
-      elif args.models['DEPTH'].model == 'mobilenet_v4':
-         self.C = 1280
 
       self.Att_map_rgb = nn.Linear(self.C, self.C)
       self.Att_map_depth = nn.Linear(self.C, self.C)
@@ -83,7 +79,7 @@ class AttentionFusion1D(nn.Module):
 class CrossAttentionFusion1D(nn.Module):
    def __init__(self, rgb_model, depth_model):
       super(CrossAttentionFusion1D, self).__init__()
-      num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
+      num_classes, _ = utils.utils.get_domains_and_labels(args)
       
       self.rgb_model = rgb_model
       self.depth_model = depth_model

@@ -1,16 +1,14 @@
-action: ???
 name: ???
 modality: ???
 total_batch: ??? 
 batch_size: ???
 wandb_name: null 
 resume_from: null 
-logname: null 
 models_dir: null 
 amp: ???  #automatic mixed precision
 profile: ??? # profile the training
 N_val_visualize: ???
-landmarks: ??? #landmarks overlay on the RGB image
+align_face: ??? 
 
 
 train:
@@ -27,7 +25,6 @@ dataset:
   name: ???
   annotations_path: ???
   workers: ??? 
-  resolution: 224 
   RGB:
     data_path: ???
   DEPTH:
