@@ -11,6 +11,7 @@ from utils.CalD3R_MenD3s_sample import CalD3R_MenD3s_sample
 from utils.BU3DFE_sample import BU3DFE_sample
 from utils.transforms import Transform
 from utils.args import args
+import matplotlib.pyplot as plt
 
             
 class CalD3RMenD3s_Dataset(data.Dataset, ABC):
@@ -146,7 +147,6 @@ class BU3DFE_Dataset(data.Dataset, ABC):
 
         return sample, label
 
-
     def get(self, modality, ann_sample):
         '''
         Loads single image, applies transformations if required (online augmentation, normalization,...)
@@ -166,7 +166,7 @@ class BU3DFE_Dataset(data.Dataset, ABC):
         data_path = os.path.join(self.dataset_conf[modality].data_path, self.name, 'Subjects', ann_sample.subj_id)
         
         tmpl = "{}_{}_{}"
-        conv = {'RGB': 'F2D', 'DEPTH': 'F3D_depth'}
+        conv = {'RGB': 'F2D.bmp', 'DEPTH': 'F3D_depth.png'}
         try:                
             img = Image.open(os.path.join(data_path, tmpl.format(ann_sample.subj_id, str(ann_sample.description_label + ann_sample.intensity + ann_sample.race), conv[modality])))
             

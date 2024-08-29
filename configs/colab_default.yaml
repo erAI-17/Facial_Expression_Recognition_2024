@@ -19,8 +19,6 @@ train:
   optimizer: ??? # 'ADAM' # 'SGD'
   scheduler: ??? # 'StepLR' # 'CosineAnnealing' # 'OneCycleLR' #'WarmupCosineAnnealing' #''
   
-test:
-  
 dataset:
   name: ???
   annotations_path: ???

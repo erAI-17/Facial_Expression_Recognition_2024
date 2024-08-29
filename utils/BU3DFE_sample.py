@@ -20,7 +20,15 @@ class BU3DFE_sample(object):
     
     @property
     def subj_id(self):
-        return int(self._series['subj_id'])
+        return str(self._series['subj_id'])
+    
+    @property
+    def intensity(self):
+        return str(self._series['intensity'])
+    
+    @property
+    def race(self):
+        return str(self._series['race'])
     
     @property
     def label(self):

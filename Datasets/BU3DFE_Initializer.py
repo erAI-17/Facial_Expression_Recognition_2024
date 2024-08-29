@@ -17,10 +17,10 @@ def wrl_to_depth_map(path):
     mesh = load(path)
     
     # Create a plotter for rendering
-    plotter = Plotter(offscreen=True, size=(640, 480))
+    plotter = Plotter(offscreen=True, size=(640, 480)) #SET TO FALSE TO VISUALIZE
     plotter.add(mesh)
-    plotter.show(interactive=False)
-
+    plotter.show(interactive=False) #SET TO TRUE TO VISUALIZE
+    
     # Get the vtk renderer window
     window = plotter.window
 
@@ -35,7 +35,7 @@ def wrl_to_depth_map(path):
     width, height, _ = depth_image.GetDimensions()
     zbuffer_array = numpy_support.vtk_to_numpy(depth_image.GetPointData().GetScalars())
     zbuffer_array = zbuffer_array.reshape((height, width))
-
+    
     # Normalize depth map for visualization
     zbuffer_normalized = (zbuffer_array - zbuffer_array.min()) / (zbuffer_array.max() - zbuffer_array.min())
     
@@ -59,7 +59,7 @@ def wrl_to_depth_map(path):
     w, h = min(w, width - x), min(h, height - y)
     
     # Crop the depth map to the bounding box
-    depth = zbuffer_normalized[y:y+h, x:x+w] #zbuffer_normalized #zbuffer_array
+    depth = zbuffer_array[y:y+h, x:x+w] #zbuffer_normalized #?zbuffer_array #zbuffer_normalized
     
     # Resize the cropped depth map while maintaining the aspect ratio
     h, w = depth.shape
@@ -88,19 +88,24 @@ def wrl_to_depth_map(path):
     depth_padded[depth_padded ==1] = 0.0
 
     # Rotate the depth map by 180 degrees
-    depth_padded = cv2.rotate(depth_padded, cv2.ROTATE_180)
+    depth_padded = cv2.rotate(depth_padded, cv2.ROTATE_180) 
     
-    # Convert to 8-bit image
-    depth_padded_uint8 = (depth_padded * 255).astype(np.uint8)
+    # Convert from float32 to uint16bit image
+    depth_padded_uint16 = (depth_padded * 65535).astype(np.uint16)
     
-    #Display the depth map
+    #Display the depth map #float32
     # plt.figure(figsize=(8, 6))
-    # plt.imshow(depth_padded_uint8, cmap='gray')
+    # plt.imshow(depth_padded, cmap='gray')
+    # plt.colorbar()
+    # plt.show()
+    
+    # plt.figure(figsize=(8, 6))
+    # plt.imshow(depth_padded_uint16, cmap='gray')
     # plt.colorbar()
     # plt.show()
 
     #Save depth map as grayscale image 
-    cv2.imwrite(path[:-4] + '_depth.png', depth_padded_uint8)
+    cv2.imwrite(path[:-4] + '_depth.png', depth_padded_uint16)
 
     plotter.close()
     
@@ -227,41 +232,40 @@ if __name__ == '__main__':
     
     
     #! copy all files ending with _F2D.bmp or F3D_depth.png to a new folder "BU3DFE"
-    # source_path = '../Datasets/Original_BU3DFE/Subjects/'
-    # dest_path = '../Datasets/BU3DFE/Subjects/'
+    source_path = '../Datasets/Original_BU3DFE/Subjects/'
+    dest_path = '../Datasets/BU3DFE/Subjects/'
 
-    # for subject in os.listdir(source_path):
-    #     subject_source_path = os.path.join(source_path, subject)
-    #     subject_dest_path = os.path.join(dest_path, subject)
+    for subject in os.listdir(source_path):
+        subject_source_path = os.path.join(source_path, subject)
+        subject_dest_path = os.path.join(dest_path, subject)
 
-    #     # Create the destination directory if it doesn't exist
-    #     os.makedirs(subject_dest_path, exist_ok=True)
+        # Create the destination directory if it doesn't exist
+        os.makedirs(subject_dest_path, exist_ok=True)
 
-    #     for file in os.listdir(subject_source_path):
-    #         if file.endswith('F2D.bmp') or file.endswith('F3D_depth.png'):
-    #             source_file = os.path.join(subject_source_path, file)
-    #             dest_file = os.path.join(subject_dest_path, file)
-    #             print('Copying:', source_file, 'to', dest_file)
-    #             shutil.copy2(source_file, dest_file)
+        for file in os.listdir(subject_source_path):
+            if file.endswith('F2D.bmp') or file.endswith('F3D_depth.png'):
+                source_file = os.path.join(subject_source_path, file)
+                dest_file = os.path.join(subject_dest_path, file)
+                print('Copying:', source_file, 'to', dest_file)
+                shutil.copy2(source_file, dest_file)
 
     #!generate annotation files for each dataset, TEST and TRAIN
     class_distribution, mean, std = train_test_annotations(test_size=0.2) #20% test, 80% train
-    
-    #plot histogram class distribution
-    full_emot = {'AN': 'anger', 'DI': 'disgust', 'FE': 'fear', 'HA': 'happiness', 'NE': 'neutral', 'SA': 'sadness', 'SU': 'surprise'}
-    class_distribution = class_distribution['Color']
-    full_class = [full_emot[emotion] for emotion in class_distribution.keys()]
-    plt.bar(full_class, class_distribution.values(), color='skyblue', alpha=0.8)
-    #Set the y-axis limit
-    plt.ylim(0, 800)
-    plt.xlabel('Class')
-    plt.ylabel('Frequency')
-    plt.title('Distribution of Classes')
-    #Add values on top of each bar
-    for i, (key, value) in enumerate(class_distribution.items()):
-        plt.text(i, value, str(value), ha='center', va='bottom')
-    plt.xticks(rotation=45)
-    plt.grid(axis='y', linestyle='--', linewidth=0.5)
-    plt.tight_layout()  # Adjust layout for better spacing
-    plt.show()
-    plt.savefig('/Images/BU3DFE_distribution.png')
+    #!plot histogram class distribution
+    # full_emot = {'AN': 'anger', 'DI': 'disgust', 'FE': 'fear', 'HA': 'happiness', 'NE': 'neutral', 'SA': 'sadness', 'SU': 'surprise'}
+    # class_distribution = class_distribution['Color']
+    # full_class = [full_emot[emotion] for emotion in class_distribution.keys()]
+    # plt.bar(full_class, class_distribution.values(), color='skyblue', alpha=0.8)
+    # #Set the y-axis limit
+    # plt.ylim(0, 800)
+    # plt.xlabel('Class')
+    # plt.ylabel('Frequency')
+    # plt.title('Distribution of Classes')
+    # #Add values on top of each bar
+    # for i, (key, value) in enumerate(class_distribution.items()):
+    #     plt.text(i, value, str(value), ha='center', va='bottom')
+    # plt.xticks(rotation=45)
+    # plt.grid(axis='y', linestyle='--', linewidth=0.5)
+    # plt.tight_layout()  # Adjust layout for better spacing
+    # plt.show()
+    # plt.savefig('/Images/BU3DFE_distribution.png')

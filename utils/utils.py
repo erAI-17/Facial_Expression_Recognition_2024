@@ -6,7 +6,7 @@ from collections import Counter
 import torch.nn.functional as F
 
 def get_domains_and_labels(arguments):    
-    if arguments.dataset.name == 'CalD3rMenD3s':
+    if arguments.dataset.name == 'CalD3rMenD3s' or arguments.dataset.name == 'BU3DFE':
         num_class = 7
         valid_labels = [i for i in range(num_class)]
         
@@ -61,7 +61,7 @@ class Accuracy(object):
 
     def accuracy(self, output, labels, topk, perclass_acc=False):
         """
-        Computes the top-k accuracy for the given outputs and labelss
+        Computes the top-k accuracy for the given outputs and labels
         output: torch.Tensor -> the predictions #? [batch_size, num_classes]
         labels: torch.Tensor -> ground truth labels #? [batch_size]
         perclass_acc -> bool, True if you want to compute also the top-1 accuracy per class

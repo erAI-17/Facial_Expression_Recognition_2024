@@ -18,8 +18,11 @@ CalD3rMenD3s_std_DEPTH = [0.07899400881961408, 0.07899400881961408, 0.0789940088
 class ToTensorUint16:
     def __call__(self, img): #receives np array float32 
         img_np = np.array(img)
-        # Scale the image to [0, 1] by dividing by 9785 (originally was uint16 ranging in 0-9785)
-        img_np = img_np / 9785.0
+        
+        if args.dataset.name == 'CalD3rMenD3s': 
+            img_np = img_np / 9785.0 #(originally was uint16 ranging in 0-9785)
+        elif args.dataset.name == 'BU3DFE':
+            img_np = img_np / 65535.0
         
         # If the image is grayscale, add a channel dimension
         if len(img_np.shape) == 2:
@@ -28,7 +31,6 @@ class ToTensorUint16:
         
         # Convert to PyTorch tensor float32
         img_tensor = torch.from_numpy(img_np).permute(2, 0, 1).to(torch.float32)
-        
         
         return img_tensor
     
@@ -105,16 +107,9 @@ class RGB_Transform:
     
 class DEPTH_Transform:
     def __init__(self, augment=False):    
-        
-        if args.dataset.name == 'CalD3rMenD3s': #uint16 depthmmaps
-            self.to_tensor = [
-                ToTensorUint16(),  # Converts the image to a tensor but doesn't normalize to [0,1]
-            ]    
-        elif args.dataset.name == 'BU3DFE': #uint8 depthmaps
-            self.to_tensor = [
-                transforms.ToImage(), 
-                transforms.ToDtype(torch.float32, scale=True), #convert to float32 and scale to [0,1] (deviding by 255)
-            ]
+        self.to_tensor = [
+            ToTensorUint16(),  # Converts the image to a tensor but doesn't normalize to [0,1]
+        ]    
         
         self.resize = []
         if args.models['DEPTH'].model == 'efficientnet_b2':
