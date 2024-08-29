@@ -4,7 +4,7 @@ import torch
 import torchvision.transforms.v2 as transforms
 from utils.args import args
 import cv2
-import mediapipe as mp
+#import mediapipe as mp #!only for online alignment
 
         
 ImageNet_mean = [0.485, 0.456, 0.406] 
