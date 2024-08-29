@@ -285,12 +285,18 @@ def train(emotion_classifier, train_loader, val_loader, fold, device):
             if real_iter % (args.train.eval_freq*args.N_val_visualize)==0:
                 visualize_features(emotion_classifier, val_loader, device, int(real_iter))
                 compute_heatmap(emotion_classifier, val_loader, device, int(real_iter))
+                
+                confusion_matrix(emotion_classifier, val_loader, device, fold)
 
             #emotion_classifier.save_model(real_iter, val_metrics['top1'], prefix=None)
             emotion_classifier.train(True) 
               
     writer.close()
-    #collect final validation accuracy
+    
+    #at the end of fold, plot confusion matrix and save it
+    confusion_matrix(emotion_classifier, val_loader, device, fold)
+    
+    #return the best accuracy
     return emotion_classifier.best_iter_score
     
     
@@ -343,6 +349,37 @@ def validate(emotion_classifier, val_loader, device, real_iter):
 
     return test_results
 
+
+def confusion_matrix(emotion_classifier, val_loader, device, fold):
+    """
+    Compute and plot the confusion matrix
+    """
+    emotion_classifier.train(False)
+    confusion_matrix = np.zeros((7, 7))
+    
+    with torch.no_grad():
+        for i_val, (data, label) in enumerate(val_loader): #*for each batch in val loader
+            
+            label = label.to(device, non_blocking=True)
+            for m in args.modality:
+                data[m] = data[m].to(device, non_blocking=True)
+            
+            with torch.autocast(device_type= ("cuda" if torch.cuda.is_available() else "cpu"), 
+                            dtype=torch.float16,
+                            enabled=args.amp): 
+                logits, _ = emotion_classifier.forward(data)
+            
+            _, preds = torch.max(logits, 1)
+            for t, p in zip(label.view(-1), preds.view(-1)):
+                confusion_matrix[t.long(), p.long()] += 1
+
+    #?plot the confusion matrix
+    plt.imshow(confusion_matrix, cmap='hot', interpolation='nearest')
+    plt.colorbar()
+    plt.savefig(os.path.join('./Images/', f'confusion_matrix_{fold}.png'))
+    plt.clf() #clear the plot
+    logger.info(f"Confusion matrix saved at ./Images/confusion_matrix_{fold}.png")
+    
 
 def visualize_features(emotion_classifier, val_loader, device, real_iter):
     '''Visualize features and heatmap'''
