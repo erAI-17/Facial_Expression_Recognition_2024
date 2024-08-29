@@ -70,7 +70,7 @@ class EmotionRecognition(tasks.Task, ABC):
         elif args.train.loss_fn == 'CE_Island':
             #!CEL+Center Loss + Island Loss
             self.CE_loss = torch.nn.CrossEntropyLoss(weight=self.class_weights, reduction='mean')
-            self.lambda_global = 1e-2 
+            self.lambda_global = 1e-3 #1e-2
             self.lambda_island = 10
             self.feat_dim = 768 if args.models['FUSION'].model == 'MultiScaleFusionNet' else 1408
             self.Island_loss = IslandLoss(feat_dim=self.feat_dim, lambda_island=self.lambda_island)

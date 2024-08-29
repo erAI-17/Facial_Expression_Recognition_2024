@@ -4,6 +4,8 @@ from utils.args import args
 import numpy as np
 from collections import Counter
 import torch.nn.functional as F
+import matplotlib.pyplot as plt
+import os
 
 def get_domains_and_labels(arguments):    
     if arguments.dataset.name == 'CalD3rMenD3s' or arguments.dataset.name == 'BU3DFE':
@@ -197,6 +199,34 @@ class GradCAM:
         gradcam = (gradcam - gradcam.min()) / (gradcam.max() - gradcam.min())
 
         return gradcam
+ 
+def plot_confusion_matrix(confusion_matrix, fold):
+    emotions = {'anger': 0, 'disgust': 1, 'fear': 2, 'happiness': 3, 'neutral': 4, 'sadness': 5, 'surprise': 6}
+    emotion_labels = list(emotions.keys())
+    
+    # Normalize the confusion matrix to percentages
+    confusion_matrix_normalized = confusion_matrix.astype('float') / confusion_matrix.sum(axis=1)[:, np.newaxis] * 100
+
+    plt.figure(figsize=(8, 8))
+    plt.imshow(confusion_matrix_normalized, cmap='Blues', interpolation='nearest')
+    plt.title(f'Confusion Matrix for Fold {fold}')
+    
+    tick_marks = np.arange(len(emotion_labels))
+    plt.xticks(tick_marks, emotion_labels, rotation=45)
+    plt.yticks(tick_marks, emotion_labels)
+
+    # Annotate each cell with the percentage value
+    thresh = confusion_matrix_normalized.max() / 2.
+    for i, j in np.ndindex(confusion_matrix_normalized.shape):
+        plt.text(j, i, f'{confusion_matrix_normalized[i, j]:.1f}%', 
+                 horizontalalignment='center',
+                 color='white' if confusion_matrix_normalized[i, j] > thresh else 'black')
+
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+    plt.tight_layout()
+    plt.savefig(os.path.join('./Images/', f'confusion_matrix_{fold}.png'))
+    plt.clf()  # Clear the plot
  
  
 def pformat_dict(d, indent=0):

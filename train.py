@@ -7,7 +7,7 @@ import wandb
 
 from utils.logger import logger
 from utils.utils import pformat_dict
-from utils.utils import compute_class_weights
+from utils.utils import compute_class_weights, plot_confusion_matrix
 from utils.Datasets import CalD3RMenD3s_Dataset, BU3DFE_Dataset
 from utils.args import args
 from utils.utils import GradCAM
@@ -184,7 +184,7 @@ def train(emotion_classifier, train_loader, val_loader, fold, device):
     global training_iterations
     
     #Tensorboard logger
-    writer = SummaryWriter('logs')
+    writer = SummaryWriter('logs/flod_{fold}')
     
     #? profiler for CPU and GPU (automaticallly updating Tensorboard). profiling the forward+backward passes, loss computation,...  Not keeping trak of memory alloc/dealloc (profile_memory=false)
     profiler = profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
@@ -253,9 +253,9 @@ def train(emotion_classifier, train_loader, val_loader, fold, device):
             logger.info("[%d/%d]\tMean verb loss: %.4f\tAccMean@1: %.2f%%" %
                 (real_iter, args.train.num_iter, emotion_classifier.loss.avg, emotion_classifier.accuracy.avg[1]))
             
-            #? PLOT TRAINING LOSS and ACCURACY
-            writer.add_scalar('Fold_{fold}/Loss/train', emotion_classifier.loss.avg, real_iter)
-            writer.add_scalar('Fold_{fold}/Accuracy/train', emotion_classifier.accuracy.avg[1], real_iter)
+            #? PLOT TRAINING LOSS and ACCURACY 
+            writer.add_scalar(f'Fold_{fold}/Loss/train', emotion_classifier.loss.avg, real_iter)
+            writer.add_scalar(f'Fold_{fold}/Accuracy/train', emotion_classifier.accuracy.avg[1], real_iter)
             # #? PLOT WEIGHTS (optimizer step is at TOTAL_BATCH)
             # for m in emotion_classifier.models:
             #     for name, param in emotion_classifier.models[m].named_parameters(): 
@@ -272,7 +272,7 @@ def train(emotion_classifier, train_loader, val_loader, fold, device):
             val_metrics = validate(emotion_classifier, val_loader, device, int(real_iter))
             
             #?PLOT VALIDATION ACCURACIES
-            writer.add_scalar('Fold_{fold}/Accuracy/validation', val_metrics['top1'], int(real_iter))
+            writer.add_scalar(f'Fold_{fold}/Accuracy/validation', val_metrics['top1'], int(real_iter))
 
             if val_metrics['top1'] <= emotion_classifier.best_iter_score:
                 logger.info("OLD best accuracy {:.2f}% at iteration {}".format(emotion_classifier.best_iter_score, emotion_classifier.best_iter))
@@ -281,14 +281,14 @@ def train(emotion_classifier, train_loader, val_loader, fold, device):
                 emotion_classifier.best_iter = real_iter
                 emotion_classifier.best_iter_score = val_metrics['top1']
                 
+                #?save the best model if the validation accuracy is improved
+                emotion_classifier.save_model(real_iter, val_metrics['top1'], prefix=None)
+            
             #! every  N_val_visualize validations, also visualize features and heatmap
             if real_iter % (args.train.eval_freq*args.N_val_visualize)==0:
                 visualize_features(emotion_classifier, val_loader, device, int(real_iter))
                 compute_heatmap(emotion_classifier, val_loader, device, int(real_iter))
                 
-                confusion_matrix(emotion_classifier, val_loader, device, fold)
-
-            #emotion_classifier.save_model(real_iter, val_metrics['top1'], prefix=None)
             emotion_classifier.train(True) 
               
     writer.close()
@@ -356,28 +356,20 @@ def confusion_matrix(emotion_classifier, val_loader, device, fold):
     """
     emotion_classifier.train(False)
     confusion_matrix = np.zeros((7, 7))
-    
     with torch.no_grad():
-        for i_val, (data, label) in enumerate(val_loader): #*for each batch in val loader
-            
+        for i_val, (data, label) in enumerate(val_loader):  # For each batch in val loader
             label = label.to(device, non_blocking=True)
             for m in args.modality:
                 data[m] = data[m].to(device, non_blocking=True)
-            
-            with torch.autocast(device_type= ("cuda" if torch.cuda.is_available() else "cpu"), 
-                            dtype=torch.float16,
-                            enabled=args.amp): 
+            with torch.autocast(device_type=("cuda" if torch.cuda.is_available() else "cpu"), 
+                                dtype=torch.float16,
+                                enabled=args.amp): 
                 logits, _ = emotion_classifier.forward(data)
-            
             _, preds = torch.max(logits, 1)
             for t, p in zip(label.view(-1), preds.view(-1)):
                 confusion_matrix[t.long(), p.long()] += 1
 
-    #?plot the confusion matrix
-    plt.imshow(confusion_matrix, cmap='hot', interpolation='nearest')
-    plt.colorbar()
-    plt.savefig(os.path.join('./Images/', f'confusion_matrix_{fold}.png'))
-    plt.clf() #clear the plot
+    plot_confusion_matrix(confusion_matrix, fold)
     logger.info(f"Confusion matrix saved at ./Images/confusion_matrix_{fold}.png")
     
 
