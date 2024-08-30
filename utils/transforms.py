@@ -60,7 +60,7 @@ class Hysto_Eq():
         return img    
 
 class Transform:
-    def __init__(self, augment=False, mean=None, std=None):
+    def __init__(self, augment, mean=None, std=None):
         
         self.hystr_eq = {
             'RGB': [
@@ -100,7 +100,9 @@ class Transform:
             'RGB': [
                 transforms.Normalize(mean['RGB'], std['RGB']),
             ],
-            'DEPTH': [mean['DEPTH'], std['DEPTH']]
+            'DEPTH': [
+                transforms.Normalize(mean['DEPTH'], std['DEPTH']),
+            ]
         }
         
         #! compose transformations

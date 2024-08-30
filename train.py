@@ -69,13 +69,11 @@ def main():
         'CalD3rMenD3s': CalD3RMenD3s_Dataset,
         'BU3DFE': BU3DFE_Dataset
     }
-    if args.dataset.name in dataset:
-        dataset = dataset[args.dataset.name](args.dataset.name, 
-                                             args.modality,
-                                             args.dataset
-                                            )
-    else:
-        raise NotImplementedError(f"Dataset {args.dataset.name} not implemented")
+    global_dataset = dataset[args.dataset.name](name = args.dataset.name, 
+                                                modalities = args.modality,
+                                                dataset_conf= args.dataset,
+                                                transform=None)
+    logger.info(f"Global {args.dataset.name} samples: {len(global_dataset)})")
     
     #Tensorboard logger
     writer_global = SummaryWriter(f'logs/')
@@ -90,24 +88,37 @@ def main():
     #! CalD3rMenD3s Cross validation
     kf = KFold(n_splits=5, shuffle=True, random_state=42)     
     fold_accuracies = []  
-    for fold, (train_idx, val_idx) in enumerate(kf.split(dataset)): 
+    for fold, (train_idx, val_idx) in enumerate(kf.split(global_dataset)): 
         logger.info(f"Fold {fold + 1}")
         
         #Tensorboard logger
         writer_fold = SummaryWriter(f'logs/fold_{fold + 1}')
         
-        #? Create data loaders Subsets for training and validation with respective transforms
-        train_subset = torch.utils.data.Subset(dataset, train_idx)
+        train_dataset = dataset[args.dataset.name](name = args.dataset.name, 
+                                                    modalities = args.modality,
+                                                    dataset_conf= args.dataset,
+                                                    transform=None)
+        
+        val_dataset = dataset[args.dataset.name](name = args.dataset.name, 
+                                                    modalities = args.modality,
+                                                    dataset_conf= args.dataset,
+                                                    transform=None)
+        
+        
+        #? Create Subsets for training and validation for this FOLD
+        train_subset = torch.utils.data.Subset(train_dataset, train_idx)
+        val_subset = torch.utils.data.Subset(val_dataset, val_idx)
+        logger.info(f"Train samples: {len(train_subset)} at fold {fold + 1}")
+        logger.info(f"Validation samples: {len(val_subset)} at fold {fold + 1}") 
+        
         #! compute mean and std for normalization at this fold
         mean, std = compute_mean_std(train_subset)
         
-        train_subset.dataset.transform = Transform(augment=True, mean=mean, std=std)
-        logger.info(f"Train samples: {len(train_subset)} at fold {fold + 1}")
+        # Update the transform for the training and validation datasets (cannot do it before computing mean and std because of augmentations randomness)
+        train_dataset.transform = Transform(augment=True, mean=mean, std=std)
+        val_dataset.transform = Transform(augment=False, mean=mean, std=std)
         
-        val_subset = torch.utils.data.Subset(dataset, val_idx)
-        val_subset.dataset.transform = Transform(augment=False, mean=mean, std=std)
-        logger.info(f"Validation samples: {len(val_subset)} at fold {fold + 1}")  
-            
+        
         # Create DataLoader instances
         train_loader = torch.utils.data.DataLoader(
             train_subset,
@@ -257,7 +268,7 @@ def train(emotion_classifier, train_loader, val_loader, fold, device, writer, me
         
         #! if TOTAL_BATCH is finished, update weights and zero gradients
         if real_iter.is_integer():  
-            logger.info("[%d/%d]\tMean verb loss: %.4f\tAccMean@1: %.2f%%" %
+            logger.info("[%d/%d]\tAvg Loss: %.4f\Avg Acc Top1: %.2f%%" %
                 (real_iter, args.train.num_iter, emotion_classifier.loss.avg, emotion_classifier.accuracy.avg[1]))
             
             #? PLOT TRAINING LOSS and ACCURACY 
@@ -423,11 +434,10 @@ def visualize_features(emotion_classifier, val_loader, device, real_iter):
     
 
 
-def compute_heatmap(emotion_classifier, val_loader, device, real_iter):
+def compute_heatmap(emotion_classifier, val_loader, device, real_iter, mean, std):
     emotions = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5, 'surprise':6}
     reverse_emotions = {v: k for k, v in emotions.items()}
-    ImageNet_mean = [0.485, 0.456, 0.406] 
-    ImageNet_std = [0.229, 0.224, 0.225]
+
     #!heatmap object
     #feature exractor must produce features retaining some spatial info (must be a conv layer, cannot be an FC)
     gradcam  = GradCAM(emotion_classifier.models['FUSION'], emotion_classifier.models['FUSION'].module.rgb_model.model[2][6]) 
@@ -465,7 +475,7 @@ def compute_heatmap(emotion_classifier, val_loader, device, real_iter):
                 
                 #recover the original image
                 img_np = img.cpu().numpy().transpose(1, 2, 0)
-                #img_np = ((img_np * ImageNet_mean) + ImageNet_std) 
+                img_np = ((img_np * std['RGB']) + mean['RGB'])
                 img_np = np.uint8(img_np * 255)
                 
                 # Overlay the heatmap on the image

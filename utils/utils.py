@@ -161,19 +161,10 @@ def compute_mean_std(train_subset):
     sum_sq_pix = {'RGB': np.zeros(3), 'DEPTH': np.zeros(3)}
     n_pix = {'RGB': 0, 'DEPTH': 0}
 
-    path = os.path.join(args.dataset.annotations_path, args.dataset.name)
-    #!CalD3r and MenD3s have different image templates 
     for ann_sample in train_subset:
         for m in ['RGB', 'DEPTH']:
-            
-            tmpl = "{}_{:03d}_{}_{}_{}.png" if ann_sample.datasets_name == 'CalD3r' else "{}_{:02d}_{}_{}_{}.png" if ann_sample.datasets_name == 'MenD3s' else None
-            conv = {'RGB': 'Color', 'DEPTH': 'Depth'}
-            img_path = os.path.join(path, ann_sample.datasets_name, ann_sample.description_label.capitalize(), conv[m], tmpl.format(ann_sample.datasets_name, ann_sample.sample_id, ann_sample.description_label.capitalize(), conv[m], m))
-            
-            img = Image.open(img_path)
-            
             norm_value = 255.0 if m == 'RGB' else 9785.0 
-            img = np.array(img) / norm_value  # Normalize to [0, 1]
+            img = np.array(ann_sample[0][m]) / norm_value  # Normalize to [0, 1]
             
             if m == 'DEPTH':
                 #convert from 1 channel to 3 channels

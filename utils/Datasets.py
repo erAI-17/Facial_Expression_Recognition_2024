@@ -18,19 +18,19 @@ class CalD3RMenD3s_Dataset(data.Dataset, ABC):
     def __init__(self, 
                  name,
                  modalities, 
-                 dataset_conf):    
+                 dataset_conf,
+                 transform = None):    
  
         self.name = name
         self.modalities = modalities
         self.dataset_conf = dataset_conf
+        self.transform = transform
         
         #create global dataset object
         pickle_name = 'annotations_complete.pkl'
         self.ann_list = []
         self.ann_list_file = pd.read_pickle(os.path.join(self.dataset_conf.annotations_path, self.name, pickle_name))
         self.ann_list.extend([CalD3R_MenD3s_sample(row, self.dataset_conf) for row in self.ann_list_file.iterrows()])
-        
-        logger.info(f"Dataset {self.name} with {len(self.ann_list)} samples generated")
         
         ##! if local run, reduce the validation set for faster debug 
         if platform.node() == 'MSI':
@@ -54,7 +54,8 @@ class CalD3RMenD3s_Dataset(data.Dataset, ABC):
                 sample[m] = img
         
         #*apply transformations (convert to tensor, normalize, augment)!
-        sample = self.transform(sample)
+        if self.transform is not None:
+            sample = self.transform(sample)
             
         return sample, label
 
@@ -111,7 +112,7 @@ class BU3DFE_Dataset(data.Dataset, ABC):
         self.name = name
         self.modalities = modalities
         self.dataset_conf = dataset_conf
-        self.transform = transform if transform else Transform(augment=False)
+        self.transform = None
              
         #create global dataset object
         pickle_name = 'annotations_complete.pkl'
@@ -143,7 +144,8 @@ class BU3DFE_Dataset(data.Dataset, ABC):
                 sample[m] = img
         
         #*apply transformations (convert to tensor, normalize, augment)!
-        sample = self.transform(sample)
+        if self.transform is not None:
+            sample = self.transform(sample)
 
         return sample, label
 
