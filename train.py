@@ -184,7 +184,7 @@ def train(emotion_classifier, train_loader, val_loader, fold, device):
     global training_iterations
     
     #Tensorboard logger
-    writer = SummaryWriter('logs/flod_{fold}')
+    writer = SummaryWriter(f'logs/fold_{fold}')
     
     #? profiler for CPU and GPU (automaticallly updating Tensorboard). profiling the forward+backward passes, loss computation,...  Not keeping trak of memory alloc/dealloc (profile_memory=false)
     profiler = profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
