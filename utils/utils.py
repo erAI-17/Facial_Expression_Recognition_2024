@@ -6,6 +6,8 @@ from collections import Counter
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 import os
+import cv2
+import PIL.Image as Image
 
 def get_domains_and_labels(arguments):    
     if arguments.dataset.name == 'CalD3rMenD3s' or arguments.dataset.name == 'BU3DFE':
@@ -77,9 +79,6 @@ class Accuracy(object):
         
         #? pred.eq() returns a tensor of the same size as input with True where the elements are equal and False where they are not.
         #? labels.view(1, -1).expand_as(pred) -> reshapes the labels tensor to have the same shape as the pred tensor
-        check1 = labels.view(1, -1) #[1, batch_size]
-        check2 = labels.view(1, -1).expand_as(pred) #[topk, batch_size]
-        
         correct = pred.eq(labels.view(1, -1).expand_as(pred)) 
         correct_k = correct[:topk].reshape(-1).to(torch.float32).sum(0) #number of correct predictions in the batch for the top-k scoring
         
@@ -153,6 +152,53 @@ def compute_class_weights(train_loader, norm=False):
         class_weights = [w / sum_weights for w in class_weights]
 
     return torch.FloatTensor(class_weights)
+
+
+def compute_mean_std(train_subset):
+    mean = {'RGB': np.zeros(3), 'DEPTH': np.zeros(3)}
+    std = {'RGB': np.zeros(3), 'DEPTH': np.zeros(3)}
+    sum_pix = {'RGB': np.zeros(3), 'DEPTH': np.zeros(3)}
+    sum_sq_pix = {'RGB': np.zeros(3), 'DEPTH': np.zeros(3)}
+    n_pix = {'RGB': 0, 'DEPTH': 0}
+
+    path = os.path.join(args.dataset.annotations_path, args.dataset.name)
+    #!CalD3r and MenD3s have different image templates 
+    for ann_sample in train_subset:
+        for m in ['RGB', 'DEPTH']:
+            
+            tmpl = "{}_{:03d}_{}_{}_{}.png" if ann_sample.datasets_name == 'CalD3r' else "{}_{:02d}_{}_{}_{}.png" if ann_sample.datasets_name == 'MenD3s' else None
+            conv = {'RGB': 'Color', 'DEPTH': 'Depth'}
+            img_path = os.path.join(path, ann_sample.datasets_name, ann_sample.description_label.capitalize(), conv[m], tmpl.format(ann_sample.datasets_name, ann_sample.sample_id, ann_sample.description_label.capitalize(), conv[m], m))
+            
+            img = Image.open(img_path)
+            
+            norm_value = 255.0 if m == 'RGB' else 9785.0 
+            img = np.array(img) / norm_value  # Normalize to [0, 1]
+            
+            if m == 'DEPTH':
+                #convert from 1 channel to 3 channels
+                img = np.expand_dims(img, axis=-1)
+                img = np.repeat(img, 3, axis=-1)
+             
+        
+            #Resize images to input size of the model you will use
+            img = cv2.resize(img, (260, 260), interpolation=cv2.INTER_LINEAR)
+            
+            # Update sums
+            sum_pix[m] += np.sum(img, axis=(0, 1)) #sum all pixels in the image, separately for each channel (black pixels are 0)
+            sum_sq_pix[m] += np.sum(img ** 2, axis=(0, 1))
+            
+            # Create a mask to maintain only pixels where all three channels are below the threshold
+            mask = (img[:, :, 0] > 0) | (img[:, :, 1] >  0) | (img[:, :, 2] > 0)
+            #mask off 0 values (black pixels) in the frame, from each channel
+            img = img[mask]
+            n_pix[m] += mask.sum() #mask converts into a 2D array
+
+    for m in ['RGB', 'DEPTH']:
+        mean[m] = sum_pix[m] / n_pix[m]
+        std[m] = np.sqrt(sum_sq_pix[m] / n_pix[m] - mean[m] ** 2)
+    
+    return mean, std
 
 
 class GradCAM:

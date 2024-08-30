@@ -7,7 +7,7 @@ import wandb
 
 from utils.logger import logger
 from utils.utils import pformat_dict
-from utils.utils import compute_class_weights, plot_confusion_matrix
+from utils.utils import compute_class_weights, compute_mean_std , plot_confusion_matrix
 from utils.Datasets import CalD3RMenD3s_Dataset, BU3DFE_Dataset
 from utils.args import args
 from utils.utils import GradCAM
@@ -77,7 +77,9 @@ def main():
     else:
         raise NotImplementedError(f"Dataset {args.dataset.name} not implemented")
     
-
+    #Tensorboard logger
+    writer_global = SummaryWriter(f'logs/')
+    
     #!BFU3DFE cross val
     # fold_accuracies = []  
     # for fold in range(5):
@@ -91,14 +93,20 @@ def main():
     for fold, (train_idx, val_idx) in enumerate(kf.split(dataset)): 
         logger.info(f"Fold {fold + 1}")
         
+        #Tensorboard logger
+        writer_fold = SummaryWriter(f'logs/fold_{fold + 1}')
+        
         #? Create data loaders Subsets for training and validation with respective transforms
         train_subset = torch.utils.data.Subset(dataset, train_idx)
-        train_subset.dataset.transform = Transform(augment=True)
+        #! compute mean and std for normalization at this fold
+        mean, std = compute_mean_std(train_subset)
+        
+        train_subset.dataset.transform = Transform(augment=True, mean=mean, std=std)
         logger.info(f"Train samples: {len(train_subset)} at fold {fold + 1}")
         
         val_subset = torch.utils.data.Subset(dataset, val_idx)
-        val_subset.dataset.transform = Transform(augment=False)
-        logger.info(f"Validation samples: {len(val_subset)} at fold {fold + 1}")   
+        val_subset.dataset.transform = Transform(augment=False, mean=mean, std=std)
+        logger.info(f"Validation samples: {len(val_subset)} at fold {fold + 1}")  
             
         # Create DataLoader instances
         train_loader = torch.utils.data.DataLoader(
@@ -109,7 +117,7 @@ def main():
             pin_memory=True, 
             drop_last=True
         )
-
+        
         val_loader = torch.utils.data.DataLoader(
             val_subset,
             batch_size=args.batch_size, 
@@ -161,19 +169,21 @@ def main():
         training_iterations = args.train.num_iter * (args.total_batch // args.batch_size)
             
         #* TRAINING
-        fold_accuracy = train(emotion_classifier, train_loader, val_loader, fold, device)
+        fold_accuracy = train(emotion_classifier, train_loader, val_loader, fold, device, writer_fold, mean, std)
         fold_accuracies.append(fold_accuracy)
         logger.info(f"Fold {fold + 1} accuracy: {fold_accuracy:.2f}%")
     
     #!final results
-    logger.info(f"Final results: {fold_accuracies}")
+    writer_global.add_text('Final results', f"Fold accuracies: {fold_accuracies}")
     average_accuracy = np.mean(fold_accuracies)
     std_dev_accuracy = np.std(fold_accuracies)
-    logger.info(f"Mean accuracy: {average_accuracy:.2f}%")
-    logger.info(f"Standard deviation: {std_dev_accuracy:.2f}%")
+    writer_global.add_text('Final results', f"Average Accuracy: {average_accuracy:.2f}%")
+    writer_global.add_text('Final results', f"STD Accuracy: {std_dev_accuracy:.2f}%")
+    
+    writer_global.close()
 
     
-def train(emotion_classifier, train_loader, val_loader, fold, device):
+def train(emotion_classifier, train_loader, val_loader, fold, device, writer, mean=None, std=None):
     """
     emotion_classifier: Task containing 1 model per modality
     train_loader: dataloader containing the training data
@@ -182,9 +192,6 @@ def train(emotion_classifier, train_loader, val_loader, fold, device):
     """
        
     global training_iterations
-    
-    #Tensorboard logger
-    writer = SummaryWriter(f'logs/fold_{fold}')
     
     #? profiler for CPU and GPU (automaticallly updating Tensorboard). profiling the forward+backward passes, loss computation,...  Not keeping trak of memory alloc/dealloc (profile_memory=false)
     profiler = profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
@@ -287,12 +294,10 @@ def train(emotion_classifier, train_loader, val_loader, fold, device):
             #! every  N_val_visualize validations, also visualize features and heatmap
             if real_iter % (args.train.eval_freq*args.N_val_visualize)==0:
                 visualize_features(emotion_classifier, val_loader, device, int(real_iter))
-                compute_heatmap(emotion_classifier, val_loader, device, int(real_iter))
+                compute_heatmap(emotion_classifier, val_loader, device, int(real_iter), mean, std)
                 
             emotion_classifier.train(True) 
-              
-    writer.close()
-    
+               
     #at the end of fold, plot confusion matrix and save it
     confusion_matrix(emotion_classifier, val_loader, device, fold)
     
@@ -450,7 +455,7 @@ def compute_heatmap(emotion_classifier, val_loader, device, real_iter):
         if data is not None:
             for i in range(len(data['RGB'])):
                 input_data = {'RGB': data['RGB'][i], 'DEPTH': data['DEPTH'][i]}
-                heatmap = gradcam(input_data, class_label)
+                heatmap = 1 - gradcam(input_data, class_label)
                 img = data['RGB'][i]
                 
                 # Resize heatmap to the image size and overlay it

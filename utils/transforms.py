@@ -60,7 +60,7 @@ class Hysto_Eq():
         return img    
 
 class Transform:
-    def __init__(self, augment=False):
+    def __init__(self, augment=False, mean=None, std=None):
         
         self.hystr_eq = {
             'RGB': [
@@ -98,16 +98,16 @@ class Transform:
             
         self.normalize = {
             'RGB': [
-                transforms.Normalize(mean=ImageNet_mean, std=ImageNet_std),
+                transforms.Normalize(mean['RGB'], std['RGB']),
             ],
-            'DEPTH': []
+            'DEPTH': [mean['DEPTH'], std['DEPTH']]
         }
         
         #! compose transformations
-        self.rgb_transformations = self.hystr_eq['RGB'] + self.to_tensor['RGB'] + self.resize + self.augment #+ self.normalize['RGB']
+        self.rgb_transformations = self.hystr_eq['RGB'] + self.to_tensor['RGB'] + self.resize + self.augment + self.normalize['RGB']
         self.RGB_transform = transforms.Compose(self.rgb_transformations)
         
-        self.depth_transformations = self.to_tensor['DEPTH'] + self.resize + self.augment #+ self.normalize['DEPTH']
+        self.depth_transformations = self.to_tensor['DEPTH'] + self.resize + self.augment + self.normalize['DEPTH']
         self.DEPTH_transform = transforms.Compose(self.depth_transformations)
     
     def __call__(self, sample):       
