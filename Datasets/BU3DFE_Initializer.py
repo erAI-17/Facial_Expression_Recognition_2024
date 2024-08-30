@@ -8,16 +8,16 @@ import os
 import PIL.Image as Image
 from sklearn.model_selection import train_test_split
 import pickle
-import shutil
 import pandas as pd
+import shutil
 
-def wrl_to_depth_map(path):
-      
+
+def wrl_to_depth_map(path):     
     # Load the 3D model from the .wrl file
     mesh = load(path)
     
     # Create a plotter for rendering
-    plotter = Plotter(offscreen=True, size=(640, 480)) #SET TO FALSE TO VISUALIZE
+    plotter = Plotter(offscreen=True, size=(512, 3072)) #SET TO FALSE TO visualize
     plotter.add(mesh)
     plotter.show(interactive=False) #SET TO TRUE TO VISUALIZE
     
@@ -35,15 +35,15 @@ def wrl_to_depth_map(path):
     width, height, _ = depth_image.GetDimensions()
     zbuffer_array = numpy_support.vtk_to_numpy(depth_image.GetPointData().GetScalars())
     zbuffer_array = zbuffer_array.reshape((height, width))
-    
+
     # Normalize depth map for visualization
     zbuffer_normalized = (zbuffer_array - zbuffer_array.min()) / (zbuffer_array.max() - zbuffer_array.min())
-    
+
     # Convert to 8-bit image for easy thresholding
     zbuffer_normalized_uint8 = (zbuffer_normalized * 255).astype(np.uint8)
 
     # Threshold to identify the white (or nearly white) areas
-    _, thresholded = cv2.threshold(zbuffer_normalized_uint8, 240, 255, cv2.THRESH_BINARY)
+    _, thresholded = cv2.threshold(zbuffer_normalized_uint8, 250, 255, cv2.THRESH_BINARY) 
 
     # Invert thresholded image to get the actual depth areas
     thresholded_inv = cv2.bitwise_not(thresholded)
@@ -90,18 +90,19 @@ def wrl_to_depth_map(path):
     # Rotate the depth map by 180 degrees
     depth_padded = cv2.rotate(depth_padded, cv2.ROTATE_180) 
     
+    #vertical flip
+    depth_padded = cv2.flip(depth_padded, 1)
+    
     # Convert from float32 to uint16bit image
     depth_padded_uint16 = (depth_padded * 65535).astype(np.uint16)
     
     #Display the depth map #float32
     # plt.figure(figsize=(8, 6))
     # plt.imshow(depth_padded, cmap='gray')
-    # plt.colorbar()
     # plt.show()
     
     # plt.figure(figsize=(8, 6))
     # plt.imshow(depth_padded_uint16, cmap='gray')
-    # plt.colorbar()
     # plt.show()
 
     #Save depth map as grayscale image 

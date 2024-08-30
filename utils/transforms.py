@@ -59,66 +59,34 @@ class Hysto_Eq():
         
         return img    
 
-class RGB_Transform:
+class Transform:
     def __init__(self, augment=False):
         
-        if args.dataset.name == 'CalD3rMenD3s': 
-            self.hystogram_eq = [
+        self.hystr_eq = {
+            'RGB': [
                 Hysto_Eq(grayscale=False)
-            ] 
-        elif args.dataset.name == 'BU3DFE': #not needed
-            self.hystogram_eq = [] 
+            ],
+            'DEPTH': []
+        }
         
-        self.to_tensor = [
-            transforms.ToImage(),
-            transforms.ToDtype(torch.float32, scale=True), #convert to float32 and scale to [0,1] (deviding by 255)
-        ]
-        
-        self.resize = []    
-        if args.models['RGB'].model == 'efficientnet_b2':
-            self.resize = [transforms.Resize((260, 260), interpolation=transforms.InterpolationMode.BICUBIC),
+        self.to_tensor = {
+            'RGB': [
+                transforms.ToImage(),
+                transforms.ToDtype(torch.float32, scale=True),
+            ],
+            'DEPTH': [
+                ToTensorUint16(),
             ]
-        if args.models['RGB'].model == 'mobilenet_v4':
-            self.resize = [transforms.Resize((256, 256), interpolation=transforms.InterpolationMode.BICUBIC),
-            ]
-            
-        self.augment = []
-        if augment:
-            self.augment = [
-                transforms.RandomHorizontalFlip(),
-                transforms.RandomRotation(10),
-                transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1), 
-                #transforms.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5)), #simulates out of focus
-                #transforms.RandomErasing(scale=(0.02, 0.25), ratio=(0.5, 2.0)), #simulates occlusions
-            ]
-            
-        self.normalize = [
-            transforms.Normalize(mean=ImageNet_mean, std=ImageNet_std),
-        ]
-        
-        self.transformations = self.hystogram_eq + self.to_tensor + self.resize + self.augment #+ self.normalize
-        self.transform = transforms.Compose(self.transformations)
-    
-    def __call__(self, img):
-        # Apply transformations
-        img = self.transform(img)
-        return img
-    
-    
-class DEPTH_Transform:
-    def __init__(self, augment=False):    
-        self.to_tensor = [
-            ToTensorUint16(),  # Converts the image to a tensor but doesn't normalize to [0,1]
-        ]    
+        }
         
         self.resize = []
-        if args.models['DEPTH'].model == 'efficientnet_b2':
+        if args.models['RGB'].model == 'efficientnet_b2' and args.models['DEPTH'].model == 'efficientnet_b2':
             self.resize = [transforms.Resize((260, 260), interpolation=transforms.InterpolationMode.BICUBIC),
             ]
-        if args.models['RGB'].model == 'mobilenet_v4':
+        if args.models['RGB'].model == 'mobilenet_v4' and args.models['DEPTH'].model == 'mobilenet_v4':
             self.resize = [transforms.Resize((256, 256), interpolation=transforms.InterpolationMode.BICUBIC),
             ]
-            
+        
         self.augment = []
         if augment:
             self.augment = [
@@ -127,35 +95,39 @@ class DEPTH_Transform:
                 #transforms.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5)),
                 #transforms.RandomErasing(scale=(0.02, 0.25), ratio=(0.5, 2.0)),
             ]
+            
+        self.normalize = {
+            'RGB': [
+                transforms.Normalize(mean=ImageNet_mean, std=ImageNet_std),
+            ],
+            'DEPTH': []
+        }
         
-        self.normalize = [
-            transforms.Normalize(mean=ImageNet_mean, std=ImageNet_std),
-        ]
+        #! compose transformations
+        self.rgb_transformations = self.hystr_eq['RGB'] + self.to_tensor['RGB'] + self.resize + self.augment #+ self.normalize['RGB']
+        self.RGB_transform = transforms.Compose(self.rgb_transformations)
         
-        self.transformations = self.to_tensor + self.resize + self.augment #+ self.normalize    
-        self.transform = transforms.Compose(self.transformations)
+        self.depth_transformations = self.to_tensor['DEPTH'] + self.resize + self.augment #+ self.normalize['DEPTH']
+        self.DEPTH_transform = transforms.Compose(self.depth_transformations)
     
-    def __call__(self, img):            
-        # Apply transformations
-        img = self.transform(img)
-        return img    
-    
-    
-class Transform:
-    def __init__(self, augment=False):
-        self.RGB_transform = RGB_Transform(augment=augment)
-        self.DEPTH_transform = DEPTH_Transform(augment=augment)
-        
     def __call__(self, sample):       
         img = np.array(sample['RGB'])
         depth = np.array(sample['DEPTH'])
         
+        # Apply the same augmentations to both
+        seed = np.random.randint(2147483647) 
+
         # Apply transformations
+        torch.manual_seed(seed)
         img = self.RGB_transform(img)
+        
+        torch.manual_seed(seed)
         depth = self.DEPTH_transform(depth)
         
         sample = {'RGB': img, 'DEPTH': depth}
         
         return sample
+    
+
     
 
