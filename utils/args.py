@@ -34,13 +34,12 @@ if 'config' in cli_args and cli_args.config:
 args = OmegaConf.merge(args, cli_args)
 
 # add log directories
-args.experiment_dir = os.path.join(datetime.now().strftime('%b%d_%H-%M-%S'))
-args.log_dir = os.path.join('Experiment_logs', args.experiment_dir)
+args.log_dir = os.path.join('Experiment_logs', datetime.now().strftime('%b%d_%H-%M-%S'))
 args.logfile = os.path.join(args.log_dir, ".log")
     
 os.makedirs(args.log_dir, exist_ok=True)
 
 if args.models_dir is None:
-    args.models_dir = os.path.join("saved_models", args.experiment_dir)
+    args.models_dir = os.path.join("saved_models", datetime.now().strftime('%b%d_%H-%M-%S'))
 if args.resume_from is not None:
     args.resume_from = os.path.join(args.models_dir, "saved_models", args.name)

@@ -72,56 +72,8 @@ class AttentionFusion1D(nn.Module):
       X_fused = torch.cat((X_rgb, X_depth), dim=1)
       
       X_fused = self.dropout(F.relu(self.bn1(self.fc1(X_fused))))
-      
-      # if rgb_input.shape[0] != 1:
-      #    X_fused = self.dropout(F.relu(self.bn1(self.fc1(X_fused))))
-      # else: #Gradcam has Batchsize=1 , so BN layer will throw error
-      #    X_fused = self.dropout(F.relu((self.fc1(X_fused))))
-                                
+                       
       logits = self.fc2(X_fused)
       
       return logits, {'late': X_fused}
    
-   
-class CrossAttentionFusion1D(nn.Module):
-   def __init__(self, rgb_model, depth_model):
-      super(CrossAttentionFusion1D, self).__init__()
-      num_classes, _ = utils.utils.get_domains_and_labels(args)
-      
-      self.rgb_model = rgb_model
-      self.depth_model = depth_model
-      
-      if args.models['DEPTH'].model == 'efficientnet_b0':
-         self.C = 1280
-      elif args.models['DEPTH'].model == 'efficientnet_b2':
-         self.C = 1408
-
-      self.cross_attention_rgb = nn.MultiheadAttention(embed_dim=self.C, num_heads=8)
-      self.cross_attention_depth = nn.MultiheadAttention(embed_dim=self.C, num_heads=8)
-      
-      self.fc1 = nn.Linear(self.C * 2, self.C)
-      self.bn1 = nn.BatchNorm1d(self.C)
-      self.dropout = nn.Dropout(p=0.5)
-      self.fc2 = nn.Linear(self.C, num_classes)
-
-   def forward(self, rgb_input, depth_input):
-      X_rgb = self.rgb_model(rgb_input)
-      X_depth = self.depth_model(depth_input)
-
-      # Cross-attention
-      #   # Reshape for MultiheadAttention: (L, N, E) where L is sequence length, N is batch size, E is embedding dimension. Returns the output and the attention weights
-      Att_X_rgb, _ = self.cross_attention_rgb(X_rgb.unsqueeze(0), X_depth.unsqueeze(0), X_depth.unsqueeze(0))
-      Att_X_depth, _ = self.cross_attention_depth(X_depth.unsqueeze(0), X_rgb.unsqueeze(0), X_rgb.unsqueeze(0))
-
-      # Remove sequence length dimension
-      Att_X_rgb = Att_X_rgb.squeeze(0)
-      Att_X_depth = Att_X_depth.squeeze(0)
-
-      # Concatenate features
-      X_fused = torch.cat((Att_X_rgb, Att_X_depth), dim=1)
-
-      # Fully connected layers
-      X_fused = self.dropout(F.relu(self.bn1(self.fc1(X_fused))))
-      logits = self.fc2(X_fused)
-
-      return logits, {'late': X_fused}

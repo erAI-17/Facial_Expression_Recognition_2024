@@ -27,18 +27,6 @@ class SpatialAttentionModule(nn.Module):
   
       return L
 
-class CrossModalityAttention(nn.Module):
-    def __init__(self, embed_dim):
-        super(CrossModalityAttention, self).__init__()
-        self.attention = nn.MultiheadAttention(embed_dim, num_heads=8)
-        self.fc = nn.Linear(embed_dim, embed_dim)
-
-    def forward(self, X, X_landmarks):
-        # X_landmarks as queries, X as keys and values
-        attention_output, _ = self.attention(X_landmarks, X, X)
-        output = self.fc(attention_output + X_landmarks)  # Add and normalize
-        return output
-
 class PatchEmbedding(nn.Module):
    def __init__(self, H, patch_size, in_channels, embed_dim=768):
       super(PatchEmbedding, self).__init__()
@@ -57,26 +45,23 @@ class PatchEmbedding(nn.Module):
       return x
 
 class FusionNet(nn.Module):
-   """Visual Transformer Feature Fusion with Attention Selective fusion.
-      Combines multiple Transformer encoder layers for classification
-   """
    def __init__(self, rgb_model, depth_model):
       super(FusionNet, self).__init__()      
-      num_classes, valid_labels = utils.utils.get_domains_and_labels(args)
+      num_classes, _ = utils.utils.get_domains_and_labels(args)
        
       self.rgb_model = rgb_model
       self.depth_model = depth_model
       
       #? Heights and Widths of the feature maps at different stages 
-      self.stages = {'late': [352, 9]} # only late features
-      #self.stages = {'early': [32, 130], 'mid': [88, 17], 'late': [352, 9]}
+      self.stages = {'late': [1408, 9]} # only late features
+      #self.stages = {'early': [32, 130], 'mid': [88, 17], 'late': [1408, 9]}
       
       #? Weights for RGB and Depth modalities
       self.weight_rgb = nn.ParameterDict({stage: nn.Parameter(torch.randn(1)) for stage in self.stages})
       self.weight_depth = nn.ParameterDict({stage: nn.Parameter(torch.randn(1)) for stage in self.stages}) 
             
       self.patch_sizes = { 'early': 13 , 'mid': 8, 'late': 1}
-      self.n_spatial_attentions = 4
+      self.n_spatial_attentions = 3
       self.patch_size = {}
       self.Att_map_RGB = nn.ModuleDict()
       self.Att_map_D = nn.ModuleDict()

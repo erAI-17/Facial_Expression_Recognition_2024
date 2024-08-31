@@ -45,7 +45,6 @@ class efficientnet_b0(nn.Module):
         return X, {'early': X_early, 'mid': X_mid, 'late': X_late}
     
 
-
 class efficientnet_b2(nn.Module):
     def __init__(self):
         super(efficientnet_b2, self).__init__()
@@ -71,19 +70,17 @@ class efficientnet_b2(nn.Module):
         self.model[3].register_forward_hook(get_features('late'))  #[2][6] #[3]
         
     def forward(self, X):       
+        #check if X contains nan values
         X = self.model(X)  # Forward pass through the model to trigger hooks
          #squeeze width and height dimensions
        
-               
         # Extracted features are already stored in self.features
         X_early = self.features.get('early') #? [batch_size, 32, 130, 130]
         X_mid = self.features.get('mid') #? [batch_size, 88, 17, 17]
-        X_late = self.features.get('late') #? [batch_size, 352, 9, 9]
+        X_late = self.features.get('late') #? [batch_size, 1408, 9, 9]
     
         return X, {'early': X_early, 'mid': X_mid, 'late': X_late}
               
-    
-    
     
 class SqueezeExcite_Module(nn.Module):
     def __init__(self, in_channels, reduction=16):

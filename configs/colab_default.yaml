@@ -18,6 +18,8 @@ train:
   loss_fn: ??? # 'CE_Center' # 'CE' # 'Focal'
   optimizer: ??? # 'ADAM' # 'SGD'
   scheduler: ??? # 'StepLR' # 'CosineAnnealing' # 'OneCycleLR' #'WarmupCosineAnnealing' #''
+  lambda_global: ???
+  lambda_island: ???
   
 dataset:
   name: ???

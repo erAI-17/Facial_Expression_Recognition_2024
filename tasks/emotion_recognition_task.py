@@ -20,6 +20,8 @@ class EmotionRecognition(tasks.Task, ABC):
                  scaler,
                  class_weights: torch.FloatTensor, 
                  model_args: Dict[str, float], 
+                 lambda_global,
+                 lambda_island,
                  args, **kwargs) -> None:
         
         """
@@ -64,14 +66,14 @@ class EmotionRecognition(tasks.Task, ABC):
             #!CEL+Center Loss 
             self.CE_loss = torch.nn.CrossEntropyLoss(weight=self.class_weights, reduction='mean')
             self.Center_loss = CenterLoss(feat_dim=1408) #1408 #2816 
-            self.lambda_center = 1e-2 #5e-4 #3e-3
+            self.lambda_global = lambda_global 
             self.optimizer_centers = torch.optim.SGD(self.Center_loss.parameters(), lr=0.5)  #alpha (lr) for class centers
-            self.criterion = CE_Center_Criterion(self.CE_loss, self.Center_loss, self.lambda_center)
+            self.criterion = CE_Center_Criterion(self.CE_loss, self.Center_loss, self.lambda_global)
         elif args.train.loss_fn == 'CE_Island':
             #!CEL+Center Loss + Island Loss
             self.CE_loss = torch.nn.CrossEntropyLoss(weight=self.class_weights, reduction='mean')
-            self.lambda_global = 1e-3 #1e-2
-            self.lambda_island = 10
+            self.lambda_global = lambda_global #1e-3 #1e-2
+            self.lambda_island = lambda_island
             self.feat_dim = 768 if args.models['FUSION'].model == 'FusionNet' else 1408
             self.Island_loss = IslandLoss(feat_dim=self.feat_dim, lambda_island=self.lambda_island)
             self.optimizer_centers = torch.optim.SGD(self.Island_loss.parameters(), lr=0.5)  #alpha (lr) for class centers
