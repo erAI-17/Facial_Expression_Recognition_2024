@@ -226,8 +226,8 @@ class Task(torch.nn.Module, metaclass=ABCMeta):
             else:
                 filename = self.name + "_" + m + "_" + str(self.model_count) + ".pth"
 
-            if not os.path.exists(os.path.join(self.models_dir, self.args.experiment_dir)):
-                os.makedirs(os.path.join(self.models_dir, self.args.experiment_dir))
+            if not os.path.exists(os.path.join(self.models_dir)):
+                os.makedirs(os.path.join(self.models_dir))
 
             try:
                 torch.save(
@@ -241,7 +241,7 @@ class Task(torch.nn.Module, metaclass=ABCMeta):
                         "optimizer_state_dict": self.optimizer[m].state_dict(),
                         "last_model_count_saved": self.model_count,
                     },
-                    os.path.join(self.models_dir, self.args.experiment_dir, filename),
+                    os.path.join(self.models_dir, filename),
                 )
                 self.model_count = self.model_count + 1 if self.model_count < 9 else 1
 
