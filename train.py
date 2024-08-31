@@ -76,7 +76,7 @@ def main():
     logger.info(f"Global {args.dataset.name} samples: {len(global_dataset)})")
     
     #Tensorboard logger
-    writer_global = SummaryWriter(f'logs/')
+    writer = SummaryWriter(f'logs/')
     
     #!BFU3DFE cross val
     # fold_accuracies = []  
@@ -90,9 +90,6 @@ def main():
     fold_accuracies = []  
     for fold, (train_idx, val_idx) in enumerate(kf.split(global_dataset)): 
         logger.info(f"Fold {fold + 1}")
-        
-        #Tensorboard logger
-        writer_fold = SummaryWriter(f'logs/fold_{fold + 1}')
         
         train_dataset = dataset[args.dataset.name](name = args.dataset.name, 
                                                     modalities = args.modality,
@@ -180,18 +177,18 @@ def main():
         training_iterations = args.train.num_iter * (args.total_batch // args.batch_size)
             
         #* TRAINING
-        fold_accuracy = train(emotion_classifier, train_loader, val_loader, fold, device, writer_fold, mean, std)
+        fold_accuracy = train(emotion_classifier, train_loader, val_loader, fold, device, writer, mean, std)
         fold_accuracies.append(fold_accuracy)
         logger.info(f"Fold {fold + 1} accuracy: {fold_accuracy:.2f}%")
     
     #!final results
-    writer_global.add_text('Final results', f"Fold accuracies: {fold_accuracies}")
+    writer.add_text('Final results', f"Fold accuracies: {fold_accuracies}")
     average_accuracy = np.mean(fold_accuracies)
     std_dev_accuracy = np.std(fold_accuracies)
-    writer_global.add_text('Final results', f"Average Accuracy: {average_accuracy:.2f}%")
-    writer_global.add_text('Final results', f"STD Accuracy: {std_dev_accuracy:.2f}%")
+    writer.add_text('Final results', f"Average Accuracy: {average_accuracy:.2f}%")
+    writer.add_text('Final results', f"STD Accuracy: {std_dev_accuracy:.2f}%")
     
-    writer_global.close()
+    writer.close()
 
     
 def train(emotion_classifier, train_loader, val_loader, fold, device, writer, mean=None, std=None):
@@ -228,7 +225,7 @@ def train(emotion_classifier, train_loader, val_loader, fold, device, writer, me
         
         #?PLOT lr and weights for each model (scheduler step is at each BATCH_SIZE iteration)
         for m in emotion_classifier.models:
-            writer.add_scalar(f'Fold_{fold}/LR for modality/{m}', emotion_classifier.optimizer[m].param_groups[-1]['lr'], real_iter)   
+            writer.add_scalar(f'/Fold_{fold}/LR for modality/{m}', emotion_classifier.optimizer[m].param_groups[-1]['lr'], real_iter)   
                
         #? If the  data_loader_source  iterator is exhausted (i.e., it has iterated over the entire dataset), a  StopIteration  exception is raised. 
         #? The  except StopIteration  block catches this exception and reinitializes the iterator with effectively starting the iteration from the beginning of the dataset again. 
@@ -268,12 +265,12 @@ def train(emotion_classifier, train_loader, val_loader, fold, device, writer, me
         
         #! if TOTAL_BATCH is finished, update weights and zero gradients
         if real_iter.is_integer():  
-            logger.info("[%d/%d]\tAvg Loss: %.4f\Avg Acc Top1: %.2f%%" %
+            logger.info("[%d/%d]\tAvg Loss: %.4f\tAvg Acc Top1: %.2f%%" %
                 (real_iter, args.train.num_iter, emotion_classifier.loss.avg, emotion_classifier.accuracy.avg[1]))
             
             #? PLOT TRAINING LOSS and ACCURACY 
-            writer.add_scalar(f'Fold_{fold}/Loss/train', emotion_classifier.loss.avg, real_iter)
-            writer.add_scalar(f'Fold_{fold}/Accuracy/train', emotion_classifier.accuracy.avg[1], real_iter)
+            writer.add_scalar(f'/Fold_{fold}/Loss/train', emotion_classifier.loss.avg, real_iter)
+            writer.add_scalar(f'/Fold_{fold}/Accuracy/train', emotion_classifier.accuracy.avg[1], real_iter)
             # #? PLOT WEIGHTS (optimizer step is at TOTAL_BATCH)
             # for m in emotion_classifier.models:
             #     for name, param in emotion_classifier.models[m].named_parameters(): 
@@ -438,6 +435,7 @@ def compute_heatmap(emotion_classifier, val_loader, device, real_iter, mean, std
     emotions = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5, 'surprise':6}
     reverse_emotions = {v: k for k, v in emotions.items()}
 
+    emotion_classifier.train(False)
     #!heatmap object
     #feature exractor must produce features retaining some spatial info (must be a conv layer, cannot be an FC)
     gradcam  = GradCAM(emotion_classifier.models['FUSION'], emotion_classifier.models['FUSION'].module.rgb_model.model[2][6]) 

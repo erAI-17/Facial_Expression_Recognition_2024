@@ -55,6 +55,7 @@ class AttentionFusion1D(nn.Module):
       self.Att_map_depth = nn.Linear(self.C, self.C)
       
       self.fc1 = nn.Linear(self.C*2 , self.C)
+      self.bn1 = nn.BatchNorm1d(self.C)
       self.dropout = nn.Dropout(p=args.models['FUSION'].dropout)
       self.fc2 = nn.Linear(self.C , num_classes)
       
@@ -69,7 +70,14 @@ class AttentionFusion1D(nn.Module):
       X_depth = Att_X_depth * X_depth
       
       X_fused = torch.cat((X_rgb, X_depth), dim=1)
-      X_fused = self.dropout(F.relu(self.fc1(X_fused)))
+      
+      X_fused = self.dropout(F.relu(self.bn1(self.fc1(X_fused))))
+      
+      # if rgb_input.shape[0] != 1:
+      #    X_fused = self.dropout(F.relu(self.bn1(self.fc1(X_fused))))
+      # else: #Gradcam has Batchsize=1 , so BN layer will throw error
+      #    X_fused = self.dropout(F.relu((self.fc1(X_fused))))
+                                
       logits = self.fc2(X_fused)
       
       return logits, {'late': X_fused}
