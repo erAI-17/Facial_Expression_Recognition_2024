@@ -268,8 +268,8 @@ class FusionNetWithPretrainedViT(nn.Module):
 
       # Update the number of tokens and dimensions based on stages
       self.patch_size = {'early': 13, 'mid': 8, 'late': 1}
-      #self.stages = {'late': [352, 9]}  # Adjust this according to the stages you want to use
-      self.stages = {'early': [32, 130], 'mid': [120, 17], 'late': [352, 9]}
+      self.stages = {'late': [352, 9]}  # Adjust this according to the stages you want to use
+      #self.stages = {'early': [32, 130], 'mid': [88, 17], 'late': [352, 9]}
       
       self.n_spatial_attentions = 3
       self.SpatialAttentionModules = nn.ModuleDict({
