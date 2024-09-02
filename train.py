@@ -394,10 +394,19 @@ def confusion_matrix(emotion_classifier, val_loader, device, fold):
 def visualize_features(emotion_classifier, val_loader, device, real_iter):
     '''Visualize features and heatmap'''
     
-    emotions = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5, 'surprise':6}
+    if args.dataset.name == 'CalD3rMenD3s':
+        if args.FER6:
+            emotions = {'angry':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5, 'surprise':6}
+        else:
+            emotions = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5}
+    if args.dataset.name == 'BU3DFE':
+        if args.FER6:
+            emotions = {'angry':0, 'disgust':1, 'fear':2, 'happiness':3, 'sadness':4, 'surprise':5}
+        else:
+            emotions = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5, 'surprise':6}
+    
     val_features = []
     val_labels = []
-    
     emotion_classifier.train(False) 
     with torch.no_grad():
         for i_val, (data, label) in enumerate(val_loader): #*for each batch in val loader
@@ -437,7 +446,17 @@ def visualize_features(emotion_classifier, val_loader, device, real_iter):
 
 
 def compute_heatmap(emotion_classifier, val_loader, device, real_iter, mean, std):
-    emotions = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5, 'surprise':6}
+    
+    if args.dataset.name == 'CalD3rMenD3s':
+        if args.FER6:
+            emotions = {'angry':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5, 'surprise':6}
+        else:
+            emotions = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5}
+    if args.dataset.name == 'BU3DFE':
+        if args.FER6:
+            emotions = {'angry':0, 'disgust':1, 'fear':2, 'happiness':3, 'sadness':4, 'surprise':5}
+        else:
+            emotions = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5, 'surprise':6}
     reverse_emotions = {v: k for k, v in emotions.items()}
 
     emotion_classifier.train(False)
@@ -468,7 +487,7 @@ def compute_heatmap(emotion_classifier, val_loader, device, real_iter, mean, std
         if data is not None:
             for i in range(len(data['RGB'])):
                 input_data = {'RGB': data['RGB'][i], 'DEPTH': data['DEPTH'][i]}
-                heatmap = gradcam(input_data, class_label) #1-
+                heatmap = 1 - gradcam(input_data, class_label) #1-
                 img = data['RGB'][i]
                 
                 # Resize heatmap to the image size and overlay it

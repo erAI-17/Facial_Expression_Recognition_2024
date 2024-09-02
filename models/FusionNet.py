@@ -53,11 +53,11 @@ class FusionNet(nn.Module):
       self.depth_model = depth_model
       
       #? Heights and Widths of the feature maps at different stages 
-      self.stages = {'late': [1408, 9]} # only late features
-      #self.stages = {'early': [32, 130], 'mid': [88, 17], 'late': [1408, 9]}
+      self.stages = {'late': [352, 9]} # only late features
+      #self.stages = {'early': [32, 130], 'mid': [88, 17], 'late': [352, 9]}
                   
       self.patch_sizes = { 'early': 13 , 'mid': 8, 'late': 1}
-      self.n_spatial_attentions = 3
+      self.n_spatial_attentions = 5
       self.patch_size = {}
         
       self.SpatialAttentionModules = nn.ModuleDict({
@@ -126,35 +126,26 @@ class FusionNet(nn.Module):
    
    
    
-class FusionNet_NOTRANSF(nn.Module):
+class FusionNet_NOTRANSF_onlylate(nn.Module):
    def __init__(self, rgb_model, depth_model):
-      super(FusionNet_NOTRANSF, self).__init__()      
+      super(FusionNet_NOTRANSF_onlylate, self).__init__()      
       num_classes = utils.utils.get_domains_and_labels(args)
       
       self.rgb_model = rgb_model
       self.depth_model = depth_model
       
       #? Heights and Widths of the feature maps at different stages 
-      self.stages = {'late': [1408, 9]} # only late features
-      #self.stages = {'early': [32, 130], 'mid': [88, 17], 'late': [1408, 9]}
-      
-      self.patch_sizes = { 'early': 13 , 'mid': 8, 'late': 1}
-      self.n_spatial_attentions = 3
-      self.patch_size = {}
-        
+      self.stages = {'late': [352, 9]} # only late features
+
+
+      self.n_spatial_attentions = 5  
       self.SpatialAttentionModules = nn.ModuleDict({
          'rgb': nn.ModuleDict({stage: nn.ModuleList([SpatialAttentionModule(self.stages[stage][0]) for _ in range(self.n_spatial_attentions)]) for stage in self.stages}),
          'depth': nn.ModuleDict({stage: nn.ModuleList([SpatialAttentionModule(self.stages[stage][0]) for _ in range(self.n_spatial_attentions)]) for stage in self.stages})
       })
       
-      #?patches embeddings
-      self.patch_embed = nn.ModuleDict({
-         'rgb': nn.ModuleDict({stage: PatchEmbedding(self.stages[stage][1], self.patch_sizes[stage], self.stages[stage][0]) for stage in self.stages}),
-         'depth': nn.ModuleDict({stage: PatchEmbedding(self.stages[stage][1], self.patch_sizes[stage], self.stages[stage][0]) for stage in self.stages})
-      })
-      
       self.maxpool = nn.AdaptiveMaxPool2d((1, 1))
-      self.fc = nn.Linear(1408*2, num_classes)
+      self.fc = nn.Linear(352*2, num_classes)
 
    def forward(self, rgb_input, depth_input):
       X_rgb = self.rgb_model(rgb_input)
@@ -175,9 +166,6 @@ class FusionNet_NOTRANSF(nn.Module):
             
             X[m][stage] = X_att * X[m][stage] #?apply attention to features
             
-            #?patch embeddings
-            #X[m][stage] = self.patch_embed[m][stage](X[m][stage])
-            
       #?concatenate each modality and stage
       X_fused = torch.cat((X['rgb']['late'], X['depth']['late']), dim=1)
          
@@ -187,3 +175,70 @@ class FusionNet_NOTRANSF(nn.Module):
       
       return logits, {'late': X_fused}
 
+
+
+
+class FusionNet_NOTRANSF_earlymidlate(nn.Module):
+   def __init__(self, rgb_model, depth_model):
+      super(FusionNet_NOTRANSF_earlymidlate, self).__init__()      
+      num_classes = utils.utils.get_domains_and_labels(args)
+      
+      self.rgb_model = rgb_model
+      self.depth_model = depth_model
+      
+      #? Heights and Widths of the feature maps at different stages 
+      self.stages = {'early': [32, 130], 'mid': [88, 17], 'late': [352, 9]}
+      
+      self.patch_sizes = { 'early': 13 , 'mid': 8, 'late': 1}
+      self.n_spatial_attentions = 5
+      self.patch_size = {}
+        
+      self.SpatialAttentionModules = nn.ModuleDict({
+         'rgb': nn.ModuleDict({stage: nn.ModuleList([SpatialAttentionModule(self.stages[stage][0]) for _ in range(self.n_spatial_attentions)]) for stage in self.stages}),
+         'depth': nn.ModuleDict({stage: nn.ModuleList([SpatialAttentionModule(self.stages[stage][0]) for _ in range(self.n_spatial_attentions)]) for stage in self.stages})
+      })
+      
+      self.conv = nn.ModuleDict({
+         'rgb': nn.ModuleDict({stage: nn.Conv2d(self.stages[stage][0], 352, kernel_size=1) for stage in self.stages}),
+         'depth': nn.ModuleDict({stage: nn.Conv2d(self.stages[stage][0], 352, kernel_size=1) for stage in self.stages})
+      })
+            
+      self.maxpool = nn.AdaptiveMaxPool2d((1, 1))
+      self.fc1 = nn.Linear(352*6, 352*3)
+      self.fc2 = nn.Linear(352*3, 352)
+      self.fc3 = nn.Linear(352, num_classes)
+      
+   def forward(self, rgb_input, depth_input):
+      X_rgb = self.rgb_model(rgb_input)
+      X_depth = self.depth_model(depth_input)
+      
+      X = {'rgb': X_rgb[1], 'depth': X_depth[1]}  # Assume X_rgb[1] and X_depth[1] contain 'early', 'mid', 'late' stages
+
+      for m in ['rgb', 'depth']:          
+         for stage in self.stages:
+            
+            #? apply multiple spatial attention modules and perform maxpooling
+            X_att = torch.zeros(X[m][stage].size(0), 0, X[m][stage].size(2), X[m][stage].size(3)).to(X[m][stage].device)
+            for spatial_attetion_module in self.SpatialAttentionModules[m][stage]:
+               X_att = torch.cat((X_att, spatial_attetion_module(X[m][stage])), dim=1)
+            
+            #max pooling over all channels
+            X_att = torch.max(X_att, dim=1, keepdim=True)[0] #? [batch_size, 1, H, W]
+            
+            X[m][stage] = X_att * X[m][stage] #?apply attention to features
+            
+            #?maxpool and project to 352
+            X[m][stage] = self.conv[m][stage](X[m][stage]) #? [batch_size, 352]
+            X[m][stage] = self.maxpool(X[m][stage]) #? [batch_size, 1, C]
+            X[m][stage] = X[m][stage].squeeze() #? [batch_size, C]
+            
+       #?concatenate each modality and stage
+      X_fused = torch.zeros(rgb_input.size(0), 0).to(X['rgb']['late'].device) 
+      for stage in self.stages:
+         X_fused = torch.cat((X_fused, torch.cat((X['rgb'][stage], X['depth'][stage]), dim=1)), dim=1)
+               
+      X_fused =  F.relu(self.fc1(X_fused))
+      X_fused = F.relu(self.fc2(X_fused))
+      logits = self.fc3(X_fused)
+      
+      return logits, {'late': X_fused}

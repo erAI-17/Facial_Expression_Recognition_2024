@@ -67,7 +67,7 @@ class efficientnet_b2(nn.Module):
         # Registering hooks to the layers
         self.model[1].register_forward_hook(get_features('early')) 
         self.model[2][3].register_forward_hook(get_features('mid')) 
-        self.model[3].register_forward_hook(get_features('late'))  
+        self.model[2][6].register_forward_hook(get_features('late'))  
         
     def forward(self, X):       
         #check if X contains nan values
@@ -77,7 +77,7 @@ class efficientnet_b2(nn.Module):
         # Extracted features are already stored in self.features
         X_early = self.features.get('early') #? [batch_size, 32, 130, 130]
         X_mid = self.features.get('mid') #? [batch_size, 88, 17, 17]
-        X_late = self.features.get('late') #? [batch_size, 1408, 9, 9]
+        X_late = self.features.get('late') #? [batch_size, 352, 9, 9]
     
         return X, {'early': X_early, 'mid': X_mid, 'late': X_late}
               
