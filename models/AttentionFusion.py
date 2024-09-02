@@ -9,7 +9,7 @@ import torchaudio.transforms as T
 class SumFusion1D(nn.Module):
    def __init__(self, rgb_model, depth_model):
       super(SumFusion1D, self).__init__()
-      num_classes, _ = utils.utils.get_domains_and_labels(args)
+      num_classes = utils.utils.get_domains_and_labels(args)
       
       self.rgb_model = rgb_model
       self.depth_model = depth_model
@@ -39,7 +39,7 @@ class SumFusion1D(nn.Module):
 class AttentionFusion1D(nn.Module):
    def __init__(self, rgb_model, depth_model):
       super(AttentionFusion1D, self).__init__()
-      num_classes, _ = utils.utils.get_domains_and_labels(args)
+      num_classes = utils.utils.get_domains_and_labels(args)
       
       self.rgb_model = rgb_model
       self.depth_model = depth_model

@@ -11,10 +11,12 @@ import PIL.Image as Image
 
 def get_domains_and_labels(arguments):    
     if arguments.dataset.name == 'CalD3rMenD3s' or arguments.dataset.name == 'BU3DFE':
-        num_class = 7
-        valid_labels = [i for i in range(num_class)]
+        if args.FER6:
+            num_class = 6
+        else:
+            num_class = 7
         
-    return num_class, valid_labels
+    return num_class
 
 
 class Accuracy(object):
@@ -25,7 +27,7 @@ class Accuracy(object):
     def __init__(self, topk=(1,5)):
         assert len(topk) > 0
         self.topk = topk
-        self.num_classes, _ = get_domains_and_labels(args)
+        self.num_classes = get_domains_and_labels(args)
         self.avg, self.val, self.sum, self.count, self.correct, self.total = None, None, None, None, None, None
         self.reset()
 

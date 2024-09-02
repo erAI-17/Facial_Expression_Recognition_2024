@@ -8,7 +8,7 @@ import cv2
 import PIL.Image as Image
 import mediapipe as mp
 
-def train_test_annotations(test_size):
+def train_test_annotations():
     """Splits dataset into TRAIN and TEST splits and generate annotation .pkl files where a row represents a sample with this schema:
     dataset (str): CalD3r, MenD3s
     subj_id (str): unique code
@@ -19,7 +19,6 @@ def train_test_annotations(test_size):
     #!read all datasets and create unique annotation file where each row has schema [subj_id, code, label, add]
     datasets = ['CalD3r', 'MenD3s']
     emotions = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5, 'surprise':6}
-    grouped = {}
     class_distribution = {'Color':{emotion: 0 for emotion in emotions.keys()}, 'Depth':{emotion: 0 for emotion in emotions.keys()}}
     
     # Initialize accumulators for mean and std
@@ -42,11 +41,13 @@ def train_test_annotations(test_size):
                 else:
                     files_path = f'{path}/{emotion.capitalize()}/DEPTH'
                 
-                for filename in os.listdir(files_path): 
-                    add = [filename.split("_")[0]] 
-                    subj_id = filename.split("_")[1]   
-                    code = filename.split("_")[2]
-                    description_label = filename.split("_")[3]
+                for filename in os.listdir(files_path):
+                    #remove "aligned_" from filename
+                    info_filename = filename.replace('aligned_', '')
+                    add = [info_filename.split("_")[0]] 
+                    subj_id = info_filename.split("_")[1]   
+                    code = info_filename.split("_")[2]
+                    description_label = info_filename.split("_")[3]
                     
                     
                     new_entry = [dataset, subj_id, code, description_label, emotions[description_label], add]
@@ -108,47 +109,13 @@ def train_test_annotations(test_size):
         mean[m] = sum_pix[m] / n_pix[m]
         std[m] = np.sqrt(sum_sq_pix[m] / n_pix[m] - mean[m] ** 2)
 
-            
-    #!split data into train and test dataframes (making sure that all the samples with same 'subj_id', 'label' and 'add', fall inside the same split)
-    for sample in data:
-        key = (sample[0], sample[1], sample[2], sample[3], sample[4], tuple(sample[5])) #?#key: (dataset, subj_id, code, description_label, label)
-        grouped.setdefault(key, []).append(sample)  #?#grouped: {'group1': [[sample1], [sample2],...], 'group2': [[]], ... }    
-    
-    # Convert grouped dictionary to a list of groups
-    groups = list(grouped.values())  
-        
-    # Shuffle the groups
-    np.random.seed(42)
-    np.random.shuffle(groups)  
-    
-    labels = [group[0][4] for group in groups]  #? get the label of the first sample in each group
-    
-    # Split the groups into train and test sets following the distribution in labels
-    train_groups, test_groups = train_test_split(groups, test_size=test_size, stratify=labels, random_state=42)  #? train_test_split from sklearn, automatically splits the list
-
-    # Flatten the list of groups back into arrays
-    train_set = ([sample for group in train_groups for sample in group])
-    test_set = ([sample for group in test_groups for sample in group])
-    
     #convert to dataframes
     complete_df = pd.DataFrame(data, columns=['dataset','subj_id', 'code', 'description_label', 'label', 'add'])
-    train_df = pd.DataFrame(train_set, columns=['dataset','subj_id', 'code', 'description_label', 'label', 'add'])
-    test_df  = pd.DataFrame(test_set, columns=['dataset','subj_id', 'code', 'description_label', 'label', 'add'])
-    
-    #save annotation complete file
+
+    #save annotation test file
     annotation_file = os.path.join('../Datasets/CalD3RMenD3s/', 'annotations_complete.pkl')
     with open(annotation_file, 'wb') as file:
         pickle.dump(complete_df, file)
-        
-    #save annotation train file
-    annotation_file = os.path.join('../Datasets/CalD3RMenD3s/', 'annotations_train.pkl')
-    with open(annotation_file, 'wb') as file:
-        pickle.dump(train_df, file)
-        
-    #save annotation test file
-    annotation_file = os.path.join('../Datasets/CalD3RMenD3s/', 'annotations_test.pkl')
-    with open(annotation_file, 'wb') as file:
-        pickle.dump(test_df, file)
     
     return class_distribution, mean, std 
   
@@ -159,19 +126,17 @@ def align_face():
     datasets = ['CalD3r', 'MenD3s']
     emotions = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5, 'surprise':6}
     for dataset in datasets:
-        path = f'../Datasets/CalD3RMenD3s/{dataset}'
+        path = f'../Datasets/Original_CalD3RMenD3s/{dataset}'
         for emotion in emotions.keys(): 
             file_path = f'{path}/{emotion.capitalize()}/RGB'
             for filename in os.listdir(file_path): 
                 #!align images and save
                 img =  Image.open(f'{file_path}/{filename}')
-                
                 try: 
                     depth = Image.open(f'{path}/{emotion.capitalize()}/DEPTH/{filename.replace('_Color', '_Depth')}')
                 except:
                     print(f'No depth image for {filename}')
                     continue
-                
                 
                 try:
                     img_al, depth_al = alignment(img, depth, overlay=False)
@@ -200,10 +165,9 @@ def align_face():
                 # plt.title('Transformed depth')
                 # plt.show()
                 
-                
-                #!save aligned images as png into new directory
-                save_path_rgb = f'{path}/{emotion.capitalize()}/RGB/aligned_{filename}'
-                save_path_depth = f'{path}/{emotion.capitalize()}/DEPTH/aligned_{filename.replace('_Color', '_Depth')}'
+                #!save aligned images as png into directory  "CalD3RMenD3s"  !=  "Original_CalD3RMenD3s"
+                save_path_rgb = f'../Datasets/CalD3RMenD3s/{dataset}/{emotion.capitalize()}/RGB/aligned_{filename}'
+                save_path_depth = f'../Datasets/CalD3RMenD3s/{dataset}/{emotion.capitalize()}/DEPTH/aligned_{filename.replace('_Color', '_Depth')}'
                 #save aligned images, convert from BGR to RGB
                 cv2.imwrite(save_path_rgb, cv2.cvtColor(img_al, cv2.COLOR_RGB2BGR))
                 cv2.imwrite(save_path_depth, depth_al)
@@ -248,7 +212,6 @@ class Alignment():
         left_eye_center = np.mean([landmarks[i] for i in left_eye_corners_idx], axis=0)
         right_eye_center = np.mean([landmarks[i] for i in right_eye_corners_idx], axis=0)
         
-        
         #calculate the angle between eye centers
         delta_x = right_eye_center[0] - left_eye_center[0]
         delta_y = right_eye_center[1] - left_eye_center[1]
@@ -285,41 +248,26 @@ class Alignment():
 #!##
 if __name__ == '__main__':
     
-    #!generate annotation files for each dataset, TEST and TRAIN
-    class_distribution, mean, std = train_test_annotations(test_size=0.2) #20% test, 80% train
-    #! plot histogram class distribution
-    #class_distribution = class_distribution['Color']
-    #plt.bar(class_distribution.keys(), class_distribution.values(), color='skyblue', alpha=0.8)
-    #plt.xlabel('Class')
-    #plt.ylabel('Frequency')
-    #plt.title('Distribution of Classes')
-    # Add values on top of each bar
-    # for i, (key, value) in enumerate(class_distribution.items()):
-    #     plt.text(i, value, str(value), ha='center', va='bottom')
-    # plt.xticks(rotation=45)
-    # plt.grid(axis='y', linestyle='--', linewidth=0.5)
-    # plt.tight_layout()  # Adjust layout for better spacing
-    # plt.show()
-    # plt.savefig('/Images/CalD3RMenD3s_distribution.png')
-    
-    
-   
+
     #!align images and save
     #align_face()
-    #! delete every image not startign with "aligned_"
-    # datasets = ['CalD3r', 'MenD3s']
-    # emotions = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5, 'surprise':6}
-    # for dataset in datasets:
-    #     path = f'../Datasets/CalD3RMenD3s/{dataset}'
-    #     for emotion in emotions.keys(): 
-    #         file_path = f'{path}/{emotion.capitalize()}'
-    #         for m in ['RGB', 'DEPTH']:
-    #             file_path = f'{path}/{emotion.capitalize()}/{m}'
-    #             for filename in os.listdir(file_path):
-    #                 if not filename.startswith('aligned_'):
-    #                     os.remove(os.path.join(file_path, filename))
-    #                     print(f'{filename} removed')
-                
+    
+    #!generate annotation files for each dataset, TEST and TRAIN
+    class_distribution, mean, std = train_test_annotations() #20% test, 80% train
+    #! plot histogram class distribution
+    class_distribution = class_distribution['Color']
+    plt.bar(class_distribution.keys(), class_distribution.values(), color='skyblue', alpha=0.8)
+    plt.xlabel('Class')
+    plt.ylabel('Frequency')
+    plt.title('Distribution of Classes')
+    # Add values on top of each bar
+    for i, (key, value) in enumerate(class_distribution.items()):
+        plt.text(i, value, str(value), ha='center', va='bottom')
+    plt.xticks(rotation=45)
+    plt.grid(axis='y', linestyle='--', linewidth=0.5)
+    plt.tight_layout()  # Adjust layout for better spacing
+    plt.show()
+    plt.savefig('/Images/CalD3RMenD3s_distribution.png')
                 
         
     

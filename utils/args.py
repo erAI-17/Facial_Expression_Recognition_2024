@@ -35,7 +35,7 @@ args = OmegaConf.merge(args, cli_args)
 
 # add log directories
 args.log_dir = os.path.join('Experiment_logs', datetime.now().strftime('%b%d_%H-%M-%S'))
-args.logfile = os.path.join(args.log_dir, ".log")
+args.logfile = os.path.join(args.log_dir, f'{args.name}.log')
     
 os.makedirs(args.log_dir, exist_ok=True)
 

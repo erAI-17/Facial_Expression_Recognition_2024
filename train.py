@@ -5,7 +5,7 @@ import numpy as np
 import os
 import wandb
 
-from utils.logger import logger
+from utils.logger import logger #create logger object
 from utils.utils import pformat_dict
 from utils.utils import compute_class_weights, compute_mean_std , plot_confusion_matrix
 from utils.Datasets import CalD3RMenD3s_Dataset, BU3DFE_Dataset
@@ -468,7 +468,7 @@ def compute_heatmap(emotion_classifier, val_loader, device, real_iter, mean, std
         if data is not None:
             for i in range(len(data['RGB'])):
                 input_data = {'RGB': data['RGB'][i], 'DEPTH': data['DEPTH'][i]}
-                heatmap = 1 - gradcam(input_data, class_label)
+                heatmap = gradcam(input_data, class_label) #1-
                 img = data['RGB'][i]
                 
                 # Resize heatmap to the image size and overlay it

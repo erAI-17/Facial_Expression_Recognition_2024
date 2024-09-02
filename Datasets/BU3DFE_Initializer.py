@@ -111,7 +111,7 @@ def wrl_to_depth_map(path):
     plotter.close()
     
 
-def train_test_annotations(test_size):
+def train_test_annotations():
     #!read all datasets and create unique annotation file where each row has schema [subj_id, code, label, add]
     emotions = {'AN':0, 'DI':1, 'FE':2, 'HA':3, 'NE':4, 'SA':5, 'SU':6}    
     class_distribution = {'Color':{emotion: 0 for emotion in emotions.keys()}, 'Depth':{emotion: 0 for emotion in emotions.keys()}}
@@ -122,8 +122,7 @@ def train_test_annotations(test_size):
     sum_pix = {'Color': np.zeros(3), 'Depth': np.zeros(3)}
     sum_sq_pix = {'Color': np.zeros(3), 'Depth': np.zeros(3)}
     n_pix = {'Color': 0, 'Depth': 0}
-    
-    
+
     max_depth = 0
     path = f'../Datasets/BU3DFE/Subjects'
     data = []  
@@ -184,31 +183,14 @@ def train_test_annotations(test_size):
     for m in ['Color', 'Depth']:
         mean[m] = sum_pix[m] / n_pix[m]
         std[m] = np.sqrt(sum_sq_pix[m] / n_pix[m] - mean[m] ** 2)
-
-            
-    #!split data into train and test dataframes 
-    labels = [sample[2] for sample in data] #list of labels
-    # Split the groups into train and test sets following the distribution in labels
-    train, test = train_test_split(data, test_size=test_size, stratify=labels)
-
     
-    #convert to dataframes
-    complete_df = pd.DataFrame(data, columns=['subj_id', 'description_label' , 'intensity' , 'race','label'])
-    train_df = pd.DataFrame(train, columns=['subj_id', 'description_label', 'intensity' , 'race','label'])
-    test_df = pd.DataFrame(test, columns=['subj_id', 'description_label', 'intensity' , 'race','label'])
+    #convert to dataframe
+    complete_df = pd.DataFrame(data, columns=['subj_id', 'description_label' , 'intensity', 'race','label'])
     
     #save annotation train file
     annotation_file = os.path.join('../Datasets/BU3DFE/', 'annotations_complete.pkl')
     with open(annotation_file, 'wb') as file:
         pickle.dump(complete_df, file)
-        
-    annotation_file = os.path.join('../Datasets/BU3DFE/', 'annotations_train.pkl')
-    with open(annotation_file, 'wb') as file:
-        pickle.dump(train_df, file)
-        
-    annotation_file = os.path.join('../Datasets/BU3DFE/', 'annotations_test.pkl')
-    with open(annotation_file, 'wb') as file:
-        pickle.dump(test_df, file)
     
     return class_distribution, mean, std   
 
@@ -251,22 +233,22 @@ if __name__ == '__main__':
                 shutil.copy2(source_file, dest_file)
 
     #!generate annotation files for each dataset, TEST and TRAIN
-    class_distribution, mean, std = train_test_annotations(test_size=0.2) #20% test, 80% train
+    class_distribution, mean, std = train_test_annotations() #20% test, 80% train
     #!plot histogram class distribution
-    # full_emot = {'AN': 'anger', 'DI': 'disgust', 'FE': 'fear', 'HA': 'happiness', 'NE': 'neutral', 'SA': 'sadness', 'SU': 'surprise'}
-    # class_distribution = class_distribution['Color']
-    # full_class = [full_emot[emotion] for emotion in class_distribution.keys()]
-    # plt.bar(full_class, class_distribution.values(), color='skyblue', alpha=0.8)
-    # #Set the y-axis limit
-    # plt.ylim(0, 800)
-    # plt.xlabel('Class')
-    # plt.ylabel('Frequency')
-    # plt.title('Distribution of Classes')
-    # #Add values on top of each bar
-    # for i, (key, value) in enumerate(class_distribution.items()):
-    #     plt.text(i, value, str(value), ha='center', va='bottom')
-    # plt.xticks(rotation=45)
-    # plt.grid(axis='y', linestyle='--', linewidth=0.5)
-    # plt.tight_layout()  # Adjust layout for better spacing
-    # plt.show()
-    # plt.savefig('/Images/BU3DFE_distribution.png')
+    full_emot = {'AN': 'anger', 'DI': 'disgust', 'FE': 'fear', 'HA': 'happiness', 'NE': 'neutral', 'SA': 'sadness', 'SU': 'surprise'}
+    class_distribution = class_distribution['Color']
+    full_class = [full_emot[emotion] for emotion in class_distribution.keys()]
+    plt.bar(full_class, class_distribution.values(), color='skyblue', alpha=0.8)
+    #Set the y-axis limit
+    plt.ylim(0, 800)
+    plt.xlabel('Class')
+    plt.ylabel('Frequency')
+    plt.title('Distribution of Classes')
+    #Add values on top of each bar
+    for i, (key, value) in enumerate(class_distribution.items()):
+        plt.text(i, value, str(value), ha='center', va='bottom')
+    plt.xticks(rotation=45)
+    plt.grid(axis='y', linestyle='--', linewidth=0.5)
+    plt.tight_layout()  # Adjust layout for better spacing
+    plt.show()
+    plt.savefig('/Images/BU3DFE_distribution.png')

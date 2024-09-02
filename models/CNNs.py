@@ -3,7 +3,7 @@ from torch import nn
 import torch.nn.functional as F
 from torchvision import models
 from utils.args import args
-from torchvision.models import EfficientNet_B0_Weights,EfficientNet_B2_Weights
+from torchvision.models import EfficientNet_B0_Weights, EfficientNet_B2_Weights
 from transformers import AutoImageProcessor, AutoModel, AutoModelForImageClassification
 import timm
 
@@ -67,7 +67,7 @@ class efficientnet_b2(nn.Module):
         # Registering hooks to the layers
         self.model[1].register_forward_hook(get_features('early')) 
         self.model[2][3].register_forward_hook(get_features('mid')) 
-        self.model[3].register_forward_hook(get_features('late'))  #[2][6] #[3]
+        self.model[3].register_forward_hook(get_features('late'))  
         
     def forward(self, X):       
         #check if X contains nan values

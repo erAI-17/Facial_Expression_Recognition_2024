@@ -4,7 +4,7 @@ import torch
 import torchvision.transforms.v2 as transforms
 from utils.args import args
 import cv2
-#import mediapipe as mp #!only for online alignment
+import mediapipe as mp #!only for online alignment
 
         
 ImageNet_mean = [0.485, 0.456, 0.406] 
@@ -117,6 +117,9 @@ class Transform:
         img = np.array(sample['RGB'])
         depth = np.array(sample['DEPTH'])
         
+        # if args.align_face:
+        #     img, depth = Alignment()(img, depth)
+        
         # Apply the same augmentations to both
         seed = np.random.randint(2147483647) 
 
@@ -131,6 +134,74 @@ class Transform:
         
         return sample
     
+    
+
+class Alignment():
+    def __init__(self):
+        # Initialize mp_face_mesh within the worker process
+        self.mp_face_mesh = mp.solutions.face_mesh.FaceMesh(static_image_mode=True, max_num_faces=1, min_detection_confidence=0.5)
+
+    def _landmark_extraction(self, img):
+        # Process the image
+        results = self.mp_face_mesh.process(img)
+        
+        # Extract the landmarks from the first face detected
+        landmarks = results.multi_face_landmarks[0].landmark
+        
+        return landmarks
+    
+    def landmark_overlay(self, img, landmarks):
+        # Draw the landmarks on the image
+        for landmark in landmarks:
+            x = int(landmark.x * img.shape[1])
+            y = int(landmark.y * img.shape[0])
+            cv2.circle(img, (x, y), 1, (0, 255, 0), -1)
+                
+        return img
+    
+    def face_alignment(self, img, depth, landmarks):
+        #landmarks into image coordinates
+        h, w = img.shape[:2]
+        landmarks = np.array([[int(l.x * w), int(l.y * h)] for l in landmarks])
+        
+       # coordinates of the corners of the eyes
+        left_eye_corners_idx = [33, 133]
+        right_eye_corners_idx = [362, 263]
+        
+        #average coordinates of corners of the eyes to get the center
+        left_eye_center = np.mean([landmarks[i] for i in left_eye_corners_idx], axis=0)
+        right_eye_center = np.mean([landmarks[i] for i in right_eye_corners_idx], axis=0)
+        
+        
+        #calculate the angle between eye centers
+        delta_x = right_eye_center[0] - left_eye_center[0]
+        delta_y = right_eye_center[1] - left_eye_center[1]
+        angle = np.arctan2(delta_y, delta_x) * 180.0 / np.pi
+        
+        #calculate the center between the eyes
+        eyes_center = ((left_eye_center[0] + right_eye_center[0]) / 2, (left_eye_center[1] + right_eye_center[1]) / 2)
+        
+        #calculate the rotation matrix
+        M = cv2.getRotationMatrix2D(eyes_center, angle, scale=1)
+        
+        #rotate the image and depth map
+        img = cv2.warpAffine(img, M, (w, h), flags=cv2.INTER_CUBIC)
+        depth = cv2.warpAffine(depth, M, (w, h), flags=cv2.INTER_CUBIC)
+        
+        return img, depth
+    
+    def __call__(self, img, depth, overlay=False):
+        img = np.array(img)
+        depth = np.array(depth)
+        
+        landmarks = self._landmark_extraction(img)
+        
+        if overlay:
+            img = self.landmark_overlay(img, landmarks)
+        
+        img, depth = self.face_alignment(img, depth, landmarks)
+        
+        return img, depth
 
     
 

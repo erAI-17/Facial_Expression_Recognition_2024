@@ -36,7 +36,7 @@ class CE_Island_Criterion(nn.Module):
 class CenterLoss(nn.Module):
     def __init__(self, feat_dim):
         super(CenterLoss, self).__init__()
-        self.num_classes, _ = utils.utils.get_domains_and_labels(args)
+        self.num_classes = utils.utils.get_domains_and_labels(args)
         self.feat_dim = feat_dim
         if torch.cuda.is_available():
             self.centers = nn.Parameter(torch.randn(self.num_classes, self.feat_dim).cuda())
@@ -72,7 +72,7 @@ class CenterLoss(nn.Module):
 class IslandLoss(nn.Module):
     def __init__(self, feat_dim, lambda_island=10):
         super(IslandLoss, self).__init__()
-        self.num_classes, _ = utils.utils.get_domains_and_labels(args)
+        self.num_classes = utils.utils.get_domains_and_labels(args)
         self.feat_dim = feat_dim
         self.lambda_island = lambda_island
         if torch.cuda.is_available():

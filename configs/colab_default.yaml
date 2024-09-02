@@ -9,6 +9,7 @@ amp: ???  #automatic mixed precision
 profile: ??? # profile the training
 N_val_visualize: ???
 align_face: ??? 
+FER6: ???
 
 
 train:

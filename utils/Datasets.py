@@ -9,9 +9,9 @@ import os.path
 from utils.logger import logger
 from utils.CalD3R_MenD3s_sample import CalD3R_MenD3s_sample
 from utils.BU3DFE_sample import BU3DFE_sample
-from utils.transforms import Transform
 from utils.args import args
 import matplotlib.pyplot as plt
+import utils.utils
 
             
 class CalD3RMenD3s_Dataset(data.Dataset, ABC):
@@ -26,10 +26,19 @@ class CalD3RMenD3s_Dataset(data.Dataset, ABC):
         self.dataset_conf = dataset_conf
         self.transform = transform
         
+        self.num_classes = utils.utils.get_domains_and_labels(args)  
+        
         #create global dataset object
         pickle_name = 'annotations_complete.pkl'
         self.ann_list = []
         self.ann_list_file = pd.read_pickle(os.path.join(self.dataset_conf.annotations_path, self.name, pickle_name))
+        if self.num_classes == 6: #delete all surprise samples
+            self.ann_list_file = self.ann_list_file[self.ann_list_file['description_label'] != 'surprise']
+            #! not needed (surprise was last one)
+            #original_order = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5, 'surprise':6}
+            #new_order = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5}
+            #self.ann_list_file['label'] = self.ann_list_file['description_label'].map(new_order)
+            
         self.ann_list.extend([CalD3R_MenD3s_sample(row, self.dataset_conf) for row in self.ann_list_file.iterrows()])
         
         ##! if local run, reduce the validation set for faster debug 
@@ -112,12 +121,21 @@ class BU3DFE_Dataset(data.Dataset, ABC):
         self.name = name
         self.modalities = modalities
         self.dataset_conf = dataset_conf
-        self.transform = None
+        self.transform = transform
+        
+        self.num_classes = utils.utils.get_domains_and_labels(args)  
              
         #create global dataset object
         pickle_name = 'annotations_complete.pkl'
         self.ann_list = []
         self.ann_list_file = pd.read_pickle(os.path.join(self.dataset_conf.annotations_path, self.name, pickle_name))
+        
+        if self.num_classes == 6: #delete all Neutral samples and reorder the labels
+            self.ann_list_file = self.ann_list_file[self.ann_list_file['description_label'] != 'neutral']
+            #original_order = {'AN':0, 'DI':1, 'FE':2, 'HA':3, 'NE':4, 'SA':5, 'SU':6}  
+            new_order = {'AN':0, 'DI':1, 'FE':2, 'HA':3, 'SA':4, 'SU':5}
+            self.ann_list_file['label'] = self.ann_list_file['description_label'].map(new_order)
+            
         self.ann_list.extend([BU3DFE_sample(row, self.dataset_conf) for row in self.ann_list_file.iterrows()])
         
         logger.info(f"Dataset {self.name} with {len(self.ann_list)} samples generated")
