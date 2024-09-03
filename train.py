@@ -74,23 +74,24 @@ def main():
                                                 modalities = args.modality,
                                                 dataset_conf= args.dataset,
                                                 transform=None)
-    logger.info(f"Global {args.dataset.name} samples: {len(global_dataset)})")
+    logger.info(f"Global {args.dataset.name} samples: {len(global_dataset)}")
     
     writer_global = SummaryWriter(f'logs/')
 
     
     #!BFU3DFE cross val
-    # fold_accuracies = []  
-    # for fold in range(5):
-    #     logger.info(f"Fold {fold + 1}")
-    #     # Randomly split the dataset
-    #     train_idx, val_idx = train_test_split(range(len(dataset)), test_size=0.4, random_state=fold) #60%train 40%val
+    fold_accuracies = []  
+    for fold in range(5):
+        logger.info(f"Fold {fold + 1}")
+        # Randomly split the dataset
+        train_idx, val_idx = train_test_split(range(len(global_dataset)), test_size=0.4, random_state=fold) #60%train 40%val
         
     #! CalD3rMenD3s Cross validation
-    kf = KFold(n_splits=5, shuffle=True, random_state=42)     
-    fold_accuracies = []  
-    for fold, (train_idx, val_idx) in enumerate(kf.split(global_dataset)): 
-        logger.info(f"Fold {fold + 1}")
+    # kf = KFold(n_splits=5, shuffle=True, random_state=42)     
+    # fold_accuracies = []  
+    # for fold, (train_idx, val_idx) in enumerate(kf.split(global_dataset)): 
+    #     logger.info(f"Fold {fold + 1}")
+    
         
         #Tensorboard logger
         writer_fold = SummaryWriter(f'logs/Fold_{fold + 1}')

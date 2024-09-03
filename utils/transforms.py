@@ -10,11 +10,6 @@ import cv2
 ImageNet_mean = [0.485, 0.456, 0.406] 
 ImageNet_std = [0.229, 0.224, 0.225]
 
-CalD3rMenD3s_mean_RGB = [0.4954188046463236, 0.365289621256328, 0.3194358753260218]
-CalD3rMenD3s_std_RGB = [0.26393761653339637, 0.21517540134099997, 0.21502950740118704]
-CalD3rMenD3s_mean_DEPTH = [0.3601669753802989, 0.3601669753802989, 0.3601669753802989]
-CalD3rMenD3s_std_DEPTH = [0.07899400881961408, 0.07899400881961408, 0.07899400881961408]
-
 class ToTensorUint16:
     def __call__(self, img): #receives np array float32 
         img_np = np.array(img)
@@ -80,12 +75,12 @@ class Transform:
         }
         
         self.resize = []
-        # if args.models['RGB'].model == 'efficientnet_b2' and args.models['DEPTH'].model == 'efficientnet_b2':
-        #     self.resize = [transforms.Resize((260, 260), interpolation=transforms.InterpolationMode.BICUBIC),
-        #     ]
-        # if args.models['RGB'].model == 'mobilenet_v4' and args.models['DEPTH'].model == 'mobilenet_v4':
-        #     self.resize = [transforms.Resize((256, 256), interpolation=transforms.InterpolationMode.BICUBIC),
-        #     ]
+        if args.models['RGB'].model == 'efficientnet_b2' and args.models['DEPTH'].model == 'efficientnet_b2':
+            self.resize = [transforms.Resize((260, 260), interpolation=transforms.InterpolationMode.BICUBIC),
+            ]
+        if args.models['RGB'].model == 'mobilenet_v4' and args.models['DEPTH'].model == 'mobilenet_v4':
+            self.resize = [transforms.Resize((256, 256), interpolation=transforms.InterpolationMode.BICUBIC),
+            ]
         
         self.augment = []
         if augment:
