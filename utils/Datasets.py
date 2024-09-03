@@ -32,6 +32,7 @@ class CalD3RMenD3s_Dataset(data.Dataset, ABC):
         pickle_name = 'annotations_complete.pkl'
         self.ann_list = []
         self.ann_list_file = pd.read_pickle(os.path.join(self.dataset_conf.annotations_path, self.name, pickle_name))
+        
         if self.num_classes == 6: #delete all surprise samples
             self.ann_list_file = self.ann_list_file[self.ann_list_file['description_label'] != 'surprise']
             #! not needed (surprise was last one)

@@ -449,12 +449,12 @@ def compute_heatmap(emotion_classifier, val_loader, device, real_iter, mean, std
     
     if args.dataset.name == 'CalD3rMenD3s':
         if args.FER6:
-            emotions = {'angry':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5, 'surprise':6}
-        else:
             emotions = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5}
+        else:
+            emotions = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5, 'surprise':6}
     if args.dataset.name == 'BU3DFE':
         if args.FER6:
-            emotions = {'angry':0, 'disgust':1, 'fear':2, 'happiness':3, 'sadness':4, 'surprise':5}
+            emotions = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'sadness':4, 'surprise':5}
         else:
             emotions = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5, 'surprise':6}
     reverse_emotions = {v: k for k, v in emotions.items()}

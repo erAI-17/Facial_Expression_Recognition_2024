@@ -20,7 +20,9 @@ class SumFusion1D(nn.Module):
       #!EfficientNetB2
       elif args.models['DEPTH'].model == 'efficientnet_b2':
          self.C = 1408
-      
+      elif args.models['DEPTH'].model == 'vit':
+         self.C = 768
+         
       #?final classifier
       self.fc = nn.Linear(self.C , num_classes) 
 
@@ -76,4 +78,8 @@ class AttentionFusion1D(nn.Module):
       logits = self.fc2(X_fused)
       
       return logits, {'late': X_fused}
+   
+   
+   
+
    
