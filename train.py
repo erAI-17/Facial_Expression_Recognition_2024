@@ -10,6 +10,7 @@ from utils.utils import pformat_dict
 from utils.utils import compute_class_weights, compute_mean_std , plot_confusion_matrix
 from utils.Datasets import CalD3RMenD3s_Dataset, BU3DFE_Dataset
 from utils.args import args
+import utils.utils
 from utils.utils import GradCAM
 import tasks
 import models as model_list
@@ -394,16 +395,13 @@ def confusion_matrix(emotion_classifier, val_loader, device, fold):
 def visualize_features(emotion_classifier, val_loader, device, real_iter):
     '''Visualize features and heatmap'''
     
-    if args.dataset.name == 'CalD3rMenD3s':
-        if args.FER6:
-            emotions = {'angry':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5, 'surprise':6}
-        else:
+    emotions = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5, 'surprise':6}
+    num_classes = utils.utils.get_domains_and_labels(args)     
+    if num_classes == 6:
+        if args.dataset.name == 'CalD3rMenD3s':
             emotions = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5}
-    if args.dataset.name == 'BU3DFE':
-        if args.FER6:
-            emotions = {'angry':0, 'disgust':1, 'fear':2, 'happiness':3, 'sadness':4, 'surprise':5}
-        else:
-            emotions = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5, 'surprise':6}
+        if args.dataset.name == 'BU3DFE': 
+            emotions = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'sadness':4, 'surprise':5}
     
     val_features = []
     val_labels = []
@@ -445,18 +443,14 @@ def visualize_features(emotion_classifier, val_loader, device, real_iter):
     
 
 
-def compute_heatmap(emotion_classifier, val_loader, device, real_iter, mean, std):
-    
-    if args.dataset.name == 'CalD3rMenD3s':
-        if args.FER6:
+def compute_heatmap(emotion_classifier, val_loader, device, real_iter, mean, std): 
+    emotions = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5, 'surprise':6}
+    num_classes = utils.utils.get_domains_and_labels(args)     
+    if num_classes == 6:
+        if args.dataset.name == 'CalD3rMenD3s':
             emotions = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5}
-        else:
-            emotions = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5, 'surprise':6}
-    if args.dataset.name == 'BU3DFE':
-        if args.FER6:
+        if args.dataset.name == 'BU3DFE': 
             emotions = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'sadness':4, 'surprise':5}
-        else:
-            emotions = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5, 'surprise':6}
     reverse_emotions = {v: k for k, v in emotions.items()}
 
     emotion_classifier.train(False)

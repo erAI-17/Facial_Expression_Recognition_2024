@@ -20,7 +20,7 @@ class SumFusion1D(nn.Module):
       #!EfficientNetB2
       elif args.models['DEPTH'].model == 'efficientnet_b2':
          self.C = 1408
-      elif args.models['DEPTH'].model == 'vit':
+      elif args.models['DEPTH'].model == 'ViT':
          self.C = 768
          
       #?final classifier
@@ -52,13 +52,14 @@ class AttentionFusion1D(nn.Module):
       #!EfficientNetB2
       elif args.models['DEPTH'].model == 'efficientnet_b2':
          self.C = 1408
+      elif args.models['DEPTH'].model == 'ViT':
+         self.C = 768
 
       self.Att_map_rgb = nn.Linear(self.C, self.C)
       self.Att_map_depth = nn.Linear(self.C, self.C)
       
       self.fc1 = nn.Linear(self.C*2 , self.C)
       self.bn1 = nn.BatchNorm1d(self.C)
-      self.dropout = nn.Dropout(p=args.models['FUSION'].dropout)
       self.fc2 = nn.Linear(self.C , num_classes)
       
    def forward(self, rgb_input, depth_input):
@@ -73,7 +74,7 @@ class AttentionFusion1D(nn.Module):
       
       X_fused = torch.cat((X_rgb, X_depth), dim=1)
       
-      X_fused = self.dropout(F.relu(self.bn1(self.fc1(X_fused))))
+      X_fused = F.relu(self.bn1(self.fc1(X_fused)))
                        
       logits = self.fc2(X_fused)
       

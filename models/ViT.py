@@ -9,11 +9,9 @@ from transformers import AutoImageProcessor, AutoModel, AutoModelForImageClassif
 
 
 class ViT(nn.Module):
-    def __init__(self, p_dropout):
+    def __init__(self):
         super(ViT, self).__init__()
-        
-        self.p_dropout = p_dropout
-        
+                
         #? Load pre-trained ViT model
         #!1 FER2013,MMI Facial Expression Database, and AffectNet Accuracy: 0.8434 - Loss: 0.4503 (454d)
         self.model = AutoModel.from_pretrained("motheecreator/vit-Facial-Expression-Recognition")
@@ -42,11 +40,6 @@ class ViT(nn.Module):
         for param in self.model.layernorm.parameters():
             param.requires_grad = True
         
-        #? set dropout
-        for module in self.model.modules():
-            if isinstance(module, nn.Dropout):
-                module.p = self.p_dropout
-
     def forward(self, x):        
         #x = self._preprocessing_(x)
         
