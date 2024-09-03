@@ -61,7 +61,7 @@ class FusionNet(nn.Module):
       #self.stages = {'late': [352, 9]}  # Adjust this according to the stages you want to use
       self.stages = {'early': [32, 130], 'mid': [88, 17], 'late': [352, 9]}
       
-      self.n_spatial_attentions = 5
+      self.n_spatial_attentions = 3
       self.SpatialAttentionModules = nn.ModuleDict({
          'rgb': nn.ModuleDict({stage: nn.ModuleList([SpatialAttentionModule(self.stages[stage][0]) for _ in range(self.n_spatial_attentions)]) for stage in self.stages}),
          'depth': nn.ModuleDict({stage: nn.ModuleList([SpatialAttentionModule(self.stages[stage][0]) for _ in range(self.n_spatial_attentions)]) for stage in self.stages})
@@ -131,7 +131,7 @@ class FusionNetCross(nn.Module):
       self.patch_size = {'early': 13, 'mid': 8, 'late': 1}
       self.stages = {'early': [32, 130], 'mid': [88, 17], 'late': [352, 9]}
       
-      self.n_spatial_attentions = 5
+      self.n_spatial_attentions = 3
       self.SpatialAttentionModules = nn.ModuleDict({
          'rgb': nn.ModuleList([SpatialAttentionModule(self.stages['late'][0]) for _ in range(self.n_spatial_attentions)]),
          'depth': nn.ModuleList([SpatialAttentionModule(self.stages['late'][0]) for _ in range(self.n_spatial_attentions)])

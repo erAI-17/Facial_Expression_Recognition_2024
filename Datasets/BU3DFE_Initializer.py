@@ -185,7 +185,7 @@ def train_test_annotations():
         std[m] = np.sqrt(sum_sq_pix[m] / n_pix[m] - mean[m] ** 2)
     
     #convert to dataframe
-    complete_df = pd.DataFrame(data, columns=['subj_id', 'description_label' , 'intensity', 'race','label'])
+    complete_df = pd.DataFrame(data, columns=['subj_id', 'description_label' , 'intensity', 'race', 'label'])
     
     #save annotation train file
     annotation_file = os.path.join('../Datasets/BU3DFE/', 'annotations_complete.pkl')

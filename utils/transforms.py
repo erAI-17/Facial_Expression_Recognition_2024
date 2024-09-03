@@ -80,12 +80,12 @@ class Transform:
         }
         
         self.resize = []
-        if args.models['RGB'].model == 'efficientnet_b2' and args.models['DEPTH'].model == 'efficientnet_b2':
-            self.resize = [transforms.Resize((260, 260), interpolation=transforms.InterpolationMode.BICUBIC),
-            ]
-        if args.models['RGB'].model == 'mobilenet_v4' and args.models['DEPTH'].model == 'mobilenet_v4':
-            self.resize = [transforms.Resize((256, 256), interpolation=transforms.InterpolationMode.BICUBIC),
-            ]
+        # if args.models['RGB'].model == 'efficientnet_b2' and args.models['DEPTH'].model == 'efficientnet_b2':
+        #     self.resize = [transforms.Resize((260, 260), interpolation=transforms.InterpolationMode.BICUBIC),
+        #     ]
+        # if args.models['RGB'].model == 'mobilenet_v4' and args.models['DEPTH'].model == 'mobilenet_v4':
+        #     self.resize = [transforms.Resize((256, 256), interpolation=transforms.InterpolationMode.BICUBIC),
+        #     ]
         
         self.augment = []
         if augment:

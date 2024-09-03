@@ -240,7 +240,13 @@ class GradCAM:
         return gradcam
  
 def plot_confusion_matrix(confusion_matrix, fold):
-    emotions = {'anger': 0, 'disgust': 1, 'fear': 2, 'happiness': 3, 'neutral': 4, 'sadness': 5, 'surprise': 6}
+    emotions = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5, 'surprise':6}
+    num_classes = get_domains_and_labels(args)     
+    if num_classes == 6:
+        if args.dataset.name == 'CalD3rMenD3s':
+            emotions = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'neutral':4, 'sadness':5}
+        if args.dataset.name == 'BU3DFE': 
+            emotions = {'anger':0, 'disgust':1, 'fear':2, 'happiness':3, 'sadness':4, 'surprise':5}
     emotion_labels = list(emotions.keys())
     
     # Normalize the confusion matrix to percentages

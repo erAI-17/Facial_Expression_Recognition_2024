@@ -113,6 +113,7 @@ def objective(trial):
     
         # Calculate the average accuracy across folds
         average_accuracy = np.mean(fold_accuracies)
+        
         return average_accuracy #ONLY FIRST FOLD IS RETURNED
 
 

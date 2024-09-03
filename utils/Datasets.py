@@ -132,14 +132,12 @@ class BU3DFE_Dataset(data.Dataset, ABC):
         self.ann_list_file = pd.read_pickle(os.path.join(self.dataset_conf.annotations_path, self.name, pickle_name))
         
         if self.num_classes == 6: #delete all Neutral samples and reorder the labels
-            self.ann_list_file = self.ann_list_file[self.ann_list_file['description_label'] != 'neutral']
+            self.ann_list_file = self.ann_list_file[self.ann_list_file['description_label'] != 'NE']
             #original_order = {'AN':0, 'DI':1, 'FE':2, 'HA':3, 'NE':4, 'SA':5, 'SU':6}  
             new_order = {'AN':0, 'DI':1, 'FE':2, 'HA':3, 'SA':4, 'SU':5}
             self.ann_list_file['label'] = self.ann_list_file['description_label'].map(new_order)
             
         self.ann_list.extend([BU3DFE_sample(row, self.dataset_conf) for row in self.ann_list_file.iterrows()])
-        
-        logger.info(f"Dataset {self.name} with {len(self.ann_list)} samples generated")
         
         ##! if local run, reduce the validation set for faster debug 
         if platform.node() == 'MSI':
