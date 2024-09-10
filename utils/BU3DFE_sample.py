@@ -24,7 +24,7 @@ class BU3DFE_sample(object):
     
     @property
     def intensity(self):
-        return str(self._series['intensity'])
+        return int(self._series['intensity'][1])
     
     @property
     def race(self):

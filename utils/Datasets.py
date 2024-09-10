@@ -139,6 +139,10 @@ class BU3DFE_Dataset(data.Dataset, ABC):
             
         self.ann_list.extend([BU3DFE_sample(row, self.dataset_conf) for row in self.ann_list_file.iterrows()])
         
+        ##! if only highest intensity level is used, remove the rest (2400 -> 1200 samples)
+        if args.high_intensity == True:
+            self.ann_list = [sample for sample in self.ann_list if sample.intensity == 3 or sample.intensity == 4]
+        
         ##! if local run, reduce the validation set for faster debug 
         if platform.node() == 'MSI':
             reduced_size = int(len(self.ann_list) * 0.2)  # Calculate 20% of the current list size
