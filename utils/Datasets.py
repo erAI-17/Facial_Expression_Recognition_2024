@@ -141,7 +141,7 @@ class BU3DFE_Dataset(data.Dataset, ABC):
         
         ##! if only highest intensity level is used, remove the rest (2400 -> 1200 samples)
         if args.high_intensity == True:
-            self.ann_list = [sample for sample in self.ann_list if sample.intensity == 3 or sample.intensity == 4]
+            self.ann_list = [sample for sample in self.ann_list if sample.intensity == '03' or sample.intensity == '04']
         
         ##! if local run, reduce the validation set for faster debug 
         if platform.node() == 'MSI':
