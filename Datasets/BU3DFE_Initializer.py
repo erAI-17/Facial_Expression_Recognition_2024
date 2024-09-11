@@ -59,7 +59,7 @@ def wrl_to_depth_map(path):
     w, h = min(w, width - x), min(h, height - y)
     
     # Crop the depth map to the bounding box
-    depth = zbuffer_array[y:y+h, x:x+w] #zbuffer_normalized #?zbuffer_array #zbuffer_normalized
+    depth = zbuffer_normalized[y:y+h, x:x+w]  #?zbuffer_array #zbuffer_normalized
     
     # Resize the cropped depth map while maintaining the aspect ratio
     h, w = depth.shape
@@ -96,7 +96,7 @@ def wrl_to_depth_map(path):
     # Convert from float32 to uint16bit image
     depth_padded_uint16 = (depth_padded * 65535).astype(np.uint16)
     
-    #Display the depth map #float32
+    # #Display the depth map #float32
     # plt.figure(figsize=(8, 6))
     # plt.imshow(depth_padded, cmap='gray')
     # plt.show()
@@ -136,7 +136,7 @@ def train_test_annotations():
             
             new_entry = [subj_id, label, intensity, race, emotions[label]]
             if new_entry not in data: #avoid duplicates (same sample with different modalities)
-                data.append([subj_id, label, intensity, race, emotions[label]])
+                data.append(new_entry)
 
             #!update class distribution
             class_distribution[m][label] += 1
@@ -200,13 +200,13 @@ def train_test_annotations():
 if __name__ == '__main__':
     
     #!generate depth maps for all .wrl files
-    # path = '../Datasets/Original_BU3DFE/Subjects/'
-    # count = 0
-    # for subject in os.listdir(path):
-    #     for file in os.listdir(path + subject):
-    #         if file.endswith('F3D.wrl'):
-    #             print('Processing: ' + path + subject + '/' + file)
-    #             wrl_to_depth_map(path + subject + '/' + file)
+    path = '../Datasets/Original_BU3DFE/Subjects/'
+    count = 0
+    for subject in os.listdir(path):
+        for file in os.listdir(path + subject):
+            if file.endswith('F3D.wrl'):
+                print('Processing: ' + path + subject + '/' + file)
+                wrl_to_depth_map(path + subject + '/' + file)
              
     # # example
     # img_path = '../Datasets/Original_BU3DFE/Subjects/F0001/F0001_AN01WH_F3D_depth.png'

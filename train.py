@@ -8,7 +8,7 @@ import wandb
 from utils.logger import logger #create logger object
 from utils.utils import pformat_dict
 from utils.utils import compute_class_weights, compute_mean_std , plot_confusion_matrix
-from utils.Datasets import CalD3RMenD3s_Dataset, BU3DFE_Dataset
+from utils.Datasets import CalD3RMenD3s_Dataset, BU3DFE_Dataset, Global_Dataset
 from utils.args import args
 import utils.utils
 from utils.utils import GradCAM
@@ -68,7 +68,8 @@ def main():
     #! create datasets
     dataset = {
         'CalD3rMenD3s': CalD3RMenD3s_Dataset,
-        'BU3DFE': BU3DFE_Dataset
+        'BU3DFE': BU3DFE_Dataset,
+        'Global': Global_Dataset,
     }
     global_dataset = dataset[args.dataset.name](name = args.dataset.name, 
                                                 modalities = args.modality,
@@ -78,6 +79,9 @@ def main():
     
     writer_global = SummaryWriter(f'logs/')
 
+    
+    #!GLOBAL testing
+    train_idx, val_idx = train_test_split(range(len(global_dataset)), test_size=0.2, random_state=42) #80%train 20%val
     
     #!BFU3DFE cross val
     fold_accuracies = []  
@@ -105,6 +109,8 @@ def main():
                                                     modalities = args.modality,
                                                     dataset_conf= args.dataset,
                                                     transform=None)
+        
+        
         
         
         #? Create Subsets for training and validation for this FOLD

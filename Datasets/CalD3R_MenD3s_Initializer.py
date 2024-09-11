@@ -81,6 +81,10 @@ def train_test_annotations():
                         
                     elif m == 'Depth':
                         img = Image.open(img_path)
+                        
+                        plt.imshow(img, cmap='gray')
+                        plt.show()
+                        
                         img = np.array(img)
                         #!convert to 3 channels                       
                         img = np.expand_dims(img, axis=-1)
@@ -119,6 +123,73 @@ def train_test_annotations():
     
     return class_distribution, mean, std 
   
+  
+                
+def face_crop(path):
+    for subject in os.listdir(path): 
+        #!face detection
+        mp_face_mesh = mp.solutions.face_mesh
+        face_mesh = mp_face_mesh.FaceMesh(static_image_mode=True, max_num_faces=1, refine_landmarks=True, min_detection_confidence=0.5)
+
+        for filename in os.listdir(path + '/' + subject):
+            if os.path.splitext(filename)[1] == '.png':
+                image_path = path + '/' + subject + '/' + filename
+                image = Image.open(image_path)
+                image = np.array(image)
+                             
+                results = face_mesh.process(image)
+                
+                if results.multi_face_landmarks:
+                    # Get the first face's landmarks
+                    face_landmarks = results.multi_face_landmarks[0]
+                    
+                    ih, iw, _ = image.shape
+                    
+                    # # Plot landmarks on the image
+                    # plt.imshow(image)
+                    # for landmark in face_landmarks.landmark:
+                    #     x = int(landmark.x * iw)
+                    #     y = int(landmark.y * ih)
+                    #     plt.scatter(x, y, s=1, color='red')  # Red dots for landmarks
+                    # plt.title('Facial Landmarks')
+                    # plt.show()
+                    
+                    # Create an empty mask (all zeros = black)
+                    mask = np.zeros((ih, iw), dtype=np.uint8)
+
+                    # Indices covering the whole outer face (from jawline, chin to forehead)
+                    outer_landmarks_indices = [
+                        10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 
+                        377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 
+                        109, 10  # Chin to jawline, forehead, back to chin
+                    ]
+                    points = []
+                    for idx in outer_landmarks_indices:
+                        x = int(face_landmarks.landmark[idx].x * iw)
+                        y = int(face_landmarks.landmark[idx].y * ih)
+                        points.append([x, y])
+
+                    # Convert points to the correct format for cv2.fillPoly
+                    points = np.array(points, dtype=np.int32)
+
+                    # Fill the polygon (outer face region) on the mask
+                    cv2.fillPoly(mask, [points], 255)
+                    
+                    # Expand the mask to have the same number of channels as the image (e.g., 3 for RGB)
+                    mask = np.stack([mask]*3, axis=-1)
+                    
+                    # Apply the mask to the original image (face remains, other pixels blacked out)
+                    cropped_image = cv2.bitwise_and(image, mask)
+                    
+                    #!apply same mask also to the depth map
+                    # depth_map = cv2.imread(depth_map_path, cv2.IMREAD_UNCHANGED)
+                    # depth_map = cv2.bitwise_and(depth_map, mask[:, :, 0])
+
+                    # plt.imshow(face_only_image)
+                    # plt.show()
+
+                    cv2.imwrite(image_path, cropped_image)
+                    
 
 def align_face():
     # Initialize the face alignment object
