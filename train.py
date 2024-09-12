@@ -81,14 +81,17 @@ def main():
 
     
     #!GLOBAL testing
-    train_idx, val_idx = train_test_split(range(len(global_dataset)), test_size=0.2, random_state=42) #80%train 20%val
+    for _ in range(1):
+        fold=0
+        fold_accuracies = [] 
+        train_idx, val_idx = train_test_split(range(len(global_dataset)), test_size=0.2, random_state=42) #80%train 20%testing
     
     #!BFU3DFE cross val
-    fold_accuracies = []  
-    for fold in range(5):
-        logger.info(f"Fold {fold + 1}")
-        # Randomly split the dataset
-        train_idx, val_idx = train_test_split(range(len(global_dataset)), test_size=0.4, random_state=fold) #60%train 40%val
+    # fold_accuracies = []  
+    # for fold in range(5):
+    #     logger.info(f"Fold {fold + 1}")
+    #     # Randomly split the dataset
+    #     train_idx, val_idx = train_test_split(range(len(global_dataset)), test_size=0.4, random_state=fold) #60%train 40%val
         
     #! CalD3rMenD3s Cross validation
     # kf = KFold(n_splits=5, shuffle=True, random_state=42)     
@@ -109,8 +112,6 @@ def main():
                                                     modalities = args.modality,
                                                     dataset_conf= args.dataset,
                                                     transform=None)
-        
-        
         
         
         #? Create Subsets for training and validation for this FOLD

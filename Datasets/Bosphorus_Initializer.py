@@ -199,11 +199,15 @@ def bnt_to_depth_PNG(path):
 if __name__ == '__main__':
     
     #! convert_AUs_to_labels
-    convert_AUs_to_labels('../Datasets/Original_Bosphorus/Subjects')
+    #convert_AUs_to_labels('../Datasets/Original_Bosphorus/Subjects')
     
     #!convert every .bnt file in the dataset to .png depthmap
-    bnt_to_depth_PNG('../Datasets/Bosphorus/Subjects')
+    #bnt_to_depth_PNG('../Datasets/Bosphorus/Subjects')
         
- 
+    #! finally delete all file not ending with '_depthmap.png' or '_rgb.png'
+    for subject in os.listdir('../Datasets/Bosphorus/Subjects'):
+        for filename in os.listdir('../Datasets/Bosphorus/Subjects/' + subject):
+            if not filename.endswith('_depthmap.png') and not filename.endswith('_rgb.png'):
+                os.remove('../Datasets/Bosphorus/Subjects/' + subject + '/' + filename)
     
     

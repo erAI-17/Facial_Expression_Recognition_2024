@@ -15,6 +15,8 @@ def get_domains_and_labels(arguments):
             num_class = 6
         else:
             num_class = 7
+    if arguments.dataset.name == 'Global':
+        num_class = 7
         
     return num_class
 

@@ -24,12 +24,12 @@ def read_CalD3rMenD3s(data):
             for filename in os.listdir(files_path):
                 #remove "aligned_" from filename
                 info_filename = filename.replace('aligned_', '')
-                add = [info_filename.split("_")[0]] 
+                gender = info_filename.split("_")[0] 
                 subj_id = info_filename.split("_")[1]   
                 code = info_filename.split("_")[2]
                 label = info_filename.split("_")[3]
                 
-                new_entry = [dataset, subj_id, label, emotions[label], '-', '-', code, add]
+                new_entry = [dataset, subj_id, label, emotions[label], '-', '-', code, gender]
                 if new_entry not in data: #avoid duplicates (same sample with different modalities)
                     data.append(new_entry)   
     
@@ -106,10 +106,10 @@ def global_annotations():
         class_distribution[entry[2]] += 1
                              
     #convert to dataframe
-    complete_df = pd.DataFrame(data, columns=['dataset', 'subj_id', 'description_label', 'label', 'intensity', 'race', 'code', 'add'])
+    complete_df = pd.DataFrame(data, columns=['dataset', 'subj_id', 'description_label', 'label', 'intensity', 'race', 'code', 'gender'])
     
     #save annotation train file
-    annotation_file = os.path.join('../Datasets/', 'global_annotations_complete.pkl')
+    annotation_file = os.path.join('../Datasets/Global', 'annotations_complete.pkl')
     with open(annotation_file, 'wb') as file:
         pickle.dump(complete_df, file)
     
