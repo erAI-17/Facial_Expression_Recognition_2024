@@ -5,9 +5,9 @@
 # FER
 Facial Emotion Recognition (FER) is a complex and crucial task in computer vision with widespread applications in fields such as human-computer interaction, psychology, healthcare, and marketing. Its goal is to accurately identify a person’s emotional state based on their facial expressions. However, the inherent variability of facial expressions across individuals, cultures, and contexts presents significant challenges. Recent advancements in deep learning, particularly in Convolutional Neural Networks (CNNs), have greatly enhanced the performance of FER systems, enabling near-human accuracy, especially in cases where emotions are clearly expressed.
 
-<div style="text-align: center;">
+<center>
   <img src="./Images/ReadME/init.png" alt="Local Image" width="500">
-</div>
+</center>
 
 # Contribution
 
@@ -26,31 +26,32 @@ This work’s contribution can be summarised into:
 CalD3rMenD3s, BU3DFE and Bosphorus datasets are merged
 into a single dataset and the model is trained on it. The dataset distribution is shown in following Figure:
 
-<div style="text-align: center;">
-  <img src="./Images/ReadME/dataset.png" alt="Local Image" width="500">
-</div>
+<center>
+ <img src="./Images/ReadME/dataset.png" alt="Local Image" width="500">
+</center>
+
 
 # Model
 Full model architecture and GRADCAM heatmaps showing regions where network is focusing on for each class
 
-<div style="text-align: center;">
-  <img src="./Images/ReadME/network.png" alt="Local Image" width="700">
-</div>
+<center>
+<img src="./Images/ReadME/network.png" alt="Local Image" width="700">
+</center>
+<center>
+ <img src="./Images/ReadME/heatmaps.png" alt="Local Image" width="500">
+</center>
 
-<div style="text-align: center;">
-  <img src="./Images/ReadME/heatmaps.png" alt="Local Image" width="500">
-</div>
 
 # Results
 Accuracy of the model on the global dataset, confusion matrix and extracted features using Island Loss function:
 
-<div style="text-align: center;">
+<center>
   <img src="./Images/ReadME/results.png" alt="Local Image" width="550">
-</div>
-
-<div style="text-align: center;">
+</center>
+<center>
   <img src="./Images/ReadME/feat_Global_7.png" alt="Local Image" width="550">
-</div>
+</center>
+
 
 # Requirements
 use timm version 0.9.7 for pretrained model import
