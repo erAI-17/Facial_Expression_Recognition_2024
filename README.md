@@ -1,6 +1,6 @@
 # Full Work PDF
 
-[Full Tractation](./Images/ReadME/Full_Work.pdf)
+[Full Work](./Images/ReadME/Full_Work.pdf)
 
 # FER
 Facial Emotion Recognition (FER) is a complex and crucial task in computer vision with widespread applications in fields such as human-computer interaction, psychology, healthcare, and marketing. Its goal is to accurately identify a person’s emotional state based on their facial expressions. However, the inherent variability of facial expressions across individuals, cultures, and contexts presents significant challenges. Recent advancements in deep learning, particularly in Convolutional Neural Networks (CNNs), have greatly enhanced the performance of FER systems, enabling near-human accuracy, especially in cases where emotions are clearly expressed.
