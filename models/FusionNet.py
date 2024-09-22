@@ -131,16 +131,15 @@ class FusionNetCross(nn.Module):
       self.patch_size = {'early': 13, 'mid': 8, 'late': 1}
       self.stages = {'early': [32, 130], 'mid': [88, 17], 'late': [352, 9]}
       
-      self.n_spatial_attentions = 3
+      self.n_spatial_attentions = 3 #3 #4 #5
       self.SpatialAttentionModules = nn.ModuleDict({
          'rgb': nn.ModuleList([SpatialAttentionModule(self.stages['late'][0]) for _ in range(self.n_spatial_attentions)]),
          'depth': nn.ModuleList([SpatialAttentionModule(self.stages['late'][0]) for _ in range(self.n_spatial_attentions)])
       })
-
+      
       #?patches embeddings
       self.patch_embed = PatchEmbedding(self.stages['late'][1], self.patch_size['late'], self.stages['late'][0])
 
-      # Final classification head
       self.fc = nn.Linear(768, num_classes)
 
    def forward(self, rgb_input, depth_input):
@@ -159,9 +158,11 @@ class FusionNetCross(nn.Module):
          X_att[m] = torch.max(X_att[m], dim=1, keepdim=True)[0] #? [batch_size, 1, H, W]
             
       #average the attention maps
-      X_att_avg = (X_att['rgb'] + X_att['depth']) / 2
+      # X_att_avg = (X_att['rgb'] + X_att['depth']) / 2
       
-      X_fused = X_att_avg * X['rgb']
+      # X_fused = X_att_avg * X['rgb']
+      
+      X_fused = (X_att['rgb']* X['rgb']) + (X_att['depth'] * X['depth'])
          
       #?patch embeddings
       X_fused = self.patch_embed(X_fused)

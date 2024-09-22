@@ -144,10 +144,10 @@ class BU3DFE_Dataset(data.Dataset, ABC):
         if args.high_intensity == True:
             self.ann_list = [sample for sample in self.ann_list if sample.intensity == '03' or sample.intensity == '04']
         
-        ##! if local run, reduce the validation set for faster debug 
-        if platform.node() == 'MSI':
-            reduced_size = int(len(self.ann_list) * 0.2)  # Calculate 20% of the current list size
-            self.ann_list = random.sample(self.ann_list, reduced_size)  # Randomly select 20% of the items
+        # ##! if local run, reduce the validation set for faster debug 
+        # if platform.node() == 'MSI':
+        #     reduced_size = int(len(self.ann_list) * 0.2)  # Calculate 20% of the current list size
+        #     self.ann_list = random.sample(self.ann_list, reduced_size)  # Randomly select 20% of the items
 
     def __len__(self):
             return len(self.ann_list)
