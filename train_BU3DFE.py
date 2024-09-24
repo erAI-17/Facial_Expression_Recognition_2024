@@ -79,129 +79,143 @@ def main():
     logger.info(f"Global {args.dataset.name} samples: {len(global_dataset)}")
     
     writer_global = SummaryWriter(f'logs/')
-
-    #!GLOBAL testing
-    # for _ in range(1):
-    #     fold=0
-    #     fold_accuracies = [] 
-    #     train_idx, val_idx = train_test_split(range(len(global_dataset)), test_size=0.2, random_state=42) #80%train 20%testing
     
-    #! CalD3rMenD3s Cross validation
-    kf = KFold(n_splits=5, shuffle=True, random_state=42)     
-    fold_accuracies = []  
-    for fold, (train_idx, val_idx) in enumerate(kf.split(global_dataset)): 
-        logger.info(f"Fold {fold + 1}")
+    #!BFU3DFE cross val
+    repetition_accuracies = []
+    for repetition in range(10):  # 10 repetitions
+        logger.info(f"Repetition {repetition}")
+        fold_accuracies = []  
+        #convert back to dataframe
+        data = {
+            'subj_id': [sample.subj_id for sample in global_dataset.ann_list],
+            'index': list(range(len(global_dataset)))
+        }
+        df = pd.DataFrame(data)
+        unique_subjects = df['subj_id'].unique() #unique subjects
+        
+        selected_subj, discarded_subj = train_test_split(unique_subjects, test_size=0.4, random_state=42)
+        # Filter the dataset for only the selected subjects
+        df_selected = df[df['subj_id'].isin(selected_subj)]
+        
+        logger.info(f"Dataset {args.dataset.name} reduced to 60 subjects: {len(df_selected)}")
+
+        #10-fold cross-validation on the 60 subjects, for this repetition
+        kf = KFold(n_splits=10, shuffle=True)
+        fold_accuracies = []  
+        for fold, (train_indices, val_indices) in enumerate(kf.split(df_selected)):
+            logger.info(f"Fold {fold}")
+            
+            # Get train and validation indexes
+            train_idx = df_selected.iloc[train_indices]['index'].tolist()
+            val_idx = df_selected.iloc[val_indices]['index'].tolist() 
     
 #################################################################################################################
 
-        #Tensorboard logger
-        writer_fold = SummaryWriter(f'logs/Fold_{fold + 1}')
-        
-        train_dataset = dataset[args.dataset.name](name = args.dataset.name, 
-                                                    modalities = args.modality,
-                                                    dataset_conf= args.dataset,
-                                                    transform=None)
-        
-        val_dataset = dataset[args.dataset.name](name = args.dataset.name, 
-                                                    modalities = args.modality,
-                                                    dataset_conf= args.dataset,
-                                                    transform=None)
-        
-        
-        #? Create Subsets for training and validation for this FOLD
-        train_subset = torch.utils.data.Subset(train_dataset, train_idx)
-        val_subset = torch.utils.data.Subset(val_dataset, val_idx)
-        logger.info(f"Train samples: {len(train_subset)} at fold {fold + 1}")
-        logger.info(f"Validation samples: {len(val_subset)} at fold {fold + 1}") 
-        
-        #! compute mean and std for normalization at this fold
-        mean, std = compute_mean_std(train_subset)
-        
-        # Update the transform for the training and validation datasets (cannot do it before computing mean and std because of augmentations randomness)
-        train_dataset.transform = Transform(augment=True, mean=mean, std=std)
-        val_dataset.transform = Transform(augment=False, mean=mean, std=std)
-        
-        
-        # Create DataLoader instances
-        train_loader = torch.utils.data.DataLoader(
-            train_subset,
-            batch_size=args.batch_size,
-            shuffle=True,
-            num_workers=args.dataset.workers, 
-            pin_memory=True, 
-            drop_last=True
-        )
-        
-        val_loader = torch.utils.data.DataLoader(
-            val_subset,
-            batch_size=args.batch_size, 
-            shuffle=False,
-            num_workers=args.dataset.workers, 
-            pin_memory=True, 
-            drop_last=False
-        )
-        
-        #!compute class weights for Weighted Cross Entropy Loss
-        class_weights = compute_class_weights(train_loader, norm=False).to(device, non_blocking=True)
-    
-        #?instanciate a different model per modality. 
-        models = {}
-        logger.info("Instantiating models per modality")
-        for m in args.modality:
-            logger.info('{} Net\tModality: {}'.format(args.models[m].model, m))
-            models[m] = getattr(model_list, args.models[m].model)()
-        
-        #?instanciate also the FUSION network
-        logger.info('{} Net\tModality: {}'.format(args.models['FUSION'].model, 'FUSION'))
-        models['FUSION'] = getattr(model_list, args.models['FUSION'].model)(models['RGB'], models['DEPTH'])
-        
-        #!Create  EmotionRecognition  object that wraps all the models for each modality    
-        emotion_classifier = tasks.EmotionRecognition("emotion-classifier", 
-                                                    models, 
-                                                    args.batch_size,
-                                                    args.total_batch, 
-                                                    args.models_dir, 
-                                                    scaler, #mixed precision scaler
-                                                    class_weights,
-                                                    args.models, 
-                                                    args.train.lambda_global,
-                                                    args.train.lambda_island,
-                                                    args=args)
-        
-        #emotion_classifier.script() #? script each model per modality
-        
-        emotion_classifier.load_on_gpu(device)
-        
-        # resume_from argument is adopted in case of restoring from a checkpoint
-        if args.resume_from is not None:
-            emotion_classifier.load_last_model(args.resume_from)
-        
-        #* USE GRADIENT ACCUMULATION (the batches are devided into smaller batches with gradient accumulation).
-        #* RECALL that larger batch sizes lead to faster convergence because the estimated gradients are more accurate (more similar to the one that would be computed over the whole dataset)
-        #* and less affected by noise. So we want large batch sizes BUT we may have some memory constraints, so we use GRADIENT ACCUMULATION
-        #* TOTAL_BATCH (128) -> 4* BATCH_SIZE (32)
-        #* There are 4 BATCH_SIZE inside TOTAL_BATCH each of which must be iterated (forward+backward) "args.train.num_iter" times,
-        #* so total number of iterations done over the whole dataset (since we are using smaller batches BATCH_SIZE) is
-        training_iterations = args.train.num_iter * (args.total_batch // args.batch_size)
+            #Tensorboard logger
+            writer_fold = SummaryWriter(f'logs/Fold_{fold}')
             
-        #* TRAINING
-        fold_accuracy = train(emotion_classifier, train_loader, val_loader, fold, device, writer_fold, mean, std)
-        fold_accuracies.append(fold_accuracy)
-        logger.info(f"Fold {fold + 1} accuracy: {fold_accuracy:.2f}%")
-    
-    #!final results
-    writer_global.add_text('Final results', f"Fold accuracies: {fold_accuracies}")
-    average_accuracy = np.mean(fold_accuracies)
-    std_dev_accuracy = np.std(fold_accuracies)
-    writer_global.add_text('Final results', f"Average Accuracy: {average_accuracy:.2f}%")
-    writer_global.add_text('Final results', f"STD Accuracy: {std_dev_accuracy:.2f}%")
-    
-    #BU3DFE experiment add repetition accuracy to the list
-    # repetition_accuracies.append(average_accuracy)
-    # writer_global.add_text('Final results', f"Repetition accuracies: {repetition_accuracies}")
+            train_dataset = dataset[args.dataset.name](name = args.dataset.name, 
+                                                        modalities = args.modality,
+                                                        dataset_conf= args.dataset,
+                                                        transform=None)
+            
+            val_dataset = dataset[args.dataset.name](name = args.dataset.name, 
+                                                        modalities = args.modality,
+                                                        dataset_conf= args.dataset,
+                                                        transform=None)
+            
+            #? Create Subsets for training and validation for this FOLD
+            train_subset = torch.utils.data.Subset(train_dataset, train_idx)
+            val_subset = torch.utils.data.Subset(val_dataset, val_idx)
+            logger.info(f"Train samples: {len(train_subset)} at fold {fold}")
+            logger.info(f"Validation samples: {len(val_subset)} at fold {fold}") 
+            
+            #! compute mean and std for normalization at this fold
+            mean, std = compute_mean_std(train_subset)
+            
+            # Update the transform for the training and validation datasets (cannot do it before computing mean and std because of augmentations randomness)
+            train_dataset.transform = Transform(augment=True, mean=mean, std=std)
+            val_dataset.transform = Transform(augment=False, mean=mean, std=std)
+            
+            
+            # Create DataLoader instances
+            train_loader = torch.utils.data.DataLoader(
+                train_subset,
+                batch_size=args.batch_size,
+                shuffle=True,
+                num_workers=args.dataset.workers, 
+                pin_memory=True, 
+                drop_last=True
+            )
+            
+            val_loader = torch.utils.data.DataLoader(
+                val_subset,
+                batch_size=args.batch_size, 
+                shuffle=False,
+                num_workers=args.dataset.workers, 
+                pin_memory=True, 
+                drop_last=False
+            )
+            
+            #!compute class weights for Weighted Cross Entropy Loss
+            class_weights = compute_class_weights(train_loader, norm=False).to(device, non_blocking=True)
         
-    # writer_global.add_text('Final results', f"AVG 100 Repetition accuracies: {np.mean(repetition_accuracies)}")
+            #?instanciate a different model per modality. 
+            models = {}
+            logger.info("Instantiating models per modality")
+            for m in args.modality:
+                logger.info('{} Net\tModality: {}'.format(args.models[m].model, m))
+                models[m] = getattr(model_list, args.models[m].model)()
+            
+            #?instanciate also the FUSION network
+            logger.info('{} Net\tModality: {}'.format(args.models['FUSION'].model, 'FUSION'))
+            models['FUSION'] = getattr(model_list, args.models['FUSION'].model)(models['RGB'], models['DEPTH'])
+            
+            #!Create  EmotionRecognition  object that wraps all the models for each modality    
+            emotion_classifier = tasks.EmotionRecognition("emotion-classifier", 
+                                                        models, 
+                                                        args.batch_size,
+                                                        args.total_batch, 
+                                                        args.models_dir, 
+                                                        scaler, #mixed precision scaler
+                                                        class_weights,
+                                                        args.models, 
+                                                        args.train.lambda_global,
+                                                        args.train.lambda_island,
+                                                        args=args)
+            
+            #emotion_classifier.script() #? script each model per modality
+            
+            emotion_classifier.load_on_gpu(device)
+            
+            # resume_from argument is adopted in case of restoring from a checkpoint
+            if args.resume_from is not None:
+                emotion_classifier.load_last_model(args.resume_from)
+            
+            #* USE GRADIENT ACCUMULATION (the batches are devided into smaller batches with gradient accumulation).
+            #* RECALL that larger batch sizes lead to faster convergence because the estimated gradients are more accurate (more similar to the one that would be computed over the whole dataset)
+            #* and less affected by noise. So we want large batch sizes BUT we may have some memory constraints, so we use GRADIENT ACCUMULATION
+            #* TOTAL_BATCH (128) -> 4* BATCH_SIZE (32)
+            #* There are 4 BATCH_SIZE inside TOTAL_BATCH each of which must be iterated (forward+backward) "args.train.num_iter" times,
+            #* so total number of iterations done over the whole dataset (since we are using smaller batches BATCH_SIZE) is
+            training_iterations = args.train.num_iter * (args.total_batch // args.batch_size)
+                
+            #* TRAINING
+            fold_accuracy = train(emotion_classifier, train_loader, val_loader, fold, device, writer_fold, mean, std)
+            fold_accuracies.append(fold_accuracy)
+            logger.info(f"Fold {fold} accuracy: {fold_accuracy:.2f}%")
+        
+        #!final results
+        writer_global.add_text(f"Repetition {repetition} - Fold accuracies: {fold_accuracies}")
+        average_accuracy = np.mean(fold_accuracies)
+        writer_global.add_text(f"Repetition {repetition}- AVG Accuracy: {average_accuracy:.2f}%")
+        
+    #BU3DFE experiment add repetition accuracy to the list
+    repetition_accuracies.append(average_accuracy)
+    writer_global.add_text('Final results', f"Repetition accuracies: {repetition_accuracies}")
+    writer_global.add_text('Final results', f"AVG 10 Repetitions accuracies: {np.mean(repetition_accuracies):.2f}")
     
+    writer_global.flush()
     writer_global.close()
 
     
