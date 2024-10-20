@@ -1,0 +1,92 @@
+% !TeX root = main.tex
+% !TEX encoding = UTF-8 Unicode
+% !TEX spellcheck = en-GB
+% !TEX TS-program = pdfLateX
+
+\documentclass[letterpaper, 10pt, conference]{ieeeconf}  % Comment this line out
+                                                          % if you need a4paper
+%\documentclass[a4paper, 10pt, conference]{ieeeconf}      % Use this line for a4
+                                                          % paper
+
+\IEEEoverridecommandlockouts                              % This command is only
+                                                          % needed if you want to
+                                                          % use the \thanks command
+\overrideIEEEmargins
+% See the \addtolength command later in the file to balance the column lengths
+% on the last page of the document
+
+
+\input{packages.tex}
+\addbibresource{bibliography.bib}
+\input{newcommands.tex}
+
+\title{\LARGE \bf
+A NEW NEURAL NETWORK ARCHITECTURE FOR FACIAL EXPRESSION RECOGNITION
+}
+
+\author{\parbox{2 in}{ \centering Emanuele Raimondo
+        \thanks{}\\
+        Department of Computer Engineering\\
+        Politecnico di Torino\\
+        C.so Duca degli Abruzzi 24, Torino 10129, Italy \\
+        {}}
+        \hspace*{0.25in}
+        \parbox{2 in}{ \centering Elena Carlotta Olivetti
+        \thanks{}\\
+        Department of Management and Production Engineering\\
+        Politecnico di Torino\\
+        C.so Duca degli Abruzzi 24, Torino 10129, Italy \\
+        {}}
+        \hspace*{ 0.25 in}
+        \parbox{2 in}{ \centering Leonardo Tanzi
+        \thanks{}\\
+        Methinks AI \\
+        Pça. de Pau Vila, Ciutat Vella, Barcelona 08003, Spain\\
+        {}
+        }
+        \hspace*{ 0 in}\\ 
+        \vspace*{ 0.25cm}\\
+        \parbox{2 in}{ \centering Enrico Vezzeti
+        \thanks{}\\
+        Department of Management and Production Engineering\\
+        Politecnico di Torino\\
+        C.so Duca degli Abruzzi 24, Torino 10129, Italy \\
+        {}}
+        \hspace*{0.5 in}
+        \parbox{2 in}{\centering Federica Marcolin
+        \thanks{}\\
+        Department of Management and Production Engineering\\
+        Politecnico di Torino\\
+        C.so Duca degli Abruzzi 24, Torino 10129, Italy \\
+        {}}
+        \hspace*{0.1 in}\\ 
+}
+
+% \thanks{I would like to Express my Thanks to }% <-this % stops a space
+% \thanks{$^{}$ Mr.Darmendra Sir Faculty of United college of Engineering and Research ,Allahabad U.P.
+%        }%
+% \thanks{$^{}$
+%         {\tt\small }}%
+% }
+
+\begin{document}
+
+\maketitle
+\thispagestyle{empty}
+\pagestyle{empty}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\input{content.tex}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\printbibliography[heading=bibintoc]
+
+
+\end{document}
